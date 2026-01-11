@@ -38,11 +38,12 @@ export default function HomeScreen() {
     notebooksSyncedAt,
     notebooksUserId,
     user,
+    dailyTasks,
     flashcardsStudied,
     showStreakRestoreModal,
     previousStreakForRestore,
     setShowStreakRestoreModal,
-    restoreStreak,
+    applyStreakFreeze,
   } = useStore();
 
   // Theme
@@ -256,11 +257,31 @@ export default function HomeScreen() {
           totalCount={totalCount}
           onUpgrade={() => router.push('/upgrade')}
           onDismissTrialReminder={() => setShowTrialReminder(false)}
-          showStreakRestore={showStreakRestoreModal}
-          previousStreak={previousStreakForRestore}
-          restoresLeft={user.streak_restores}
-          onRestoreStreak={async () => {
-            await restoreStreak();
+          showStreakRestore={(() => {
+            // Guard: Don't show anything until user is loaded and initialized
+            if (!user.id || !isInitialized) return false;
+            if (showStreakRestoreModal) return true;
+
+            // Get user's timezone or fall back to device timezone
+            const userTz = user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: userTz });
+
+            // Safety check for dailyTasks
+            const tasks = Array.isArray(dailyTasks) ? dailyTasks : [];
+            const secureTask = tasks.find(t => t.task_key === 'secure_pet');
+
+            const isSecuredToday = !!(secureTask?.completed && (
+              !secureTask.completed_at || secureTask.completed_at.startsWith(todayStr)
+            ));
+
+            const isAtRisk = user.streak > 0 && user.last_streak_date !== todayStr && !isSecuredToday;
+            const hasRecoverable = (user.meta?.last_recoverable_streak || 0) > 0;
+            return isAtRisk || (user.streak === 0 && hasRecoverable);
+          })()}
+          previousStreak={previousStreakForRestore || (user.meta?.last_recoverable_streak ?? user.streak)}
+          freezesLeft={user.streak_freezes}
+          onApplyFreeze={async () => {
+            await applyStreakFreeze();
           }}
           onDismissStreakRestore={() => setShowStreakRestoreModal(false)}
         />

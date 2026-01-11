@@ -8,7 +8,7 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-
 import { NotebookCard } from '@/components/NotebookCard';
 import { TrialReminderCard } from '@/components/upgrade/TrialReminderCard';
 import { LimitedAccessBanner } from '@/components/upgrade/LimitedAccessBanner';
-import { StreakRestoreBanner } from '@/components/home/StreakRestoreBanner';
+import { StreakFreezeBanner } from '@/components/home/StreakFreezeBanner';
 import { AddNotebookCard } from '@/components/home/AddNotebookCard';
 import { TikTokLoader } from '@/components/TikTokLoader';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
@@ -31,8 +31,8 @@ interface NotebookListProps {
   onDismissTrialReminder: () => void;
   showStreakRestore?: boolean;
   previousStreak?: number;
-  restoresLeft?: number;
-  onRestoreStreak?: () => Promise<void>;
+  freezesLeft?: number;
+  onApplyFreeze?: () => Promise<void>;
   onDismissStreakRestore?: () => void;
 }
 
@@ -53,8 +53,8 @@ export function NotebookList({
   onDismissTrialReminder,
   showStreakRestore,
   previousStreak = 0,
-  restoresLeft = 0,
-  onRestoreStreak,
+  freezesLeft = 0,
+  onApplyFreeze,
   onDismissStreakRestore,
 }: NotebookListProps) {
   const { isDarkMode } = useTheme();
@@ -66,7 +66,7 @@ export function NotebookList({
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
         paddingHorizontal: 24,
-        paddingTop: 8,
+        paddingTop: 4,
         paddingBottom: 160,
         flexGrow: 1, // allow pull-to-refresh from anywhere
       }}
@@ -86,12 +86,12 @@ export function NotebookList({
         </View>
       )}
 
-      {/* Streak Restore Banner */}
-      {showStreakRestore && onRestoreStreak && onDismissStreakRestore && (
-        <StreakRestoreBanner
+      {/* Streak Freeze Banner */}
+      {showStreakRestore && onApplyFreeze && onDismissStreakRestore && (
+        <StreakFreezeBanner
           previousStreak={previousStreak}
-          restoresLeft={restoresLeft}
-          onRestore={onRestoreStreak}
+          freezesLeft={freezesLeft}
+          onFreeze={onApplyFreeze}
           onDismiss={onDismissStreakRestore}
         />
       )}

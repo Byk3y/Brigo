@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Easing } from 'react-native-reanimated';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
+import { StreakFreezeIcon } from '@/components/icons/StreakFreezeIcon';
 
 // Pet full-view images by stage - require() needs static strings
 const STAGE_1_FULL = require('@/assets/pets/stage-1/full-view.png');
@@ -24,7 +25,7 @@ const STAGE_3_DYING = require('@/assets/pets/stage-3/dying.png');
 
 interface PetDisplayProps {
     streak: number;
-    restores?: number;
+    freezes?: number;
     stage: 1 | 2 | 3;
     currentStage: 1 | 2 | 3;
     onNextStage?: () => void;
@@ -113,7 +114,7 @@ const FieryStreakNumber = memo(({ streak }: { streak: number }) => {
 
 export const PetDisplay = memo(({
     streak,
-    restores = 0,
+    freezes = 0,
     stage,
     currentStage,
     onNextStage,
@@ -158,7 +159,7 @@ export const PetDisplay = memo(({
             >
                 <View style={styles.labelRow}>
                     <Text style={[styles.streakLabel, { color: textSecondaryOnGradient }]}>
-                        {streak === 0 && (canRestore || restores === 0) ? 'Streak lost' : 'Streak days'}
+                        {streak === 0 && (canRestore || freezes === 0) ? 'Streak lost' : 'Streak days'}
                     </Text>
 
                     {/* Restore Action or Balance Badge */}
@@ -174,25 +175,25 @@ export const PetDisplay = memo(({
                                 end={{ x: 1, y: 1 }}
                                 style={styles.restoreButtonGradient}
                             >
-                                <Ionicons name="flash" size={14} color="white" />
-                                <Text style={styles.restoreButtonText}>Restore</Text>
+                                <StreakFreezeIcon size={16} />
+                                <Text style={styles.restoreButtonText}>{streak === 0 ? 'Restore' : 'Protect'}</Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     ) : (
-                        showBalance && restores > 0 ? (
+                        showBalance && freezes > 0 ? (
                             <MotiView
                                 from={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 style={styles.restoreBadge}
                             >
                                 <View style={styles.shieldBackground}>
-                                    <Ionicons name="shield-checkmark" size={14} color="#38BDF8" />
-                                    <Text style={styles.restoreCountText}>{restores} saves</Text>
+                                    <StreakFreezeIcon size={16} />
+                                    <Text style={styles.restoreCountText}>{freezes} {freezes === 1 ? 'Freeze' : 'Freezes'}</Text>
                                 </View>
                             </MotiView>
-                        ) : streak === 0 && restores === 0 && (
+                        ) : streak === 0 && freezes === 0 && (
                             <View style={styles.noRestoresBadge}>
-                                <Text style={styles.noRestoresText}>0 restores left</Text>
+                                <Text style={styles.noRestoresText}>0 freezes left</Text>
                             </View>
                         )
                     )}

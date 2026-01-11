@@ -39,7 +39,7 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 export default function PetSheetScreen() {
   const router = useRouter();
-  const { user, petState, dailyTasks, updatePetName, restoreStreak } = useStore();
+  const { user, petState, dailyTasks, updatePetName, applyStreakFreeze } = useStore();
 
   // Check if secure_pet task is already completed today
   const isSecureTaskCompleted = dailyTasks?.find(t => t.task_key === 'secure_pet')?.completed;
@@ -88,7 +88,7 @@ export default function PetSheetScreen() {
   // - New users (streak=0) won't trigger isAtRisk anyway
   // - This matches PetBubble.tsx behavior for consistency
   const isDying = isAtRisk || isStreakLost;
-  const canRestore = isStreakLost && user.streak_restores > 0;
+  const canRestore = isStreakLost && user.streak_freezes > 0;
 
   // Track pet sheet opened (after all state variables are defined)
   React.useEffect(() => {
@@ -101,11 +101,11 @@ export default function PetSheetScreen() {
 
   const handleRestore = async () => {
     if (!canRestore) return;
-    const result = await restoreStreak();
+    const result = await applyStreakFreeze();
     if (result.success) {
       track('streak_restored', {
         restored_streak: recoverableStreak,
-        restores_remaining: user.streak_restores - 1,
+        freezes_remaining: user.streak_freezes - 1,
       });
       setHasJustRestored(true);
     }
@@ -127,7 +127,16 @@ export default function PetSheetScreen() {
   };
 
   // Dark mode gradient colors - slightly muted version of the golden theme
+  // Lavender gradient when pet is dying (streak lost or at risk)
   const getGradientColors = (): [string, string] => {
+    // Lavender gradient when pet is dying
+    if (isDying) {
+      if (isDarkMode) {
+        return ['#7c3aed', '#29292b']; // Muted purple/lavender for dark mode
+      }
+      return ['#ddd6fe', '#f5f3ff']; // Soft lavender for light mode
+    }
+
     if (isDarkMode) {
       // Slightly darker/muted golden - blends into new background
       if (previewStage === 1) return ['#D4A843', '#29292b']; // Muted gold
@@ -196,7 +205,7 @@ export default function PetSheetScreen() {
                 <View style={styles.topSection}>
                   <PetDisplay
                     streak={user.streak}
-                    restores={user.streak_restores}
+                    freezes={user.streak_freezes}
                     stage={previewStage}
                     currentStage={currentStage}
                     onNextStage={previewStage < 3 ? () => setPreviewStage((prev) => (prev + 1) as 1 | 2 | 3) : undefined}

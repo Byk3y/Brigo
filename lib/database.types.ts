@@ -516,14 +516,18 @@ export type Database = {
           has_completed_onboarding: boolean | null
           has_created_notebook: boolean | null
           id: string
+          last_freeze_reset: string | null
           last_name: string | null
+          last_notification_sent_at: string | null
           last_streak_date: string | null
           learning_style: string | null
           meta: Json | null
           name: string | null
           onboarding_completed_at: string | null
           streak: number | null
+          streak_freezes: number | null
           study_goal: string | null
+          timezone: string | null
           updated_at: string | null
         }
         Insert: {
@@ -537,14 +541,18 @@ export type Database = {
           has_completed_onboarding?: boolean | null
           has_created_notebook?: boolean | null
           id: string
+          last_freeze_reset?: string | null
           last_name?: string | null
+          last_notification_sent_at?: string | null
           last_streak_date?: string | null
           learning_style?: string | null
           meta?: Json | null
           name?: string | null
           onboarding_completed_at?: string | null
           streak?: number | null
+          streak_freezes?: number | null
           study_goal?: string | null
+          timezone?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -558,14 +566,18 @@ export type Database = {
           has_completed_onboarding?: boolean | null
           has_created_notebook?: boolean | null
           id?: string
+          last_freeze_reset?: string | null
           last_name?: string | null
+          last_notification_sent_at?: string | null
           last_streak_date?: string | null
           learning_style?: string | null
           meta?: Json | null
           name?: string | null
           onboarding_completed_at?: string | null
           streak?: number | null
+          streak_freezes?: number | null
           study_goal?: string | null
+          timezone?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -773,7 +785,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      apply_streak_freeze: {
+        Args: {
+          p_user_id: string
+          p_timezone?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       processing_job_status: "pending" | "processing" | "completed" | "failed" | "cancelled"

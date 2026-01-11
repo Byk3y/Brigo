@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
         letterSpacing: -0.5,
     },
     orbWrapper: {
-        marginLeft: 2,
+        marginLeft: 4,
         marginTop: 4, // Push down to align with text baseline
         justifyContent: 'center',
         alignItems: 'center',

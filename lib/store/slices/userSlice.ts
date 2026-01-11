@@ -14,7 +14,7 @@ export interface UserSlice {
   setUser: (user: Partial<User>) => void;
   loadUserProfile: () => Promise<void>;
   hydrateUserProfileFromCache: () => void;
-  restoreStreak: () => Promise<{ success: boolean; restored_streak?: number; error?: string }>;
+  applyStreakFreeze: () => Promise<{ success: boolean; restored_streak?: number; error?: string }>;
   checkStreakStatus: () => Promise<{ success: boolean; was_reset?: boolean; previous_streak?: number }>;
   resetUserProfile: () => void;
   hasCreatedNotebook: boolean;
@@ -38,8 +38,8 @@ export const createUserSlice: StateCreator<
     first_name: '',
     last_name: '',
     streak: 0,
-    streak_restores: 3,
-    last_restore_reset: '',
+    streak_freezes: 3,
+    last_freeze_reset: '',
     last_streak_date: undefined,
     coins: 0,
   },
@@ -79,8 +79,8 @@ export const createUserSlice: StateCreator<
             first_name: '',
             last_name: '',
             streak: 0,
-            streak_restores: 3,
-            last_restore_reset: '',
+            streak_freezes: 3,
+            last_freeze_reset: '',
             last_streak_date: undefined,
             coins: 0,
             avatar: undefined,
@@ -94,15 +94,15 @@ export const createUserSlice: StateCreator<
       console.error('Error loading user profile:', error);
     }
   },
-  restoreStreak: async () => {
+  applyStreakFreeze: async () => {
     const { authUser, loadUserProfile, getUserTimezone } = get() as any;
     if (!authUser) return { success: false, error: 'Not authenticated' };
 
     const timezone = typeof getUserTimezone === 'function' ? await getUserTimezone() : 'UTC';
-    const result = await userService.restoreStreak(authUser.id, timezone);
+    const result = await userService.applyStreakFreeze(authUser.id, timezone);
     if (result.success) {
       set({ showStreakRestoreModal: false });
-      await loadUserProfile(); // Fully refresh profile to update streak and restores count
+      await loadUserProfile(); // Fully refresh profile to update streak and freezes count
     }
     return result;
   },
@@ -138,8 +138,8 @@ export const createUserSlice: StateCreator<
         first_name: '',
         last_name: '',
         streak: 0,
-        streak_restores: 3,
-        last_restore_reset: '',
+        streak_freezes: 3,
+        last_freeze_reset: '',
         last_streak_date: undefined,
         coins: 0,
       },

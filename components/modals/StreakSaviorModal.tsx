@@ -26,28 +26,28 @@ interface StreakSaviorModalProps {
     visible: boolean;
     onClose: () => void;
     previousStreak: number;
-    restoresLeft: number;
+    freezesLeft: number;
 }
 
 export function StreakSaviorModal({
     visible,
     onClose,
     previousStreak,
-    restoresLeft,
+    freezesLeft,
 }: StreakSaviorModalProps) {
     const { isDarkMode } = useTheme();
-    const restoreStreak = useStore((state) => state.restoreStreak);
+    const applyStreakFreeze = useStore((state) => state.applyStreakFreeze);
     const [isRestoring, setIsRestoring] = React.useState(false);
 
     const handleRestore = async () => {
         setIsRestoring(true);
         try {
-            const result = await restoreStreak();
+            const result = await applyStreakFreeze();
             if (result.success) {
                 // Success! Close modal.
                 onClose();
             } else {
-                Alert.alert('Error', result.error || 'Failed to restore streak');
+                Alert.alert('Error', result.error || 'Failed to apply streak freeze');
             }
         } catch (error) {
             console.error('Restore error:', error);
@@ -90,21 +90,21 @@ export function StreakSaviorModal({
 
                         <Animated.View entering={FadeInUp.delay(500)} style={styles.content}>
                             <Text style={[styles.title, { color: isDarkMode ? '#FFFFFF' : '#0369A1' }]}>
-                                Streak Savior!
+                                Streak Freeze!
                             </Text>
                             <Text style={[styles.description, { color: isDarkMode ? '#BAE6FD' : '#0C4A6E' }]}>
-                                You missed a day, but your safety net caught you. Use a restore to keep your {previousStreak}-day streak alive!
+                                You missed a day, but your streak freeze saved you. Use it now to keep your {previousStreak}-day streak alive!
                             </Text>
 
                             <View style={styles.statsRow}>
                                 <View style={styles.statItem}>
                                     <Text style={[styles.statLabel, { color: isDarkMode ? '#7DD3FC' : '#0284C7' }]}>
-                                        Restores Left
+                                        Freezes Left
                                     </Text>
                                     <View style={styles.restoreCountContainer}>
-                                        <Ionicons name="heart" size={16} color="#F43F5E" />
+                                        <Ionicons name="snow" size={16} color="#38BDF8" />
                                         <Text style={[styles.statValue, { color: isDarkMode ? '#FFFFFF' : '#0C4A6E' }]}>
-                                            {restoresLeft} / 3
+                                            {freezesLeft} / 3
                                         </Text>
                                     </View>
                                 </View>
@@ -115,14 +115,14 @@ export function StreakSaviorModal({
                             <TouchableOpacity
                                 style={[styles.restoreButton, isRestoring && styles.buttonDisabled]}
                                 onPress={handleRestore}
-                                disabled={isRestoring || restoresLeft <= 0}
+                                disabled={isRestoring || freezesLeft <= 0}
                             >
                                 <LinearGradient
                                     colors={['#38BDF8', '#0284C7']}
                                     style={styles.buttonGradient}
                                 >
                                     <Text style={styles.restoreButtonText}>
-                                        {isRestoring ? 'Restoring...' : 'Use Restore'}
+                                        {isRestoring ? 'Applying...' : 'Apply Freeze'}
                                     </Text>
                                 </LinearGradient>
                             </TouchableOpacity>

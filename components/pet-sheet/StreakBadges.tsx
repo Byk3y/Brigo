@@ -112,12 +112,12 @@ export function StreakBadges({ streak, showSafetyNet = false }: StreakBadgesProp
 
                     <View style={styles.safetyNetContainer}>
                         <View style={[styles.safetyIconContainer, { backgroundColor: isDarkMode ? 'rgba(56, 189, 248, 0.15)' : '#E0F2FE' }]}>
-                            <Ionicons name="shield-checkmark" size={16} color="#0284C7" />
+                            <Ionicons name="snow" size={16} color="#0284C7" />
                         </View>
                         <View style={styles.safetyTextContainer}>
-                            <Text style={[styles.safetyTitle, { color: cardTextColor }]}>Safety Net</Text>
+                            <Text style={[styles.safetyTitle, { color: cardTextColor }]}>Streak Freeze</Text>
                             <Text style={[styles.safetyDesc, { color: isDarkMode ? 'rgba(255,255,255,0.5)' : '#64748B' }]}>
-                                You have 3 streak restores every month. They refill automatically!
+                                You get 3 streak freezes every month. They refill automatically!
                             </Text>
                         </View>
                     </View>

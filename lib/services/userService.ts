@@ -17,7 +17,7 @@ export const userService = {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, first_name, last_name, streak, last_streak_date, streak_restores, last_restore_reset, avatar_url, meta, expo_push_token, created_at')
+        .select('id, name, first_name, last_name, streak, last_streak_date, streak_freezes, last_freeze_reset, avatar_url, meta, expo_push_token, created_at')
         .eq('id', userId)
         .single();
 
@@ -38,8 +38,8 @@ export const userService = {
           first_name: data.first_name || '',
           last_name: data.last_name || '',
           streak: data.streak || 0,
-          streak_restores: data.streak_restores ?? 3,
-          last_restore_reset: data.last_restore_reset || '',
+          streak_freezes: data.streak_freezes ?? 3,
+          last_freeze_reset: data.last_freeze_reset || '',
           last_streak_date: data.last_streak_date || undefined,
           coins: 0, // Not used in current system
           avatar: data.avatar_url || undefined,
@@ -196,19 +196,19 @@ export const userService = {
   },
 
   /**
-   * Restore user's streak using available restores
+   * Use a streak freeze to recover a lost streak
    * @param userId - The user's ID
    */
-  restoreStreak: async (userId: string, timezone: string = 'UTC'): Promise<{ success: boolean; restored_streak?: number; error?: string }> => {
+  applyStreakFreeze: async (userId: string, timezone: string = 'UTC'): Promise<{ success: boolean; restored_streak?: number; error?: string }> => {
     try {
-      const { data, error } = await supabase.rpc('restore_streak', {
+      const { data, error } = await supabase.rpc('apply_streak_freeze', {
         p_user_id: userId,
         p_timezone: timezone
       });
 
       if (error) {
         await handleError(error, {
-          operation: 'restore_streak',
+          operation: 'apply_streak_freeze',
           component: 'user-service',
           metadata: { userId },
         });
@@ -218,11 +218,11 @@ export const userService = {
       return data as any;
     } catch (error: any) {
       await handleError(error, {
-        operation: 'restore_streak',
+        operation: 'apply_streak_freeze',
         component: 'user-service',
         metadata: { userId },
       });
-      return { success: false, error: error?.message || 'Failed to restore streak' };
+      return { success: false, error: error?.message || 'Failed to apply streak freeze' };
     }
   },
 

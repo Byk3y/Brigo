@@ -10,13 +10,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import Svg, { Path } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Audio, type AVPlaybackStatus } from 'expo-av';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useAudioPlaybackPosition } from '@/lib/hooks/useAudioPlaybackPosition';
 import { useErrorHandler } from '@/lib/hooks/useErrorHandler';
 import { AudioVisualizer } from './AudioVisualizer';
 import { useStore } from '@/lib/store';
 import { audioFeedbackService } from '@/lib/services/audioFeedbackService';
-import { configureAudioMode } from '@/lib/audioConfig';
 import {
     CloseIcon,
     DownloadIcon,
@@ -29,6 +28,7 @@ import { formatTime } from '@/lib/utils';
 import { BrigoLogo } from './BrigoLogo';
 import { SubtitleDisplay } from './SubtitleDisplay';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
+import { configureForMediaPlayback, configureForMixing } from '@/lib/audioConfig';
 
 interface AudioPlayerProps {
     audioUrl: string;
@@ -59,7 +59,6 @@ export function AudioPlayer({
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
 
-    const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [audioDuration, setAudioDuration] = useState(duration);
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -67,12 +66,11 @@ export function AudioPlayer({
     const [loading, setLoading] = useState(true);
     const [showSubtitles, setShowSubtitles] = useState(true);
 
-    const sound = useRef<Audio.Sound | null>(null);
     const isDraggingSlider = useRef(false);
-    const isSeeking = useRef(false);
     const hasAwardedTaskRef = useRef(false);
     const feedbackLoadingRef = useRef(false);
     const feedbackOperationRef = useRef(false);
+    const lastTimeRef = useRef(0);
 
     const { checkAndAwardTask, authUser, audioSettings } = useStore();
 
@@ -82,20 +80,93 @@ export function AudioPlayer({
         clearSavedPosition,
     } = useAudioPlaybackPosition(audioOverviewId, notebookId, audioUrl, audioDuration);
 
+    // Create audio player using expo-audio hook
+    const player = useAudioPlayer({ uri: audioUrl });
+    const status = useAudioPlayerStatus(player);
+
+    // Configure audio mode for background playback
     useEffect(() => {
-        loadAudio();
+        configureForMediaPlayback();
         return () => {
-            if (sound.current) {
-                sound.current.getStatusAsync().then((status) => {
-                    if (status.isLoaded && status.positionMillis) {
-                        saveCurrentPosition(status.positionMillis / 1000);
+            configureForMixing();
+        };
+    }, []);
+
+    // Initialize player when ready
+    useEffect(() => {
+        if (!player) return;
+
+        const initPlayer = async () => {
+            try {
+                // Wait for player to load
+                if (status.isLoaded) {
+                    // Set duration
+                    if (status.duration) {
+                        setAudioDuration(status.duration);
                     }
+
+                    // Seek to saved position
+                    if (savedPosition && savedPosition > 5) {
+                        player.seekTo(savedPosition);
+                        setCurrentTime(savedPosition);
+                    }
+
+                    // Set volume and playback rate
+                    player.volume = audioSettings.voiceVolume;
+                    player.playbackRate = playbackSpeed;
+
+                    setLoading(false);
+                }
+            } catch (error: any) {
+                setLoading(false);
+                await handleError(error, {
+                    operation: 'init_audio_player',
+                    component: 'audio-player',
+                    metadata: { audioUrl }
                 });
-                sound.current.unloadAsync();
             }
         };
-    }, [audioUrl]);
 
+        initPlayer();
+    }, [player, status.isLoaded, status.duration, savedPosition, title, audioSettings.voiceVolume, playbackSpeed]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            // Save final position before cleanup using the ref for latest value
+            if (lastTimeRef.current > 0) {
+                saveCurrentPosition(lastTimeRef.current);
+            }
+            // No need to call player.remove() as useAudioPlayer hook handles cleanup.
+        };
+    }, [player]);
+
+    // Track playback status
+    useEffect(() => {
+        if (!status.isLoaded || isDraggingSlider.current) return;
+
+        const positionInSeconds = status.currentTime || 0;
+        lastTimeRef.current = positionInSeconds;
+
+        if (status.playing) {
+            setCurrentTime(positionInSeconds);
+            saveCurrentPosition(positionInSeconds);
+
+            if (positionInSeconds >= 60 && !hasAwardedTaskRef.current && checkAndAwardTask) {
+                hasAwardedTaskRef.current = true;
+                checkAndAwardTask('podcast_3_min');
+            }
+        }
+
+        // Handle playback completion
+        if (status.currentTime >= status.duration && status.duration > 0 && !status.playing) {
+            setCurrentTime(0);
+            player.seekTo(0);
+            clearSavedPosition();
+        }
+    }, [status.currentTime, status.playing, status.isLoaded, status.duration]);
+
+    // Load feedback
     useEffect(() => {
         if (!authUser?.id || feedbackLoadingRef.current) return;
         let isMounted = true;
@@ -114,127 +185,54 @@ export function AudioPlayer({
         return () => { isMounted = false; };
     }, [authUser?.id, audioOverviewId]);
 
-    const loadAudio = async () => {
-        try {
-            setLoading(true);
-            await configureAudioMode();
-
-            const { sound: audioSound } = await Audio.Sound.createAsync(
-                { uri: audioUrl },
-                {
-                    shouldPlay: false,
-                    rate: playbackSpeed,
-                    volume: audioSettings.voiceVolume // Apply saved volume
-                },
-                onPlaybackStatusUpdate
-            );
-
-            sound.current = audioSound;
-            const status = await audioSound.getStatusAsync();
-            if (status.isLoaded && status.durationMillis) {
-                setAudioDuration(status.durationMillis / 1000);
-            }
-
-            if (savedPosition && savedPosition > 5) {
-                await audioSound.setPositionAsync(savedPosition * 1000);
-                setCurrentTime(savedPosition);
-            }
-
-            setLoading(false);
-        } catch (error: any) {
-            setLoading(false);
-            await handleError(error, {
-                operation: 'load_audio_file',
-                component: 'audio-player',
-                metadata: { audioUrl }
-            });
-        }
-    };
-
-    const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-        if (status.isLoaded) {
-            const positionInSeconds = (status.positionMillis || 0) / 1000;
-            setIsPlaying(status.isPlaying);
-
-            if (status.durationMillis) {
-                setAudioDuration(status.durationMillis / 1000);
-            }
-
-            if (status.isPlaying && !isDraggingSlider.current) {
-                setCurrentTime(positionInSeconds);
-                saveCurrentPosition(positionInSeconds);
-
-                if (positionInSeconds >= 60 && !hasAwardedTaskRef.current && checkAndAwardTask) {
-                    hasAwardedTaskRef.current = true;
-                    checkAndAwardTask('podcast_3_min');
-                }
-            }
-
-            if (status.didJustFinish) {
-                setIsPlaying(false);
-                setCurrentTime(0);
-                sound.current?.setPositionAsync(0);
-                clearSavedPosition();
-            }
-        }
-    };
-
     const handleSlidingStart = useCallback(() => {
         isDraggingSlider.current = true;
     }, []);
 
     const handleSlidingComplete = useCallback(async (value: number) => {
-        if (!sound.current) return;
+        if (!player) return;
         try {
-            await sound.current.setPositionAsync(value * 1000);
+            player.seekTo(value);
             setCurrentTime(value);
         } catch (e) { }
         isDraggingSlider.current = false;
-    }, []);
+    }, [player]);
 
     const handlePlayPause = useCallback(async () => {
-        if (!sound.current || loading) return;
+        if (!player || loading) return;
         try {
-            const status = await sound.current.getStatusAsync();
-            if (status.isLoaded) {
-                if (status.isPlaying) {
-                    await sound.current.pauseAsync();
-                    saveCurrentPosition((status.positionMillis || 0) / 1000);
-                } else {
-                    await sound.current.playAsync();
-                }
+            if (status.playing) {
+                player.pause();
+                saveCurrentPosition(status.currentTime || 0);
+            } else {
+                player.play();
             }
         } catch (error) {
             console.error('Play/Pause error:', error);
         }
-    }, [loading, saveCurrentPosition]);
+    }, [player, loading, status.playing, status.currentTime, saveCurrentPosition]);
 
     const handleSeekBack = useCallback(async () => {
-        if (!sound.current || loading) return;
-        const status = await sound.current.getStatusAsync();
-        if (status.isLoaded) {
-            const newPos = Math.max(0, (status.positionMillis || 0) - 10000);
-            await sound.current.setPositionAsync(newPos);
-            setCurrentTime(newPos / 1000);
-        }
-    }, [loading]);
+        if (!player || loading) return;
+        const newPos = Math.max(0, (status.currentTime || 0) - 10);
+        player.seekTo(newPos);
+        setCurrentTime(newPos);
+    }, [player, loading, status.currentTime]);
 
     const handleSeekForward = useCallback(async () => {
-        if (!sound.current || loading) return;
-        const status = await sound.current.getStatusAsync();
-        if (status.isLoaded && status.durationMillis) {
-            const newPos = Math.min(status.durationMillis, (status.positionMillis || 0) + 10000);
-            await sound.current.setPositionAsync(newPos);
-            setCurrentTime(newPos / 1000);
-        }
-    }, [loading]);
+        if (!player || loading) return;
+        const maxDuration = status.duration || audioDuration || 0;
+        const newPos = Math.min(maxDuration, (status.currentTime || 0) + 10);
+        player.seekTo(newPos);
+        setCurrentTime(newPos);
+    }, [player, loading, status.currentTime, status.duration, audioDuration]);
 
     const handleSpeedChange = useCallback(async () => {
-        if (!sound.current || loading) return;
+        if (!player || loading) return;
         const newSpeed = playbackSpeed === 1 ? 1.5 : playbackSpeed === 1.5 ? 2 : 1;
-        await sound.current.setRateAsync(newSpeed, true);
+        player.playbackRate = newSpeed;
         setPlaybackSpeed(newSpeed);
-    }, [playbackSpeed, loading]);
+    }, [player, playbackSpeed, loading]);
 
     const handleLike = useCallback(async () => {
         if (feedbackOperationRef.current) return;
@@ -270,6 +268,10 @@ export function AudioPlayer({
         } else feedbackOperationRef.current = false;
     }, [liked, authUser?.id, audioOverviewId]);
 
+    const isPlaying = status.playing;
+    const displayDuration = status.duration || audioDuration || 0;
+    const displayTime = isDraggingSlider.current ? currentTime : (status.currentTime || currentTime);
+
     return (
         <View style={{ flex: 1, backgroundColor: colors.background }}>
             <SafeAreaView className="flex-1">
@@ -298,8 +300,8 @@ export function AudioPlayer({
                             {script ? (
                                 <SubtitleDisplay
                                     script={script}
-                                    currentTime={currentTime}
-                                    duration={audioDuration}
+                                    currentTime={displayTime}
+                                    duration={displayDuration}
                                     isVisible={showSubtitles}
                                     onToggleVisibility={() => setShowSubtitles(!showSubtitles)}
                                 />
@@ -324,13 +326,13 @@ export function AudioPlayer({
 
                     <View className="px-6 mb-8">
                         <View className="flex-row items-center">
-                            <Text style={{ color: colors.textSecondary }} className="text-sm w-12 font-medium">{formatTime(currentTime)}</Text>
+                            <Text style={{ color: colors.textSecondary }} className="text-sm w-12 font-medium">{formatTime(displayTime)}</Text>
                             <View className="flex-1 mx-3">
                                 <Slider
                                     style={{ width: '100%', height: 40 }}
                                     minimumValue={0}
-                                    maximumValue={audioDuration || 1}
-                                    value={currentTime}
+                                    maximumValue={displayDuration || 1}
+                                    value={displayTime}
                                     onSlidingStart={handleSlidingStart}
                                     onSlidingComplete={handleSlidingComplete}
                                     minimumTrackTintColor="#4F5BD5"
@@ -339,7 +341,7 @@ export function AudioPlayer({
                                     tapToSeek={true}
                                 />
                             </View>
-                            <Text style={{ color: colors.textSecondary }} className="text-sm w-12 text-right font-medium">{formatTime(audioDuration)}</Text>
+                            <Text style={{ color: colors.textSecondary }} className="text-sm w-12 text-right font-medium">{formatTime(displayDuration)}</Text>
                         </View>
                     </View>
 

@@ -63,7 +63,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		FA315C692F0DE972005ABF0D /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		FA315C692F0DE972005ABF0D /* Exceptions for "BrigoWidget" folder in "BrigoWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -73,7 +73,18 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		FA315C592F0DE96B005ABF0D /* BrigoWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (FA315C692F0DE972005ABF0D /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = BrigoWidget; sourceTree = "<group>"; };
+		FA315C592F0DE96B005ABF0D /* BrigoWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				FA315C692F0DE972005ABF0D /* Exceptions for "BrigoWidget" folder in "BrigoWidgetExtension" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = BrigoWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */

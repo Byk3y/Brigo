@@ -1,12 +1,25 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { studioService } from '@/lib/services/studioService';
 import { audioService } from '@/lib/services/audioService';
-import type { StudioFlashcard, Quiz, AudioOverview, FlashcardSet } from '@/lib/store/types';
+import { examPredictionService } from '@/lib/services/examPredictionService';
+import type { Quiz, AudioOverview, FlashcardSet, ExamPrediction } from '@/lib/store/types';
 
-export const useStudioContent = (notebookId: string) => {
+interface UseStudioContentReturn {
+    flashcard_sets: FlashcardSet[];
+    quizzes: Quiz[];
+    audioOverviews: AudioOverview[];
+    setAudioOverviews: React.Dispatch<React.SetStateAction<AudioOverview[]>>;
+    examPredictions: ExamPrediction[];
+    setExamPredictions: React.Dispatch<React.SetStateAction<ExamPrediction[]>>;
+    loading: boolean;
+    refreshContent: () => Promise<void>;
+}
+
+export const useStudioContent = (notebookId: string): UseStudioContentReturn => {
     const [flashcard_sets, setFlashcardSets] = useState<FlashcardSet[]>([]);
     const [quizzes, setQuizzes] = useState<Quiz[]>([]);
     const [audioOverviews, setAudioOverviews] = useState<AudioOverview[]>([]);
+    const [examPredictions, setExamPredictions] = useState<ExamPrediction[]>([]);
     const [loading, setLoading] = useState(true);
     const inFlightRef = useRef<AbortController | null>(null);
 
@@ -27,9 +40,10 @@ export const useStudioContent = (notebookId: string) => {
             // Safety timeout so we never stay stuck loading
             timeoutId = setTimeout(() => controller.abort(), 10000);
 
-            const [studioContent, audioOverviewsData] = await Promise.all([
+            const [studioContent, audioOverviewsData, predictionsData] = await Promise.all([
                 studioService.fetchAll(notebookId),
                 audioService.fetchByNotebook(notebookId),
+                examPredictionService.fetchByNotebook(notebookId),
             ]);
 
             clearTimeout(timeoutId);
@@ -37,6 +51,7 @@ export const useStudioContent = (notebookId: string) => {
             setFlashcardSets(studioContent.flashcard_sets);
             setQuizzes(studioContent.quizzes);
             setAudioOverviews(audioOverviewsData);
+            setExamPredictions(predictionsData);
         } catch (error) {
             // Ignore intentional aborts (timeout or new fetch)
             const isAbort =
@@ -67,7 +82,10 @@ export const useStudioContent = (notebookId: string) => {
         quizzes,
         audioOverviews,
         setAudioOverviews,
+        examPredictions,
+        setExamPredictions,
         loading,
         refreshContent: fetchContent,
     };
 };
+

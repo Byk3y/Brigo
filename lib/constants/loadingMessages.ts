@@ -42,5 +42,15 @@ export const LOADING_MESSAGES = {
         'Reviewing...',
         'Improving...',
         'Refining...'
+    ],
+    prediction: [
+        'Analyzing patterns...',
+        'Scanning topics...',
+        'Detecting trends...',
+        'Predicting questions...',
+        'Generating answers...',
+        'Calculating confidence...',
+        'Ranking likelihood...',
+        'Finalizing report...'
     ]
 } as const;

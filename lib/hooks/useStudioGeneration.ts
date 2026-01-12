@@ -2,39 +2,51 @@ import { useState, useCallback, useMemo } from 'react';
 import { Alert } from 'react-native';
 import { generateStudioContent } from '@/lib/api/studioApi';
 import { generateAudioOverview } from '@/lib/api/audioOverviewApi';
+import { generateExamPrediction } from '@/lib/api/examPredictionApi';
 import { audioService } from '@/lib/services/audioService';
 import { storageService } from '@/lib/storage/storageService';
 import { useStore } from '@/lib/store';
-import type { AudioOverview } from '@/lib/store/types';
+import type { AudioOverview, ExamPrediction } from '@/lib/store/types';
 import { useErrorHandler } from './useErrorHandler';
 import { checkQuotaRemaining } from '@/lib/services/subscriptionService';
 import type { LimitReason, SubscriptionData } from '@/lib/services/subscriptionService';
 import { useUpgrade } from '@/lib/hooks/useUpgrade';
+
 
 interface UseStudioGenerationParams {
   notebookId: string;
   flashcardsCount: number;
   quizzesCount: number;
   audioOverviewsCount: number;
+  examPredictionsCount: number;
   setAudioOverviews: React.Dispatch<React.SetStateAction<AudioOverview[]>>;
+  setExamPredictions: React.Dispatch<React.SetStateAction<ExamPrediction[]>>;
   refreshContent: () => Promise<void>;
   // From useAudioGeneration hook
-  setGeneratingType: (type: 'flashcards' | 'quiz' | 'audio' | null) => void;
+  setGeneratingType: (type: 'flashcards' | 'quiz' | 'audio' | 'prediction' | null) => void;
   setGeneratingAudioId: (id: string | null) => void;
   startAudioPolling: (overviewId: string) => void;
+  startPredictionPolling: (predictionId: string) => void;
+  checkForPendingPrediction: () => Promise<void>;
 }
+
 
 export const useStudioGeneration = ({
   notebookId,
   flashcardsCount,
   quizzesCount,
   audioOverviewsCount,
+  examPredictionsCount,
   setAudioOverviews,
+  setExamPredictions,
   refreshContent,
   setGeneratingType,
   setGeneratingAudioId,
   startAudioPolling,
+  startPredictionPolling,
+  checkForPendingPrediction,
 }: UseStudioGenerationParams) => {
+
   const { checkAndAwardTask, tier, status, isExpired, studioJobsUsed, studioJobsLimit, audioJobsUsed, audioJobsLimit, trialEndsAt, trialStartedAt, subscriptionSyncedAt, user, notebooks, cachedPetState, flashcardsStudied, notify } = useStore();
   const { handleError, withErrorHandling } = useErrorHandler();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -122,7 +134,7 @@ export const useStudioGeneration = ({
     } finally {
       setGeneratingType(null);
     }
-  }, [notebookId, flashcardsCount, setGeneratingType, refreshContent, checkAndAwardTask, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown]);
+  }, [notebookId, flashcardsCount, setGeneratingType, refreshContent, checkAndAwardTask, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown, notebookTitle, notify]);
 
   /**
    * Generate quiz for the notebook
@@ -183,7 +195,7 @@ export const useStudioGeneration = ({
     } finally {
       setGeneratingType(null);
     }
-  }, [notebookId, quizzesCount, setGeneratingType, refreshContent, checkAndAwardTask, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown]);
+  }, [notebookId, quizzesCount, setGeneratingType, refreshContent, checkAndAwardTask, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown, notebookTitle, notify]);
 
   /**
    * Generate audio overview for the notebook
@@ -271,6 +283,68 @@ export const useStudioGeneration = ({
   ]);
 
   /**
+   * Generate exam predictions for the notebook
+   */
+  const handleGeneratePrediction = useCallback(async (retryId?: string) => {
+    try {
+      // If retrying, delete the old failed record first to avoid clutter
+      if (retryId) {
+        try {
+          const { examPredictionService } = await import('@/lib/services/examPredictionService');
+          await examPredictionService.delete(retryId);
+          setExamPredictions((prev) => prev.filter((p) => p.id !== retryId));
+        } catch (err) {
+          console.error('Error deleting failed prediction on retry:', err);
+        }
+      }
+
+      // Check quota before proceeding (uses studio quota)
+      const quotaCheck = checkQuotaRemaining('studio', subscription);
+      if (!quotaCheck.hasQuota) {
+        trackCreateAttemptBlocked('prediction');
+        trackUpgradeModalShown('create_attempt');
+        setUpgradeModalSource('create_attempt');
+        setLimitReason(quotaCheck.reason);
+        setShowUpgradeModal(true);
+        return;
+      }
+
+      const ok = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'Predict Questions',
+          examPredictionsCount > 0
+            ? `You already have ${examPredictionsCount} predictions. Generate another?`
+            : 'Analyze your notes and predict likely exam questions?',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Generate', onPress: () => resolve(true) }
+          ]
+        );
+      });
+
+      if (!ok) return;
+
+      setGeneratingType('prediction');
+
+      const result = await generateExamPrediction({
+        notebook_id: notebookId,
+      });
+
+      // Start polling for the prediction result
+      if (result.prediction_id) {
+        startPredictionPolling(result.prediction_id);
+      } else {
+        // Fallback: if somehow no ID was returned, refresh immediately
+        await refreshContent();
+        setGeneratingType(null);
+      }
+    } catch (error: any) {
+      setGeneratingType(null);
+      // Error already handled by API layer and displayed via ErrorNotificationContext
+    }
+  }, [notebookId, examPredictionsCount, setGeneratingType, startPredictionPolling, refreshContent, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown, notebookTitle, notify]);
+
+  /**
    * Delete an audio overview
    */
   const handleDeleteAudioOverview = useCallback(
@@ -309,6 +383,35 @@ export const useStudioGeneration = ({
     [setAudioOverviews, handleError]
   );
 
+  /**
+   * Delete an exam prediction
+   */
+  const handleDeletePrediction = useCallback(
+    (prediction: ExamPrediction) => {
+      Alert.alert(
+        'Delete Predictions',
+        `Are you sure you want to delete "${prediction.title}"?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const { examPredictionService } = await import('@/lib/services/examPredictionService');
+                await examPredictionService.delete(prediction.id);
+                setExamPredictions((prev) => prev.filter((p) => p.id !== prediction.id));
+              } catch (error: any) {
+                // Ignore
+              }
+            },
+          },
+        ]
+      );
+    },
+    [setExamPredictions]
+  );
+
   // Calculate pet level
   const petLevel = Math.floor((cachedPetState?.points || 0) / 50) + 1;
   const petName = cachedPetState?.name || 'Sparky';
@@ -317,7 +420,9 @@ export const useStudioGeneration = ({
     handleGenerateFlashcards,
     handleGenerateQuiz,
     handleGenerateAudioOverview,
+    handleGeneratePrediction,
     handleDeleteAudioOverview,
+    handleDeletePrediction,
     showUpgradeModal,
     setShowUpgradeModal,
     upgradeModalSource,

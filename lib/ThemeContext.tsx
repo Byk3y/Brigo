@@ -76,6 +76,7 @@ export const getThemeColors = (isDark: boolean) => ({
   cardAudio: isDark ? '#2a3342' : '#eef3fc',
   cardFlashcard: isDark ? '#3a2f2f' : '#fcefef',
   cardQuiz: isDark ? '#2a3a3a' : '#eef8f4',
+  cardPrediction: isDark ? '#3a2a3a' : '#f8eef8', // Purple/violet for predictions
 
   // Generated media card
   mediaCard: isDark ? '#2f2f31' : '#FFFFFF',

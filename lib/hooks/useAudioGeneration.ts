@@ -3,6 +3,7 @@ import { Alert, AppState } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { audioService } from '@/lib/services/audioService';
+import { examPredictionService } from '@/lib/services/examPredictionService';
 import { useStore } from '@/lib/store';
 import { useErrorHandler } from './useErrorHandler';
 
@@ -14,31 +15,72 @@ export const useAudioGeneration = (
     const router = useRouter();
     const { checkAndAwardTask, notify } = useStore();
     const { handleError } = useErrorHandler();
-    const [generatingType, setGeneratingType] = useState<'flashcards' | 'quiz' | 'audio' | null>(null);
+    const [generatingType, setGeneratingType] = useState<'flashcards' | 'quiz' | 'audio' | 'prediction' | null>(null);
     const [generatingAudioId, setGeneratingAudioId] = useState<string | null>(null);
     const [audioProgress, setAudioProgress] = useState({ stage: '', percent: 0 });
     const [showAudioNotification, setShowAudioNotification] = useState(false);
     const [completedAudioId, setCompletedAudioId] = useState<string | null>(null);
 
-    const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const pollIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+    const [activeJobs, setActiveJobs] = useState<Set<string>>(new Set());
 
-    const stopPolling = useCallback(() => {
-        if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
+    const stopPolling = useCallback((id?: string) => {
+        if (id) {
+            const interval = pollIntervalsRef.current.get(id);
+            if (interval) {
+                clearInterval(interval);
+                pollIntervalsRef.current.delete(id);
+            }
+            setActiveJobs(prev => {
+                const updated = new Set(prev);
+                updated.delete(id);
+                return updated;
+            });
+        } else {
+            // Stop all
+            pollIntervalsRef.current.forEach(interval => clearInterval(interval));
+            pollIntervalsRef.current.clear();
+            setActiveJobs(new Set());
         }
     }, []);
 
-    const startAudioPolling = useCallback((overviewId: string) => {
-        stopPolling();
+    // Helper to check if any job of a certain type is running
+    const isJobTypeRunning = useCallback((type: 'audio' | 'prediction') => {
+        return Array.from(activeJobs).some(id =>
+            type === 'audio' ? id.startsWith('audio_') : id.startsWith('pred_')
+        );
+    }, [activeJobs]);
 
-        pollIntervalRef.current = setInterval(async () => {
+    // sync generatingType with activeJobs
+    useEffect(() => {
+        if (activeJobs.size === 0) {
+            // If no active background jobs, but generatingType was set manually (e.g. flashcards/quiz)
+            // we don't want to overwrite it to null yet unless it's audio/prediction
+            if (generatingType === 'audio' || generatingType === 'prediction') {
+                setGeneratingType(null);
+            }
+            return;
+        }
+
+        const hasAudio = isJobTypeRunning('audio');
+        const hasPred = isJobTypeRunning('prediction');
+
+        if (hasAudio) setGeneratingType('audio');
+        else if (hasPred) setGeneratingType('prediction');
+    }, [activeJobs, isJobTypeRunning, generatingType]);
+
+    const startAudioPolling = useCallback((overviewId: string) => {
+        const jobId = `audio_${overviewId}`;
+        if (pollIntervalsRef.current.has(jobId)) return;
+
+        setActiveJobs(prev => new Set(prev).add(jobId));
+
+        const interval = setInterval(async () => {
             try {
                 const status = await audioService.getStatus(overviewId);
 
                 if (status.status === 'completed') {
-                    stopPolling();
-                    setGeneratingType(null);
+                    stopPolling(jobId);
                     setGeneratingAudioId(null);
                     setCompletedAudioId(overviewId);
                     setShowAudioNotification(true);
@@ -58,8 +100,7 @@ export const useAudioGeneration = (
 
                     onGenerationComplete();
                 } else if (status.status === 'failed') {
-                    stopPolling();
-                    setGeneratingType(null);
+                    stopPolling(jobId);
                     setGeneratingAudioId(null);
 
                     // Show error via centralized system
@@ -99,12 +140,70 @@ export const useAudioGeneration = (
                     metadata: { overviewId, notebookId }
                 });
 
-                stopPolling();
-                setGeneratingType(null);
+                stopPolling(jobId);
                 setGeneratingAudioId(null);
             }
         }, 2000); // Poll every 2 seconds
-    }, [router, onGenerationComplete, stopPolling, checkAndAwardTask]);
+
+        pollIntervalsRef.current.set(jobId, interval);
+    }, [router, onGenerationComplete, stopPolling, checkAndAwardTask, notebookName, notebookId, notify, handleError]);
+
+    const startPredictionPolling = useCallback((predictionId: string) => {
+        const jobId = `pred_${predictionId}`;
+        if (pollIntervalsRef.current.has(jobId)) return;
+
+        setActiveJobs(prev => new Set(prev).add(jobId));
+
+        const interval = setInterval(async () => {
+            try {
+                const status = await examPredictionService.getStatus(predictionId);
+
+                if (status.status === 'completed') {
+                    stopPolling(jobId);
+
+                    // Global notification with specific title if available
+                    notify({
+                        type: 'prediction',
+                        title: status.title || 'Predictions Ready!',
+                        message: `Your new predictions for ${notebookName} are ready`,
+                        data: { predictionId, notebookId }
+                    });
+
+                    onGenerationComplete();
+                } else if (status.status === 'failed') {
+                    stopPolling(jobId);
+
+                    // Show error via centralized system
+                    const error = new Error(status.error_message || 'Failed to generate exam predictions');
+                    await handleError(error, {
+                        operation: 'prediction_generation_failed',
+                        component: 'prediction-generation',
+                        metadata: { predictionId, status: status.status }
+                    });
+                }
+                // 'processing' stays in interval
+            } catch (error: any) {
+                // Ignore network errors from app backgrounding
+                const isNetworkError = error?.message?.includes('Network request failed') ||
+                    error?.message?.includes('network') ||
+                    error?.name === 'AbortError';
+
+                if (isNetworkError) {
+                    return;
+                }
+
+                await handleError(error, {
+                    operation: 'poll_prediction_status',
+                    component: 'prediction-generation',
+                    metadata: { predictionId, notebookId }
+                });
+
+                stopPolling(jobId);
+            }
+        }, 3000); // Poll every 3 seconds
+
+        pollIntervalsRef.current.set(jobId, interval);
+    }, [onGenerationComplete, stopPolling, notebookName, notebookId, notify, handleError]);
 
     const checkForPendingAudio = useCallback(async () => {
         try {
@@ -112,49 +211,52 @@ export const useAudioGeneration = (
             const pendingAudio = await audioService.findPending(notebookId);
 
             if (pendingAudio) {
-                setGeneratingType('audio');
                 setGeneratingAudioId(pendingAudio.id);
                 startAudioPolling(pendingAudio.id);
             } else {
                 // Recovery: Check for completed podcasts that might have missed task award
-                // This handles cases where the app was backgrounded or component unmounted
-                // before the polling detected completion.
-                // Note: We check for ANY completed audio overview for the user (not just this notebook)
-                // since the task is awarded once per user for their first completed podcast.
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user && checkAndAwardTask) {
                     const hasCompleted = await audioService.hasCompleted(user.id);
 
                     if (hasCompleted) {
-                        // Attempt to award the task retroactively
-                        // This is idempotent - if already awarded, it will return success with already_completed: true
-                        await checkAndAwardTask('generate_audio_overview');
+                        await checkAndAwardTask('generate_audio_overview', true);
                     }
                 }
             }
         } catch (error) {
-            // Non-critical error, just log
-            await handleError(error, {
-                operation: 'check_pending_audio',
-                component: 'audio-generation',
-                metadata: { notebookId }
-            });
+            // Non-critical
         }
     }, [notebookId, startAudioPolling, checkAndAwardTask]);
 
-    // Restart polling when app comes to foreground (if we have a pending audio)
+    const checkForPendingPrediction = useCallback(async () => {
+        try {
+            const pending = await examPredictionService.findPending(notebookId);
+            if (pending) {
+                startPredictionPolling(pending.id);
+            }
+        } catch (error) {
+            // Ignore
+        }
+    }, [notebookId, startPredictionPolling]);
+
+    // Restart polling when app comes to foreground (if we have a pending audio or prediction)
     useEffect(() => {
         const subscription = AppState.addEventListener('change', (nextAppState) => {
-            if (nextAppState === 'active' && generatingAudioId && !pollIntervalRef.current) {
-                // App came to foreground - restart polling to resume status checks
-                startAudioPolling(generatingAudioId);
+            if (nextAppState === 'active' && pollIntervalsRef.current.size === 0) {
+                if (generatingAudioId) {
+                    startAudioPolling(generatingAudioId);
+                } else if (generatingType === 'prediction') {
+                    checkForPendingAudio();
+                    checkForPendingPrediction();
+                }
             }
         });
 
         return () => {
             subscription.remove();
         };
-    }, [generatingAudioId, startAudioPolling]);
+    }, [generatingAudioId, generatingType, startAudioPolling, checkForPendingAudio, checkForPendingPrediction]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -181,7 +283,9 @@ export const useAudioGeneration = (
         audioProgress,
         setAudioProgress,
         startAudioPolling,
+        startPredictionPolling,
         checkForPendingAudio,
+        checkForPendingPrediction,
         // Notification state
         showAudioNotification,
         completedAudioId,

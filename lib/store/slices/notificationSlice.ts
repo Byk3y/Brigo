@@ -4,7 +4,7 @@
 
 import type { StateCreator } from 'zustand';
 
-export type NotificationType = 'flashcards' | 'quiz' | 'audio' | 'success' | 'info' | 'warning' | 'offline';
+export type NotificationType = 'flashcards' | 'quiz' | 'audio' | 'prediction' | 'success' | 'info' | 'warning' | 'offline';
 
 export interface NotificationPayload {
     type: NotificationType;

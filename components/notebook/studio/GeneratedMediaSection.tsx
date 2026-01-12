@@ -1,9 +1,9 @@
 /**
- * GeneratedMediaSection - Displays generated flashcards, quizzes, and podcasts
+ * GeneratedMediaSection - Displays generated flashcards, quizzes, podcasts, and predictions
  */
 
-import React, { useMemo } from 'react';
-import { View, Text } from 'react-native';
+import React, { useMemo, useEffect } from 'react';
+import { View, Text, Alert, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { useFeedback } from '@/lib/feedback';
@@ -12,15 +12,21 @@ import { StudioMediaItem } from './StudioMediaItem';
 import { StudioEmptyState } from './StudioEmptyState';
 import { formatDuration, getTimeAgo } from '@/lib/utils/studio';
 import { LOADING_MESSAGES } from '@/lib/constants/loadingMessages';
-import type { StudioFlashcard, Quiz, AudioOverview, FlashcardSet } from '@/lib/store/types';
+import type { StudioFlashcard, Quiz, AudioOverview, FlashcardSet, ExamPrediction } from '@/lib/store/types';
 
-type GeneratingType = 'flashcards' | 'quiz' | 'audio' | null;
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+type GeneratingType = 'flashcards' | 'quiz' | 'audio' | 'prediction' | null;
 
 // Unified media item type for sorting
 type MediaItem =
   | { type: 'flashcard_set'; data: FlashcardSet; createdAt: string }
   | { type: 'quiz'; data: Quiz; createdAt: string }
-  | { type: 'audio'; data: AudioOverview; createdAt: string };
+  | { type: 'audio'; data: AudioOverview; createdAt: string }
+  | { type: 'prediction'; data: ExamPrediction; createdAt: string };
 
 interface GeneratedMediaSectionProps {
   notebookId: string;
@@ -28,10 +34,13 @@ interface GeneratedMediaSectionProps {
   flashcard_sets: FlashcardSet[];
   quizzes: Quiz[];
   audioOverviews: AudioOverview[];
+  examPredictions: ExamPrediction[];
   loading: boolean;
   generatingType: GeneratingType;
   audioProgressStage: string;
   onDeleteAudio: (overview: AudioOverview) => void;
+  onDeletePrediction?: (prediction: ExamPrediction) => void;
+  onGeneratePrediction?: (retryId?: string) => void;
 }
 
 export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
@@ -40,17 +49,29 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
   flashcard_sets,
   quizzes,
   audioOverviews,
+  examPredictions,
   loading,
   generatingType,
   audioProgressStage,
   onDeleteAudio,
+  onDeletePrediction,
+  onGeneratePrediction,
 }) => {
   const router = useRouter();
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
   const { play } = useFeedback();
 
-  // Combine and sort all media items chronologically (oldest first, newest at bottom)
+  const hasProcessingPrediction = useMemo(() =>
+    examPredictions.some(p => p.status === 'processing' || p.status === 'pending'),
+    [examPredictions]
+  );
+
+  // Smooth layout animation when items are added/removed
+  useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }, [generatingType, examPredictions.length, audioOverviews.length, flashcard_sets.length, quizzes.length]);
+
   const sortedMediaItems = useMemo(() => {
     const items: MediaItem[] = [];
 
@@ -81,13 +102,22 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
       });
     });
 
-    // Sort by creation date ascending (oldest first, newest at bottom)
+    // Add exam predictions
+    examPredictions.forEach((prediction) => {
+      items.push({
+        type: 'prediction',
+        data: prediction,
+        createdAt: prediction.created_at,
+      });
+    });
+
+    // Sort by creation date descending (newest first, newest at top)
     return items.sort((a, b) => {
       const dateA = new Date(a.createdAt).getTime();
       const dateB = new Date(b.createdAt).getTime();
-      return dateA - dateB;
+      return dateB - dateA;
     });
-  }, [flashcard_sets, quizzes, audioOverviews]);
+  }, [flashcard_sets, quizzes, audioOverviews, examPredictions]);
 
   const renderMediaItem = (item: MediaItem) => {
     if (item.type === 'flashcard_set') {
@@ -121,6 +151,49 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
             play('start');
             router.push(`/quiz/${item.data.id}`);
           }}
+        />
+      );
+    }
+
+    if (item.type === 'prediction') {
+      const isFailed = item.data.status === 'failed';
+      const isProcessing = item.data.status === 'processing' || item.data.status === 'pending';
+      const predictionCount = item.data.report_data?.predictions?.length || 0;
+
+      return (
+        <StudioMediaItem
+          key={item.data.id}
+          icon={isFailed ? "alert-circle-outline" : "bulb-outline"}
+          iconColor={isFailed ? "#ef4444" : isProcessing ? "#737373" : "#9333ea"}
+          title={item.data.title}
+          subtitle={isFailed ? "Generation failed • Tap to retry" : `${predictionCount} predictions • ${getTimeAgo(item.createdAt)}`}
+          isGenerating={isProcessing}
+          loadingText={LOADING_MESSAGES.prediction}
+          loadingColor="#9333ea"
+          onPress={() => {
+            if (isFailed) {
+              Alert.alert(
+                'Generation Failed',
+                `${item.data.error_message || 'An unexpected error occurred.'}\n\nWould you like to try again?`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Retry',
+                    onPress: () => {
+                      if (onGeneratePrediction) {
+                        onGeneratePrediction(item.data.id);
+                      }
+                    }
+                  }
+                ]
+              );
+              return;
+            }
+            if (isProcessing) return;
+            play('start');
+            router.push(`/predictions/${item.data.id}`);
+          }}
+          onDelete={onDeletePrediction ? () => onDeletePrediction(item.data) : undefined}
         />
       );
     }
@@ -159,17 +232,7 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
         </View>
       ) : (
         <>
-          {/* Sorted Media Items (chronologically, newest at bottom) */}
-          {sortedMediaItems.map(renderMediaItem)}
-
-          {/* Background loading indicator if needed */}
-          {loading && sortedMediaItems.length > 0 && (
-            <View style={{ alignItems: 'center', paddingVertical: 16, opacity: 0.6 }}>
-              <TikTokLoader size={8} color="#6366f1" containerWidth={40} />
-            </View>
-          )}
-
-          {/* Generating States */}
+          {/* Generating States at the TOP */}
           {generatingType === 'flashcards' && (
             <StudioMediaItem
               icon="albums-outline"
@@ -201,6 +264,27 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
               loadingColor="#4f46e5"
               loadingText={LOADING_MESSAGES.audio}
             />
+          )}
+
+          {generatingType === 'prediction' && !hasProcessingPrediction && (
+            <StudioMediaItem
+              icon="bulb-outline"
+              iconColor="#737373"
+              title="Predict Questions"
+              isGenerating={true}
+              loadingColor="#9333ea"
+              loadingText={LOADING_MESSAGES.prediction}
+            />
+          )}
+
+          {/* Sorted Media Items (newest first) */}
+          {sortedMediaItems.map(renderMediaItem)}
+
+          {/* Background loading indicator if needed */}
+          {loading && sortedMediaItems.length > 0 && (
+            <View style={{ alignItems: 'center', paddingVertical: 16, opacity: 0.6 }}>
+              <TikTokLoader size={8} color="#6366f1" containerWidth={40} />
+            </View>
           )}
 
           {/* Empty State */}

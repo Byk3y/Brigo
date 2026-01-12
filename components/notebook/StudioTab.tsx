@@ -1,5 +1,5 @@
 /**
- * StudioTab - Generate flashcards, quizzes, and podcasts
+ * StudioTab - Generate flashcards, quizzes, podcasts, and exam predictions
  * Orchestrates the studio generation UI and displays generated content
  */
 
@@ -34,12 +34,14 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
 
-  // Fetch studio content (flashcards, quizzes, podcasts)
+  // Fetch studio content (flashcards, quizzes, podcasts, predictions)
   const {
     flashcard_sets,
     quizzes,
     audioOverviews,
     setAudioOverviews,
+    examPredictions,
+    setExamPredictions,
     loading,
     refreshContent,
   } = useStudioContent(notebook.id);
@@ -52,6 +54,8 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
     audioProgress,
     checkForPendingAudio,
     startAudioPolling,
+    startPredictionPolling,
+    checkForPendingPrediction,
   } = useAudioGeneration(notebook.id, notebook.title, refreshContent);
 
   // Generation handlers
@@ -59,7 +63,9 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
     handleGenerateFlashcards,
     handleGenerateQuiz,
     handleGenerateAudioOverview,
+    handleGeneratePrediction,
     handleDeleteAudioOverview,
+    handleDeletePrediction,
     showUpgradeModal,
     setShowUpgradeModal,
     upgradeModalSource,
@@ -69,24 +75,30 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
     flashcardsCount: flashcard_sets.length,
     quizzesCount: quizzes.length,
     audioOverviewsCount: audioOverviews.length,
+    examPredictionsCount: examPredictions.length,
     setAudioOverviews,
+    setExamPredictions,
     refreshContent,
     setGeneratingType,
     setGeneratingAudioId,
     startAudioPolling,
+    startPredictionPolling,
+    checkForPendingPrediction,
   });
 
   const { trackUpgradeModalDismissed } = useUpgrade();
 
-  // Check for in-progress audio generation on mount (handles navigation back)
+  // Check for in-progress audio/prediction generation on mount (handles navigation back)
   useEffect(() => {
     checkForPendingAudio();
-  }, [checkForPendingAudio]);
+    checkForPendingPrediction();
+  }, [checkForPendingAudio, checkForPendingPrediction]);
 
   // Monitor app state to recover from backgrounding
   useAppState({
     onForeground: () => {
       checkForPendingAudio();
+      checkForPendingPrediction();
       refreshContent();
     },
   });
@@ -119,6 +131,7 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
           onGenerateAudio={handleGenerateAudioOverview}
           onGenerateFlashcards={handleGenerateFlashcards}
           onGenerateQuiz={handleGenerateQuiz}
+          onGeneratePrediction={handleGeneratePrediction}
         />
 
         {/* Generated Media Section */}
@@ -128,10 +141,13 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
           flashcard_sets={flashcard_sets}
           quizzes={quizzes}
           audioOverviews={audioOverviews}
+          examPredictions={examPredictions}
           loading={loading}
           generatingType={generatingType}
           audioProgressStage={audioProgress.stage}
           onDeleteAudio={handleDeleteAudioOverview}
+          onDeletePrediction={handleDeletePrediction}
+          onGeneratePrediction={handleGeneratePrediction}
         />
       </ScrollView>
 
@@ -151,3 +167,4 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
     </GestureHandlerRootView>
   );
 };
+

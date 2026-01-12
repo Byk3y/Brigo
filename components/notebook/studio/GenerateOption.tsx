@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 
 interface GenerateOptionProps {
-    type: 'audio' | 'flashcards' | 'quiz';
+    type: 'audio' | 'flashcards' | 'quiz' | 'prediction';
     icon: keyof typeof Ionicons.glyphMap;
     color: string;
     label: string;
@@ -36,6 +36,8 @@ export const GenerateOption: React.FC<GenerateOptionProps> = ({
                 return colors.cardFlashcard;
             case 'quiz':
                 return colors.cardQuiz;
+            case 'prediction':
+                return colors.cardPrediction;
             default:
                 return colors.surfaceAlt;
         }

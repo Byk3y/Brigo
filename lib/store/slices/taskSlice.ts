@@ -46,7 +46,7 @@ export interface TaskSlice {
     loadDailyTasks: () => Promise<void>;
     loadFoundationalTasks: () => Promise<void>;
     refreshTaskProgress: (taskKey: string) => Promise<void>;
-    checkAndAwardTask: (taskKey: string) => Promise<{ success: boolean; newPoints?: number; error?: string }>;
+    checkAndAwardTask: (taskKey: string, suppressError?: boolean) => Promise<{ success: boolean; newPoints?: number; error?: string }>;
     getUserTimezone: () => Promise<string>;
 }
 
@@ -153,7 +153,7 @@ export const createTaskSlice: StateCreator<
             // 1. Create Notebook Recovery
             const createNotebookTask = tasks.find((t: any) => t.task_key === 'create_notebook');
             if (createNotebookTask && !createNotebookTask.completed && notebooks.length > 0) {
-                get().checkAndAwardTask('create_notebook');
+                get().checkAndAwardTask('create_notebook', true);
             }
 
 
@@ -163,14 +163,14 @@ export const createTaskSlice: StateCreator<
             // For now, simpler check: if task is incomplete, we just try to award it once if service allows
             if (generateAudioTask && !generateAudioTask.completed) {
                 // The award_task_points RPC has server-side validation, so this is safe
-                get().checkAndAwardTask('generate_audio_overview');
+                get().checkAndAwardTask('generate_audio_overview', true);
             }
 
             // 4. First Chat Recovery
             const firstChatTask = tasks.find((t: any) => t.task_key === 'first_notebook_chat');
             const hasChat = notebooks.some((n: any) => n.chat_messages && n.chat_messages.length > 0);
             if (firstChatTask && !firstChatTask.completed && hasChat) {
-                get().checkAndAwardTask('first_notebook_chat');
+                get().checkAndAwardTask('first_notebook_chat', true);
             }
 
         } catch (error) {
@@ -197,7 +197,7 @@ export const createTaskSlice: StateCreator<
         }
     },
 
-    checkAndAwardTask: async (taskKey: string) => {
+    checkAndAwardTask: async (taskKey: string, suppressError = false) => {
         const { authUser, addPetPoints, loadDailyTasks, loadFoundationalTasks, getUserTimezone } = get();
         if (!authUser) return { success: false, error: 'Not authenticated' };
 
@@ -255,7 +255,7 @@ export const createTaskSlice: StateCreator<
 
             // Handle server-side validation failure
             if (data.error_code === 'CRITERIA_NOT_MET') {
-                console.log(`[TaskSlice] Task ${taskKey} criteria not met (server validation)`);
+                if (!suppressError) console.log(`[TaskSlice] Task ${taskKey} criteria not met (server validation)`);
                 return { success: false, error: 'Criteria not met' };
             }
 
@@ -266,7 +266,9 @@ export const createTaskSlice: StateCreator<
 
             return { success: false, error: data.error || 'Unknown error' };
         } catch (error) {
-            console.error(`Failed to award task ${taskKey}:`, error);
+            if (!suppressError) {
+                console.error(`Failed to award task ${taskKey}:`, error);
+            }
             return { success: false, error: 'Failed to award task' };
         }
     }

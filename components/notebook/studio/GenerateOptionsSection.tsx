@@ -7,13 +7,14 @@ import { View, Text } from 'react-native';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { GenerateOption } from './GenerateOption';
 
-type GeneratingType = 'flashcards' | 'quiz' | 'audio' | null;
+type GeneratingType = 'flashcards' | 'quiz' | 'audio' | 'prediction' | null;
 
 interface GenerateOptionsSectionProps {
   generatingType: GeneratingType;
   onGenerateAudio: () => void;
   onGenerateFlashcards: () => void;
   onGenerateQuiz: () => void;
+  onGeneratePrediction: () => void;
 }
 
 export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
@@ -21,6 +22,7 @@ export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
   onGenerateAudio,
   onGenerateFlashcards,
   onGenerateQuiz,
+  onGeneratePrediction,
 }) => {
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
@@ -77,6 +79,19 @@ export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
         textColor="text-cyan-600"
         isGenerating={generatingType === 'quiz'}
         onPress={onGenerateQuiz}
+        disabled={isDisabled}
+      />
+
+      {/* Predict Questions Option */}
+      <GenerateOption
+        type="prediction"
+        icon="bulb-outline"
+        color="#9333ea"
+        label="Predict Questions"
+        bgColor="bg-purple-50"
+        textColor="text-purple-600"
+        isGenerating={generatingType === 'prediction'}
+        onPress={() => onGeneratePrediction()}
         disabled={isDisabled}
       />
     </View>

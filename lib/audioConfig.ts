@@ -1,13 +1,13 @@
-import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
+import { setAudioModeAsync } from 'expo-audio';
 import { useStore } from './store';
 
-// We'll keep using expo-av for the generic config for now as expo-audio is a 
-// drop-in replacement but most existing code still expects the expo-av Sound objects.
-// However, we will initialize it using user's saved preferences.
+// We've moved to expo-audio for better lock-screen and background support.
+// This file handles global session property updates.
 
 let isConfigured = false;
 let initPromise: Promise<void> | null = null;
 let currentSettings: any = null;
+let currentMode: 'mixing' | 'primary' = 'mixing';
 
 /**
  * Configures the global audio mode for the app.
@@ -18,29 +18,64 @@ export async function configureAudioMode(staysActiveInBackground: boolean = fals
         const state = useStore.getState();
         const { audioSettings } = state;
 
-        // Save current settings to compare later
         currentSettings = { ...audioSettings, staysActiveInBackground };
 
-        // Brigo is a media-centric app (like Spotify/Duolingo). 
-        // We always play through the main speaker and always allow background playback
-        // even if the silent switch is ON, because hitting "Play" is an explicit user action.
         const shouldBackground = staysActiveInBackground || audioSettings.backgroundPlayback;
 
-        await Audio.setAudioModeAsync({
-            allowsRecordingIOS: false,
-            playsInSilentModeIOS: true, // Always play despite silent switch
-            staysActiveInBackground: shouldBackground,
-            // Allow sound effects to mix with background music instead of interrupting it
-            interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
-            // On Android, DuckOthers allows our sounds to play alongside other audio
-            interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-            // On Android, shouldDuckAndroid allows coexistence
-            shouldDuckAndroid: true,
-            playThroughEarpieceAndroid: false,
+        await setAudioModeAsync({
+            playsInSilentMode: true,
+            shouldPlayInBackground: shouldBackground,
+            interruptionMode: 'mixWithOthers',
+            allowsRecording: false,
         });
         isConfigured = true;
+        currentMode = 'mixing';
     } catch (error) {
         console.error('[AudioConfig] Failed to set audio mode:', error);
+    }
+}
+
+/**
+ * Configures audio mode for primary media playback (podcasts, audio overviews).
+ * Uses DoNotMix so iOS Control Center shows our metadata (title, artist).
+ * This makes Brigo the "primary" audio app and will pause other audio apps.
+ */
+export async function configureForMediaPlayback() {
+    try {
+        await setAudioModeAsync({
+            playsInSilentMode: true,
+            shouldPlayInBackground: true,
+            interruptionMode: 'doNotMix',
+            allowsRecording: false,
+        });
+        currentMode = 'primary';
+        console.log('[AudioConfig] Switched to primary media playback mode (doNotMix)');
+    } catch (error) {
+        console.error('[AudioConfig] Failed to set media playback mode:', error);
+    }
+}
+
+/**
+ * Reverts audio mode back to mixing (for sound effects, haptics, etc.).
+ * Call this when the AudioPlayer is closed.
+ */
+export async function configureForMixing() {
+    try {
+        if (currentMode === 'mixing') return; // Already in mixing mode
+
+        const state = useStore.getState();
+        const { audioSettings } = state;
+
+        await setAudioModeAsync({
+            playsInSilentMode: true,
+            shouldPlayInBackground: audioSettings.backgroundPlayback,
+            interruptionMode: 'mixWithOthers',
+            allowsRecording: false,
+        });
+        currentMode = 'mixing';
+        console.log('[AudioConfig] Reverted to mixing mode (mixWithOthers)');
+    } catch (error) {
+        console.error('[AudioConfig] Failed to revert to mixing mode:', error);
     }
 }
 
@@ -94,3 +129,4 @@ export async function waitForAudioInit(): Promise<void> {
 export function isAudioConfigured(): boolean {
     return isConfigured;
 }
+

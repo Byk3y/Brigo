@@ -149,6 +149,48 @@ export interface AudioOverview {
   generated_at: string;
 }
 
+// Exam Prediction types
+export interface PredictionTopic {
+  name: string;
+  frequency: number;
+  total_papers: number;
+  likelihood: 'high' | 'medium' | 'low';
+  trend: 'increasing' | 'stable' | 'decreasing';
+}
+
+export interface PredictedQuestion {
+  question: string;
+  answer: string;
+  topic: string;
+  question_type: 'mcq' | 'short_answer' | 'essay';
+  confidence: 'high' | 'medium' | 'low';
+  reasoning: string;
+}
+
+export interface ExamPrediction {
+  id: string;
+  notebook_id: string;
+  user_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  title: string;
+  report_data: {
+    summary: {
+      papers_analyzed: number;
+      exam_structure: {
+        mcq: number;
+        short_answer: number;
+        essay: number;
+      };
+    };
+    topics: PredictionTopic[];
+    predictions: PredictedQuestion[];
+  } | null;
+  error_message?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+
 export interface AudioPlaybackPosition {
   audioOverviewId: string;
   notebookId: string;

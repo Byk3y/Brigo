@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useStore } from '@/lib/store';
@@ -33,32 +33,45 @@ export const HomeHeader: React.FC = () => {
             backgroundColor: colors.background
         }}>
             <BrigoLogo size={38} textColor={colors.text} />
-            <TouchableOpacity
-                onPress={handleProfilePress}
-                activeOpacity={0.8}
-                style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    overflow: 'hidden',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 8,
-                    elevation: 4,
-                }}
-            >
-                <LinearGradient
-                    colors={gradientColors as [string, string]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity
+                    onPress={() => router.push({ pathname: '/paywall', params: { source: 'onboarding' } })}
                     style={{
-                        flex: 1,
-                        width: '100%',
-                        height: '100%',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        backgroundColor: '#F97316',
+                        borderRadius: 8,
                     }}
-                />
-            </TouchableOpacity>
+                >
+                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>DEBUG: PAYWALL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={handleProfilePress}
+                    activeOpacity={0.8}
+                    style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        overflow: 'hidden',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 8,
+                        elevation: 4,
+                    }}
+                >
+                    <LinearGradient
+                        colors={gradientColors as [string, string]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{
+                            flex: 1,
+                            width: '100%',
+                            height: '100%',
+                        }}
+                    />
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };

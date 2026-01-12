@@ -64,28 +64,28 @@ export const createSubscriptionSlice: StateCreator<
           // The trigger should create one, but we'll set defaults until it does
           set({
             tier: 'trial',
-            status: 'active',
+            status: 'expired',
             trialEndsAt: null,
             trialStartedAt: null,
             studioJobsUsed: 0,
             audioJobsUsed: 0,
             studioJobsLimit: 5,
             audioJobsLimit: 3,
-            isExpired: false,
+            isExpired: true,
             subscriptionSyncedAt: Date.now(),
           });
 
           // Set default Mixpanel user properties (omit null values)
           setUserProperties({
             tier: 'trial',
-            subscription_status: 'active',
-            is_expired: false,
+            subscription_status: 'expired',
+            is_expired: true,
           });
 
           // Set super properties (included in all events)
           setSuperProperties({
             tier: 'trial',
-            is_expired: false,
+            is_expired: true,
           });
           return;
         }

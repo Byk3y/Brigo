@@ -8,7 +8,7 @@ This upgrade strategy balances **conversion effectiveness with user respect** by
 - **Strategic friction** (enough to drive upgrades, not enough to frustrate)
 - **Value-first messaging** (show what they've built, not what they'll lose)
 
-**Goal**: 5-7% trial-to-premium conversion while maintaining positive brand perception.
+**Goal**: 10-15% conversion by implementing a **$1.99 Commitment Wall** (paid trial) to filter for high-intent users from day one.
 
 ### What We're Taking from Duolingo:
 ✅ Multiple strategic touchpoints (not every screen)
@@ -66,7 +66,7 @@ Upgrade to Premium to keep this momentum going!"
           (Too vague, doesn't show value they've experienced)
 ```
 
-**Why This Works**: They've already experienced the value firsthand during trial.
+**Why This Works**: By requiring a small upfront payment ($1.99), we cross the psychological hurdle of payment. Users who pay $1.99 are significantly more likely to continue to a full subscription.
 
 ---
 

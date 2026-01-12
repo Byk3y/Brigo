@@ -170,7 +170,7 @@ export function Screen3({ colors, onContinue }: Screen3Props) {
         style={styles.centerSection}
       >
         <Text style={[styles.mainHeading, { color: colors.text }]}>
-          Create your <Text style={{ color: colors.primary }}>free account</Text>
+          Create your <Text style={{ color: colors.primary }}>account</Text>
         </Text>
       </MotiView>
 
@@ -251,7 +251,7 @@ export function Screen3({ colors, onContinue }: Screen3Props) {
               ]}
               activeOpacity={0.8}
             >
-              <Text style={styles.primaryButtonText}>Get Started Free</Text>
+              <Text style={styles.primaryButtonText}>Get Started</Text>
               <Ionicons name="arrow-forward" size={18} color="white" style={{ marginLeft: 8 }} />
             </TouchableOpacity>
 

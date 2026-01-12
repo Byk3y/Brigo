@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
   public: {
     Tables: {
       audio_feedback: {
@@ -118,51 +113,41 @@ export type Database = {
             referencedRelation: "notebooks"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "audio_overviews_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       course_lessons: {
         Row: {
-          audio_generated: boolean | null
-          content: Json
+          audio_url: string | null
+          content: string | null
           created_at: string | null
-          description: string | null
           id: string
-          is_free: boolean | null
           module_id: string
           order_index: number
-          status: string | null
+          summary: string | null
           title: string
+          updated_at: string | null
         }
         Insert: {
-          audio_generated?: boolean | null
-          content: Json
+          audio_url?: string | null
+          content?: string | null
           created_at?: string | null
-          description?: string | null
           id?: string
-          is_free?: boolean | null
           module_id: string
           order_index: number
-          status?: string | null
+          summary?: string | null
           title: string
+          updated_at?: string | null
         }
         Update: {
-          audio_generated?: boolean | null
-          content?: Json
+          audio_url?: string | null
+          content?: string | null
           created_at?: string | null
-          description?: string | null
           id?: string
-          is_free?: boolean | null
           module_id?: string
           order_index?: number
-          status?: string | null
+          summary?: string | null
           title?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -182,6 +167,7 @@ export type Database = {
           id: string
           order_index: number
           title: string
+          updated_at: string | null
         }
         Insert: {
           course_id: string
@@ -190,6 +176,7 @@ export type Database = {
           id?: string
           order_index: number
           title: string
+          updated_at?: string | null
         }
         Update: {
           course_id?: string
@@ -198,6 +185,7 @@ export type Database = {
           id?: string
           order_index?: number
           title?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -213,101 +201,101 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string | null
-          exam_id: string
           id: string
-          is_published: boolean | null
+          image_url: string | null
           level: string | null
-          slug: string
-          thumbnail_url: string | null
+          tags: string[] | null
           title: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           description?: string | null
-          exam_id: string
           id?: string
-          is_published?: boolean | null
+          image_url?: string | null
           level?: string | null
-          slug: string
-          thumbnail_url?: string | null
+          tags?: string[] | null
           title: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           description?: string | null
-          exam_id?: string
           id?: string
-          is_published?: boolean | null
+          image_url?: string | null
           level?: string | null
-          slug?: string
-          thumbnail_url?: string | null
+          tags?: string[] | null
           title?: string
           updated_at?: string | null
         }
+        Relationships: []
+      }
+      exams: {
+        Row: {
+          created_at: string | null
+          date: string
+          description: string | null
+          id: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "courses_exam_id_fkey"
-            columns: ["exam_id"]
+            foreignKeyName: "exams_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "exams"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
-      exams: {
-        Row: {
-          category: string | null
-          country: string | null
-          created_at: string | null
-          id: string
-          slug: string
-          title: string
-        }
-        Insert: {
-          category?: string | null
-          country?: string | null
-          created_at?: string | null
-          id?: string
-          slug: string
-          title: string
-        }
-        Update: {
-          category?: string | null
-          country?: string | null
-          created_at?: string | null
-          id?: string
-          slug?: string
-          title?: string
-        }
-        Relationships: []
-      }
       lesson_progress: {
         Row: {
-          completed: boolean | null
           completed_at: string | null
+          created_at: string | null
           id: string
-          last_position: number | null
+          last_accessed_at: string | null
           lesson_id: string
+          status: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
-          completed?: boolean | null
           completed_at?: string | null
+          created_at?: string | null
           id?: string
-          last_position?: number | null
+          last_accessed_at?: string | null
           lesson_id: string
+          status?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
-          completed?: boolean | null
           completed_at?: string | null
+          created_at?: string | null
           id?: string
-          last_position?: number | null
+          last_accessed_at?: string | null
           lesson_id?: string
+          status?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -319,54 +307,41 @@ export type Database = {
             referencedRelation: "course_lessons"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "lesson_progress_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       materials: {
         Row: {
           content: string | null
-          content_type: string
           created_at: string | null
-          extracted_text: string | null
+          file_path: string | null
           id: string
-          meta: Json | null
+          metadata: Json | null
           notebook_id: string
-          status: string | null
-          storage_path: string | null
+          source_type: string
           title: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
           content?: string | null
-          content_type: string
           created_at?: string | null
-          extracted_text?: string | null
+          file_path?: string | null
           id?: string
-          meta?: Json | null
+          metadata?: Json | null
           notebook_id: string
-          status?: string | null
-          storage_path?: string | null
+          source_type: string
           title: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
           content?: string | null
-          content_type?: string
           created_at?: string | null
-          extracted_text?: string | null
+          file_path?: string | null
           id?: string
-          meta?: Json | null
+          metadata?: Json | null
           notebook_id?: string
-          status?: string | null
-          storage_path?: string | null
+          source_type?: string
           title?: string
           updated_at?: string | null
           user_id?: string
@@ -379,13 +354,6 @@ export type Database = {
             referencedRelation: "notebooks"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "materials_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       notebook_chat_messages: {
@@ -395,7 +363,6 @@ export type Database = {
           id: string
           notebook_id: string
           role: string
-          sources: Json
           user_id: string
         }
         Insert: {
@@ -404,7 +371,6 @@ export type Database = {
           id?: string
           notebook_id: string
           role: string
-          sources?: Json
           user_id: string
         }
         Update: {
@@ -413,7 +379,6 @@ export type Database = {
           id?: string
           notebook_id?: string
           role?: string
-          sources?: Json
           user_id?: string
         }
         Relationships: [
@@ -424,192 +389,85 @@ export type Database = {
             referencedRelation: "notebooks"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "notebook_chat_messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       notebooks: {
         Row: {
-          audio_generated_count: number | null
-          color: string
           created_at: string | null
-          embeddings_generated: boolean | null
-          emoji: string
-          flashcard_count: number | null
+          description: string | null
           id: string
-          is_public: boolean | null
-          last_studied: string | null
-          material_id: string | null
-          meta: Json | null
-          preview_generated_at: string | null
-          progress: number | null
-          status: string
-          studio_jobs_count: number | null
           title: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
-          audio_generated_count?: number | null
-          color: string
           created_at?: string | null
-          embeddings_generated?: boolean | null
-          emoji: string
-          flashcard_count?: number | null
+          description?: string | null
           id?: string
-          is_public?: boolean | null
-          last_studied?: string | null
-          material_id?: string | null
-          meta?: Json | null
-          preview_generated_at?: string | null
-          progress?: number | null
-          status: string
-          studio_jobs_count?: number | null
           title: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
-          audio_generated_count?: number | null
-          color?: string
           created_at?: string | null
-          embeddings_generated?: boolean | null
-          emoji?: string
-          flashcard_count?: number | null
+          description?: string | null
           id?: string
-          is_public?: boolean | null
-          last_studied?: string | null
-          material_id?: string | null
-          meta?: Json | null
-          preview_generated_at?: string | null
-          progress?: number | null
-          status?: string
-          studio_jobs_count?: number | null
           title?: string
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "notebooks_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
           avatar_url: string | null
-          coins: number | null
-          commitment_made_at: string | null
           created_at: string | null
-          daily_commitment_minutes: number | null
-          expo_push_token: string | null
-          first_name: string | null
-          has_completed_onboarding: boolean | null
-          has_created_notebook: boolean | null
+          display_name: string | null
+          email: string | null
           id: string
-          last_freeze_reset: string | null
-          last_name: string | null
-          last_notification_sent_at: string | null
-          last_streak_date: string | null
-          learning_style: string | null
-          meta: Json | null
-          name: string | null
-          onboarding_completed_at: string | null
-          streak: number | null
-          streak_freezes: number | null
-          study_goal: string | null
-          timezone: string | null
           updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
-          coins?: number | null
-          commitment_made_at?: string | null
           created_at?: string | null
-          daily_commitment_minutes?: number | null
-          expo_push_token?: string | null
-          first_name?: string | null
-          has_completed_onboarding?: boolean | null
-          has_created_notebook?: boolean | null
+          display_name?: string | null
+          email?: string | null
           id: string
-          last_freeze_reset?: string | null
-          last_name?: string | null
-          last_notification_sent_at?: string | null
-          last_streak_date?: string | null
-          learning_style?: string | null
-          meta?: Json | null
-          name?: string | null
-          onboarding_completed_at?: string | null
-          streak?: number | null
-          streak_freezes?: number | null
-          study_goal?: string | null
-          timezone?: string | null
           updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
-          coins?: number | null
-          commitment_made_at?: string | null
           created_at?: string | null
-          daily_commitment_minutes?: number | null
-          expo_push_token?: string | null
-          first_name?: string | null
-          has_completed_onboarding?: boolean | null
-          has_created_notebook?: boolean | null
+          display_name?: string | null
+          email?: string | null
           id?: string
-          last_freeze_reset?: string | null
-          last_name?: string | null
-          last_notification_sent_at?: string | null
-          last_streak_date?: string | null
-          learning_style?: string | null
-          meta?: Json | null
-          name?: string | null
-          onboarding_completed_at?: string | null
-          streak?: number | null
-          streak_freezes?: number | null
-          study_goal?: string | null
-          timezone?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       quiz_question_answers: {
         Row: {
-          completed_at: string | null
-          created_at: string | null
+          answered_at: string | null
           id: string
+          is_correct: boolean
           question_id: string
+          selected_option_index: number
           user_id: string
         }
         Insert: {
-          completed_at?: string | null
-          created_at?: string | null
+          answered_at?: string | null
           id?: string
+          is_correct: boolean
           question_id: string
+          selected_option_index: number
           user_id: string
         }
         Update: {
-          completed_at?: string | null
-          created_at?: string | null
+          answered_at?: string | null
           id?: string
+          is_correct?: boolean
           question_id?: string
+          selected_option_index?: number
           user_id?: string
         }
         Relationships: [
@@ -620,13 +478,6 @@ export type Database = {
             referencedRelation: "studio_quiz_questions"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "quiz_question_answers_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       studio_flashcards: {
@@ -634,27 +485,27 @@ export type Database = {
           answer: string
           created_at: string | null
           id: string
-          is_public: boolean | null
           notebook_id: string
           question: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           answer: string
           created_at?: string | null
           id?: string
-          is_public?: boolean | null
           notebook_id: string
           question: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           answer?: string
           created_at?: string | null
           id?: string
-          is_public?: boolean | null
           notebook_id?: string
           question?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -665,47 +516,37 @@ export type Database = {
             referencedRelation: "notebooks"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "studio_flashcards_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       studio_quiz_questions: {
         Row: {
-          answer_explanation: string | null
           correct_option_index: number
           created_at: string | null
           id: string
-          is_public: boolean | null
           notebook_id: string
           options: string[]
-          question_text: string
+          question: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
-          answer_explanation?: string | null
           correct_option_index: number
           created_at?: string | null
           id?: string
-          is_public?: boolean | null
           notebook_id: string
           options: string[]
-          question_text: string
+          question: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
-          answer_explanation?: string | null
           correct_option_index?: number
           created_at?: string | null
           id?: string
-          is_public?: boolean | null
           notebook_id?: string
           options?: string[]
-          question_text?: string
+          question?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -716,82 +557,77 @@ export type Database = {
             referencedRelation: "notebooks"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "studio_quiz_questions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       usage_logs: {
         Row: {
+          action: string
           created_at: string | null
           id: string
-          material_id: string | null
-          model_used: string
-          notebook_id: string | null
-          tokens_used: number
-          type: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          created_at: string | null
+          id: string
+          status: string
+          tier: string
+          trial_audio_jobs_used: number | null
+          trial_ends_at: string | null
+          trial_started_at: string | null
+          trial_studio_jobs_used: number | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
-          material_id?: string | null
-          model_used: string
-          notebook_id?: string | null
-          tokens_used: number
-          type: string
+          status: string
+          tier: string
+          trial_audio_jobs_used?: number | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          trial_studio_jobs_used?: number | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
-          material_id?: string | null
-          model_used?: string
-          notebook_id?: string | null
-          tokens_used?: number
-          type?: string
+          status?: string
+          tier?: string
+          trial_audio_jobs_used?: number | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          trial_studio_jobs_used?: number | null
+          updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "usage_logs_material_id_fkey"
-            columns: ["material_id"]
-            isOneToOne: false
-            referencedRelation: "materials"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "usage_logs_notebook_id_fkey"
-            columns: ["notebook_id"]
-            isOneToOne: false
-            referencedRelation: "notebooks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "usage_logs_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      apply_streak_freeze: {
-        Args: {
-          p_user_id: string
-          p_timezone?: string
-        }
-        Returns: Json
-      }
+      [_ in never]: never
     }
     Enums: {
       processing_job_status: "pending" | "processing" | "completed" | "failed" | "cancelled"
@@ -801,3 +637,100 @@ export type Database = {
     }
   }
 }
+
+type PublicSchema = Database[Extract<keyof Database, "public">]
+
+export type Tables<
+  PublicTableNameOrOptions extends
+  | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+  | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+  ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+    Database[PublicTableNameOrOptions["schema"]]["Views"])
+  : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+    Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+    PublicSchema["Views"])
+  ? (PublicSchema["Tables"] &
+    PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : never
+
+export type TablesInsert<
+  PublicTableNameOrOptions extends
+  | keyof PublicSchema["Tables"]
+  | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+  ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+  ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : never
+
+export type TablesUpdate<
+  PublicTableNameOrOptions extends
+  | keyof PublicSchema["Tables"]
+  | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+  ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+  ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : never
+
+export type Enums<
+  PublicEnumNameOrOptions extends
+  | keyof PublicSchema["Enums"]
+  | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+  : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+  ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+  : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+  | keyof PublicSchema["CompositeTypes"]
+  | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+  ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+  ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never

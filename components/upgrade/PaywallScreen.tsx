@@ -78,7 +78,7 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
     const [isPurchasing, setIsPurchasing] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
     const [packages, setPackages] = useState<PurchasesPackage[]>([]);
-    const [billingCycle, setBillingCycle] = useState<'semester' | 'monthly'>('semester');
+    const [billingCycle, setBillingCycle] = useState<'semester' | 'weekly'>('semester');
 
     useEffect(() => {
         const fetchOfferings = async () => {
@@ -105,9 +105,11 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
 
 
 
-    const selectedPackage = packages.find(pkg =>
-        billingCycle === 'semester' ? pkg.packageType === 'THREE_MONTH' : pkg.packageType === 'MONTHLY'
-    ) || packages[0];
+    const selectedPackage = packages.find(pkg => {
+        if (billingCycle === 'semester') return pkg.packageType === 'THREE_MONTH';
+        if (billingCycle === 'weekly') return pkg.packageType === 'WEEKLY';
+        return false;
+    }) || packages[0];
 
     // Monthly equivalent for semester (~$6.67/mo for $19.99/3mo)
     const monthlyEquivalent = selectedPackage ? (selectedPackage.product.price / 3).toFixed(2) : '6.67';
@@ -116,8 +118,11 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
     const currencySymbol = selectedPackage?.product.priceString?.replace(/[0-9.,\s]/g, '') || '$';
 
     // Total price strings for clarity
-    const totalPriceString = selectedPackage?.product.priceString || (billingCycle === 'semester' ? `${currencySymbol}19.99` : `${currencySymbol}9.99`);
-    const durationText = billingCycle === 'semester' ? 'every 3 months' : 'per month';
+    const totalPriceString = selectedPackage?.product.priceString || (
+        billingCycle === 'semester' ? `${currencySymbol}17.99` : `${currencySymbol}4.99`
+    );
+    const trialPriceString = `${currencySymbol}1.99`;
+    const durationText = billingCycle === 'semester' ? 'every 3 months' : 'per week';
 
     const handlePurchase = async () => {
         if (!selectedPackage) return;
@@ -133,7 +138,7 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                 // Track successful purchase
                 track('subscription_purchased', {
                     source: source,
-                    plan: billingCycle === 'semester' ? 'semester' : 'monthly',
+                    plan: billingCycle,
                     price: selectedPackage?.product.price,
                 });
 
@@ -214,11 +219,21 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                             </Text>
                         </MotiView>
                         <Text style={[styles.subHeadline, { color: isDarkMode ? '#A1A1AA' : '#6B7280' }]}>
-                            {isOnboarding ? 'First 7 days are free' : 'Experience the full power of Brigo AI'}
+                            {isOnboarding ? 'Experience the full power of Brigo AI' : 'Choose your plan to get started'}
                         </Text>
                     </View>
 
-                    <View style={[styles.toggleContainer, { backgroundColor: isDarkMode ? '#1F2937' : '#F3F4F6' }]}>
+                    <View style={[styles.toggleContainer, { backgroundColor: isDarkMode ? '#1F2937' : '#F3F4F6', height: 48 }]}>
+                        <TouchableOpacity
+                            style={[styles.toggleHalf, billingCycle === 'weekly' && styles.toggleActive]}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setBillingCycle('weekly');
+                                track('paywall_plan_changed', { plan: 'weekly' });
+                            }}
+                        >
+                            <Text style={[styles.toggleText, billingCycle === 'weekly' && styles.toggleTextActive]}>Weekly</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.toggleHalf, billingCycle === 'semester' && styles.toggleActive]}
                             onPress={() => {
@@ -228,37 +243,13 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                             }}
                         >
                             <View style={styles.toggleLabelRow}>
-                                <Text style={[styles.toggleText, billingCycle === 'semester' && styles.toggleTextActive]}>Semester (3mo)</Text>
-                                <View style={styles.savingsBadge}>
-                                    <Text style={styles.savingsBadgeText}>SAVE 33%</Text>
+                                <Text style={[styles.toggleText, billingCycle === 'semester' && styles.toggleTextActive]}>Semester</Text>
+                                <View style={styles.savingsBadgeMini}>
+                                    <Text style={styles.savingsBadgeTextMini}>72% OFF</Text>
                                 </View>
                             </View>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.toggleHalf, billingCycle === 'monthly' && styles.toggleActive]}
-                            onPress={() => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                setBillingCycle('monthly');
-                                track('paywall_plan_changed', { plan: 'monthly' });
-                            }}
-                        >
-                            <Text style={[styles.toggleText, billingCycle === 'monthly' && styles.toggleTextActive]}>Monthly</Text>
-                        </TouchableOpacity>
                     </View>
-
-                    {billingCycle === 'semester' && (
-                        <MotiView
-                            from={{ opacity: 0, translateY: 10 }}
-                            animate={{ opacity: 1, translateY: 0 }}
-                            transition={{ delay: 200 } as any}
-                            style={styles.valueProposition}
-                        >
-                            <Ionicons name="sparkles" size={16} color="#10B981" />
-                            <Text style={[styles.valueText, { color: isDarkMode ? '#10B981' : '#059669' }]}>
-                                {`Just ${currencySymbol}${monthlyEquivalent}/mo • Billed as ${totalPriceString}/3mo`}
-                            </Text>
-                        </MotiView>
-                    )}
 
                     <View style={styles.featuresList}>
                         {FEATURES.map((item, index) => (
@@ -282,6 +273,14 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                 </ScrollView>
 
                 <View style={styles.footer}>
+                    {billingCycle === 'semester' && (
+                        <View style={styles.valuePropositionFooter}>
+                            <Ionicons name="sparkles" size={16} color="#10B981" />
+                            <Text style={[styles.valueText, { color: isDarkMode ? '#10B981' : '#059669' }]}>
+                                3 months for just {currencySymbol}1.38/week
+                            </Text>
+                        </View>
+                    )}
                     <TouchableOpacity
                         style={[styles.actionButton, { backgroundColor: isDarkMode ? '#FFF' : '#000' }]}
                         onPress={handlePurchase}
@@ -293,16 +292,19 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                         ) : (
                             <View style={styles.buttonInnerCentric}>
                                 <Text style={[styles.buttonLabel, { color: isDarkMode ? '#000' : '#FFF' }]}>
-                                    {isOnboarding ? 'Start free trial' : 'Subscribe Now'}
+                                    {billingCycle === 'weekly' ? `Start 7-day trial for ${trialPriceString}` : 'Start Your Semester'}
                                 </Text>
                                 <Text style={[styles.buttonPriceInline, { color: '#F97316' }]}>
-                                    {totalPriceString}
+                                    {billingCycle === 'weekly' ? `then ${totalPriceString}/wk` : totalPriceString}
                                 </Text>
                             </View>
                         )}
                     </TouchableOpacity>
                     <Text style={[styles.legalNote, { color: isDarkMode ? '#71717A' : '#9CA3AF' }]}>
-                        {`Billed ${durationText}. Cancel anytime in App Store.`}
+                        {billingCycle === 'weekly'
+                            ? `Billed ${trialPriceString} today. After 7 days, billed ${totalPriceString} per week. Cancel anytime.`
+                            : `Billed ${totalPriceString} for 3 months. Plan continues at regular price. Cancel anytime in App Store.`
+                        }
                     </Text>
 
                     <View style={styles.legalLinks}>
@@ -374,10 +376,9 @@ const styles = StyleSheet.create({
     },
     toggleContainer: {
         flexDirection: 'row',
-        padding: 6,
-        borderRadius: 30, // More pill-like
-        marginBottom: 35,
-        width: '100%',
+        borderRadius: 24,
+        padding: 4,
+        marginBottom: 24,
     },
     toggleHalf: {
         flex: 1,
@@ -385,13 +386,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 24,
     },
+    toggleThird: {
+        flex: 1,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 20,
+    },
     toggleActive: {
-        backgroundColor: '#FFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 4,
+        backgroundColor: '#F97316',
+        shadowColor: '#F97316',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
     },
     toggleText: {
         fontSize: 15,
@@ -404,7 +412,6 @@ const styles = StyleSheet.create({
     toggleLabelRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
     },
     savingsBadge: {
         backgroundColor: '#F97316',
@@ -417,6 +424,19 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontFamily: 'Outfit-Bold',
     },
+    savingsBadgeMini: {
+        backgroundColor: '#10B981',
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        borderRadius: 4,
+        marginLeft: 4,
+    },
+    savingsBadgeTextMini: {
+        color: '#FFF',
+        fontSize: 8,
+        fontWeight: '800',
+        fontFamily: 'Nunito-Bold',
+    },
     valueProposition: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -424,6 +444,13 @@ const styles = StyleSheet.create({
         gap: 6,
         marginBottom: 24,
         marginTop: -15,
+    },
+    valuePropositionFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginBottom: 12,
     },
     valueText: {
         fontSize: 13,

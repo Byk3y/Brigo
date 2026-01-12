@@ -50,37 +50,37 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
         case 'trial_expired':
           return {
             emoji: '⏰',
-            title: 'Your 10-day trial has ended',
+            title: 'Your access has ended',
             message:
-              "Your trial period has expired. Upgrade to Premium to continue creating notebooks and unlock all features.",
+              "Unlock Pro for just $1.99 to continue creating notebooks and unlock all premium features.",
           };
         case 'quota_studio_exhausted':
           return {
             emoji: '🎴',
-            title: 'Studio limit reached',
+            title: 'Generation limit reached',
             message:
-              "You've used all 5 Studio generations (flashcards and quizzes) in your trial. Upgrade to Premium for unlimited generations!",
+              "You've used your included Studio generations. Upgrade to Pro for unlimited flashcards and quizzes!",
           };
         case 'quota_audio_exhausted':
           return {
             emoji: '🎧',
             title: 'Podcast limit reached',
             message:
-              "You've used all 3 podcasts in your trial. Upgrade to Premium for unlimited podcast summaries!",
+              "You've used your included podcasts. Upgrade to Pro for unlimited studio-quality audio summaries!",
           };
         case 'subscription_expired':
           return {
             emoji: '🔒',
             title: 'Subscription expired',
             message:
-              "Your subscription has expired. Upgrade to Premium to continue accessing all features.",
+              "Your subscription has expired. Upgrade to Pro to continue accessing all features.",
           };
         default:
           return {
             emoji: '🔒',
             title: 'Trial limit reached',
             message:
-              "You've reached your trial limit. Upgrade to Premium to create unlimited notebooks and unlock all features.",
+              "You've reached your trial limit. Upgrade to Pro to create unlimited notebooks and unlock all features.",
           };
       }
     }
@@ -90,28 +90,28 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
       case 'trial_expired':
         return {
           emoji: '🎉',
-          title: 'Your trial has ended',
+          title: 'Unlock more features',
           message:
-            "You've made amazing progress! Upgrade to Premium to continue using Smart Chat, Flashcards, and all your notebooks.",
+            "You've made amazing progress! Unlock Pro for just $1.99 to continue using Smart Chat, Flashcards, and all your notebooks.",
         };
       case 'create_attempt':
         return {
           emoji: '🔒',
-          title: 'Trial limit reached',
+          title: 'Upgrade required',
           message:
-            "You've reached your trial limit. Upgrade to Premium to unlock unlimited Smart Chat, Notebooks, and Podcasts.",
+            "Unlock Pro for just $1.99 to get unlimited Smart Chat, Notebooks, and Podcasts.",
         };
       case 'locked_notebook':
         return {
           emoji: '📚',
           title: 'Unlock all notebooks',
           message:
-            'Upgrade to Premium to access all your notebooks, unlock Mastery Gap Analysis, and continue deep-diving with Smart Chat.',
+            'Upgrade to Pro to access all your notebooks, unlock Mastery Gap Analysis, and continue deep-diving with Smart Chat.',
         };
       default:
         return {
           emoji: '⭐',
-          title: 'Upgrade to Premium',
+          title: 'Upgrade to Pro',
           message: 'Unlock Strategic Briefings, Mastery Gap Analysis, and unlimited Study Tools to conquer your exams.',
         };
     }

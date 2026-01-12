@@ -35,17 +35,6 @@ export const HomeHeader: React.FC = () => {
             <BrigoLogo size={38} textColor={colors.text} />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <TouchableOpacity
-                    onPress={() => router.push({ pathname: '/paywall', params: { source: 'onboarding' } })}
-                    style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        backgroundColor: '#F97316',
-                        borderRadius: 8,
-                    }}
-                >
-                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>DEBUG: PAYWALL</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
                     onPress={handleProfilePress}
                     activeOpacity={0.8}
                     style={{

@@ -31,10 +31,10 @@ export const petService = {
 
       if (data) {
         return {
-          stage: data.current_stage,
-          points: data.current_points,
+          stage: (data as any).current_stage || (data as any).stage,
+          points: (data as any).current_points || (data as any).points,
           name: data.name,
-          mood: data.mood,
+          mood: data.mood as any,
         };
       }
 
@@ -55,7 +55,23 @@ export const petService = {
   savePetState: async (userId: string, petState: PetState): Promise<void> => {
     try {
       // Calculate stage from points (always authoritative)
-      const calculatedStage = Math.floor(petState.points / 100) + 1;
+
+      // 1. Fetch current database state to prevent downgrading progress due to stale client state
+      const { data: existing } = await supabase
+        .from('pet_states')
+        .select('current_points' as any)
+        .eq('user_id', userId)
+        .single();
+
+      let pointsToSave = petState.points;
+
+      if (existing) {
+        const dbPoints = (existing as any).current_points || 0;
+        if (petState.points < dbPoints) {
+          console.warn(`[PetService] Progress protection: preventing downgrade from ${dbPoints} back to ${petState.points}. Using ${dbPoints}.`);
+          pointsToSave = dbPoints;
+        }
+      }
 
       // Create a timeout promise to prevent hanging the UI
       const timeoutPromise = new Promise((_, reject) =>
@@ -67,11 +83,11 @@ export const petService = {
         .upsert(
           {
             user_id: userId,
-            current_stage: calculatedStage,
-            current_points: petState.points,
+            current_stage: Math.floor(pointsToSave / 100) + 1,
+            current_points: pointsToSave,
             name: petState.name,
             mood: petState.mood,
-          },
+          } as any,
           {
             onConflict: 'user_id',
           }

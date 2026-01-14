@@ -47,7 +47,7 @@ export const createPetSlice: StateCreator<
   cachedPetSyncedAt: null,
   cachedPetUserId: null,
 
-  setPetState: async (updates) => {
+  setPetState: async (updates: Partial<PetState>) => {
     const { authUser } = get();
     if (!authUser) return;
 
@@ -93,7 +93,7 @@ export const createPetSlice: StateCreator<
     }
   },
 
-  addPetPoints: async (amount) => {
+  addPetPoints: async (amount: number) => {
     const { authUser } = get();
     const state = get();
 
@@ -198,6 +198,8 @@ export const createPetSlice: StateCreator<
   resetPetState: () => {
     // Reset active UI state to defaults
     // BUT preserve cache and cachedUserId so we can hydrate instantly on login
+    // NOTE: This does NOT call savePetState to the database, so it won't overwrite 
+    // unless a subsequent setPetState or addPetPoints is called before loading.
     set({
       petState: {
         stage: 1,

@@ -13,6 +13,7 @@ import { getRequiredEnv, getOptionalEnv } from '../_shared/env.ts';
 import { getCorsHeaders, getCorsPreflightHeaders } from '../_shared/cors.ts';
 import { checkRateLimit, RATE_LIMITS } from '../_shared/ratelimit.ts';
 import { initSentry, captureException, setUser } from '../_shared/sentry.ts';
+import { createSafeContext } from '../_shared/sanitization.ts';
 
 // Initialize Sentry
 initSentry();
@@ -88,7 +89,7 @@ Deno.serve(async (req) => {
     // 4. Fetch notebook and AUTHORIZE (verify ownership)
     const { data: notebook, error: notebookError } = await supabase
       .from('notebooks')
-      .select('id, user_id, title, material_id, meta')
+      .select('id, user_id, title, meta')
       .eq('id', notebook_id)
       .single();
 
@@ -154,29 +155,57 @@ Deno.serve(async (req) => {
 
     console.log(`Quota check passed. Remaining: ${quotaCheck.remaining}`);
 
-    // 6. Fetch material content and classification
-    const { data: material, error: materialError } = await supabase
+    // 6. Fetch ALL processed materials for this notebook (multi-material aware)
+    const { data: materials, error: materialsError } = await supabase
       .from('materials')
-      .select('content, kind, meta')
-      .eq('id', notebook.material_id)
-      .single();
+      .select('id, content, meta, kind')
+      .eq('notebook_id', notebook_id)
+      .eq('status', 'processed')
+      .order('created_at', { ascending: true });
 
-    if (materialError || !material?.content) {
-      console.error('Material not found or empty:', materialError);
+    if (materialsError) {
+      console.error('Error fetching materials:', materialsError);
       return new Response(
-        JSON.stringify({ error: 'Material content not found or empty' }),
+        JSON.stringify({ error: 'Failed to fetch materials' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Filter to materials with actual content
+    const processedMaterials = (materials || []).filter(m => m.content && m.content.length > 0);
+
+    if (processedMaterials.length === 0) {
+      console.error('No processed materials found for notebook:', notebook_id);
+      return new Response(
+        JSON.stringify({ error: 'No processed materials found. Please wait for content extraction to complete.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (material.content.length < 500) {
+    // Combine content from all materials using safe context wrapping
+    const combinedContent = processedMaterials.map((m, i) => {
+      const title = (m.meta as any)?.title || (m.meta as any)?.filename || `Source ${i + 1}`;
+      return createSafeContext(m.content || '', `SOURCE ${i + 1}: ${title} (${m.kind})`);
+    }).join('\n\n');
+
+    // Track source count for prompts
+    const sourceCount = processedMaterials.length;
+
+    // Build a unified material object for downstream code
+    const material = {
+      content: combinedContent,
+      kind: processedMaterials[0].kind,
+      meta: processedMaterials[0].meta,
+    };
+
+    if (combinedContent.length < 500) {
       return new Response(
-        JSON.stringify({ error: 'Material content too short (minimum 500 characters required)' }),
+        JSON.stringify({ error: 'Combined material content too short (minimum 500 characters required)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Material content length: ${material.content.length} chars`);
+    console.log(`Multi-material mode: ${processedMaterials.length} sources, combined ${combinedContent.length} chars`);
 
     // 6.5 Extract content classification from material meta
     const contentClassification = (material.meta as any)?.content_classification || {
@@ -283,6 +312,7 @@ Deno.serve(async (req) => {
             studyGoal: studyGoal,
             contentClassification: contentClassification,
             contentSummary: contentSummary,
+            sourceCount: sourceCount,
           });
 
           // Validate script

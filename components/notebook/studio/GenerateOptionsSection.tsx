@@ -15,6 +15,7 @@ interface GenerateOptionsSectionProps {
   onGenerateFlashcards: () => void;
   onGenerateQuiz: () => void;
   onGeneratePrediction: () => void;
+  isProcessingSources?: boolean;
 }
 
 export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
@@ -23,25 +24,31 @@ export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
   onGenerateFlashcards,
   onGenerateQuiz,
   onGeneratePrediction,
+  isProcessingSources = false,
 }) => {
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
 
-  const isDisabled = generatingType !== null;
+  const isDisabled = generatingType !== null || isProcessingSources;
 
   return (
     <View style={{ paddingHorizontal: 16, paddingVertical: 24 }}>
-      <Text
-        style={{
-          fontSize: 14,
-          fontWeight: '500',
-          color: colors.textSecondary,
-          marginBottom: 16,
-          paddingHorizontal: 8,
-        }}
-      >
-        Generate new
-      </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingHorizontal: 8 }}>
+        <Text
+          style={{
+            fontSize: 14,
+            fontWeight: '500',
+            color: colors.textSecondary,
+          }}
+        >
+          Generate new
+        </Text>
+        {isProcessingSources && (
+          <Text style={{ fontSize: 12, color: '#f59e0b', fontWeight: '600' }}>
+            Wait for sources...
+          </Text>
+        )}
+      </View>
 
       {/* Predict Questions Option */}
       <GenerateOption

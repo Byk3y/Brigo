@@ -31,10 +31,18 @@ import { useUpgrade } from '@/lib/hooks/useUpgrade';
 
 export default function NotebookDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const { user, flashcardsStudied, notebooks } = useStore();
-  const [activeTab, setActiveTab] = useState<TabType>('chat');
+  const [activeTab, setActiveTab] = useState<TabType>((tab as TabType) || 'chat');
   const [triggerQuizGeneration, setTriggerQuizGeneration] = useState(false);
+
+  // Set initial tab if provided in params
+  React.useEffect(() => {
+    if (tab && (tab === 'sources' || tab === 'chat' || tab === 'studio')) {
+      setActiveTab(tab as TabType);
+    }
+  }, [tab]);
+
 
   // Load notebook data
   const { notebook, loading, setNotebook } = useNotebookDetail(id);
@@ -206,6 +214,7 @@ export default function NotebookDetailScreen() {
         visible={showMaterialSelector}
         onClose={() => setShowMaterialSelector(false)}
         onSelectType={handleMaterialTypeSelected}
+        notebookId={id}
       />
 
       <TextInputModal

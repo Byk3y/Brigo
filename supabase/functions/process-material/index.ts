@@ -223,7 +223,34 @@ Deno.serve(async (req) => {
         extractMetadata || {}
       );
 
-      // STEP 3: Fetch ALL processed materials for this notebook to generate a combined preview
+      // STEP 3: Check if other materials are still processing
+      // Only generate preview when ALL materials are done (Last Material Triggers Preview pattern)
+      const pendingCount = await materialRepo.countPendingMaterials(notebookId, materialId);
+
+      if (pendingCount > 0) {
+        // Other materials still processing - defer preview generation to the last one
+        console.log(`[Preview Deferred] ${pendingCount} materials still processing. Skipping preview generation.`);
+
+        // Just update notebook status to show progress
+        await notebookRepo.updateStatus(notebookId, 'extracting');
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            materialId,
+            notebook_id: notebookId,
+            preview_deferred: true,
+            pending_materials: pendingCount,
+            message: `Material extracted. Preview deferred (${pendingCount} materials still processing).`,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // This is the LAST material - generate final preview for all sources
+      console.log('[Preview Generation] This is the last material. Generating combined preview...');
+
+      // STEP 4: Fetch ALL processed materials for this notebook to generate a combined preview
       const allMaterials = await materialRepo.findAllProcessedByNotebook(notebookId);
 
       let combinedContent = "";
@@ -238,8 +265,8 @@ Deno.serve(async (req) => {
         combinedContent = extractedContent; // Fallback to current
       }
 
-      // STEP 4: Generate AI title and preview based on COMBINED content
-      console.log('Generating AI title and preview from combined sources...');
+      // STEP 5: Generate AI title and preview based on COMBINED content
+      console.log(`Generating AI title and preview from ${allMaterials?.length || 1} combined sources...`);
       const previewStartTime = Date.now();
 
       const previewGenerator = new PreviewGenerator();
@@ -252,7 +279,7 @@ Deno.serve(async (req) => {
       console.log(`AI title and preview generated in ${previewLatency}ms`);
       console.log(`Content classified as: ${contentClassification.type} (${contentClassification.exam_relevance} exam relevance)`);
 
-      // STEP 4.5: Build content summary from ALL materials in this notebook for multi-material awareness
+      // STEP 5.5: Build content summary from ALL materials in this notebook for multi-material awareness
       const updatedMaterials = await materialRepo.findAllByNotebook(notebookId);
 
       const materialClassifications = (updatedMaterials || [])
@@ -278,7 +305,7 @@ Deno.serve(async (req) => {
 
       console.log(`Content summary: ${contentSummary.material_count} materials, has_past_paper: ${contentSummary.has_past_paper}, has_notes: ${contentSummary.has_notes}`);
 
-      // STEP 5, 6, 7: Update records and log usage in parallel (Turbo-Boost)
+      // STEP 6, 7, 8: Update records and log usage in parallel (Turbo-Boost)
       console.log('Finalizing database updates...');
       await Promise.all([
         // Update material with preview
@@ -304,7 +331,7 @@ Deno.serve(async (req) => {
           .catch(err => console.error('[UsageLogger] Non-critical logging failure:', err))
       ]);
 
-      console.log('Material processed successfully');
+      console.log('Material processed successfully - Final preview generated');
 
       return new Response(
         JSON.stringify({
@@ -312,7 +339,8 @@ Deno.serve(async (req) => {
           materialId,
           notebook_id: notebookId,
           preview,
-          message: 'Material processed and preview generated',
+          sources_count: allMaterials?.length || 1,
+          message: 'Material processed and final preview generated',
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

@@ -10,7 +10,7 @@ import { getRequiredEnv, getOptionalEnv } from '../_shared/env.ts';
 import { getCorsHeaders, getCorsPreflightHeaders } from '../_shared/cors.ts';
 import { checkRateLimit, RATE_LIMITS } from '../_shared/ratelimit.ts';
 import { validateUUID, validateContentType } from '../_shared/validation.ts';
-import { sanitizeForLLM, sanitizeTitle } from '../_shared/sanitization.ts';
+import { sanitizeForLLM, sanitizeTitle, createSafeContext } from '../_shared/sanitization.ts';
 import { validateFlashcardsResponse, validateQuizResponse } from '../_shared/llm-validation.ts';
 import { initSentry, captureException, setUser } from '../_shared/sentry.ts';
 
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
     // 4. Fetch notebook and AUTHORIZE (verify ownership)
     const { data: notebook, error: notebookError } = await supabase
       .from('notebooks')
-      .select('id, user_id, title, material_id, meta')
+      .select('id, user_id, title, meta')
       .eq('id', notebook_id)
       .single();
 
@@ -169,29 +169,56 @@ Deno.serve(async (req) => {
 
     console.log(`Quota check passed. Remaining: ${quotaCheck.remaining}`);
 
-    // 6. Fetch material content and classification
-    const { data: material, error: materialError } = await supabase
+    // 6. Fetch ALL processed materials for this notebook (multi-material aware)
+    const { data: materials, error: materialsError } = await supabase
       .from('materials')
-      .select('content, meta')
-      .eq('id', notebook.material_id)
-      .single();
+      .select('id, content, meta, kind')
+      .eq('notebook_id', notebook_id)
+      .eq('status', 'processed')
+      .order('created_at', { ascending: true });
 
-    if (materialError || !material?.content) {
-      console.error('Material not found or empty:', materialError);
+    if (materialsError) {
+      console.error('Error fetching materials:', materialsError);
       return new Response(
-        JSON.stringify({ error: 'Material content not found or empty' }),
+        JSON.stringify({ error: 'Failed to fetch materials' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Filter to materials with actual content
+    const processedMaterials = (materials || []).filter(m => m.content && m.content.length > 0);
+
+    if (processedMaterials.length === 0) {
+      console.error('No processed materials found for notebook:', notebook_id);
+      return new Response(
+        JSON.stringify({ error: 'No processed materials found. Please wait for content extraction to complete.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (material.content.length < 500) {
+    // Combine content from all materials using safe context wrapping
+    const combinedContent = processedMaterials.map((m, i) => {
+      const title = (m.meta as any)?.title || (m.meta as any)?.filename || `Source ${i + 1}`;
+      return createSafeContext(m.content || '', `SOURCE ${i + 1}: ${title} (${m.kind})`);
+    }).join('\n\n');
+
+    // Track source count for prompts
+    const sourceCount = processedMaterials.length;
+
+    // Use the first material's meta for classification as a base
+    const material = {
+      content: combinedContent,
+      meta: processedMaterials[0].meta,
+    };
+
+    if (combinedContent.length < 500) {
       return new Response(
-        JSON.stringify({ error: 'Material content too short (minimum 500 characters required)' }),
+        JSON.stringify({ error: 'Combined material content too short (minimum 500 characters required)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Material content length: ${material.content.length} chars`);
+    console.log(`Multi-material mode: ${processedMaterials.length} sources, combined ${combinedContent.length} chars`);
 
     // 6.5 Extract content classification from material meta
     const contentClassification = (material.meta as any)?.content_classification || {
@@ -241,9 +268,9 @@ Deno.serve(async (req) => {
       preserveNewlines: true,
     });
 
-    // 8. Generate content via LLM (with content classification, summary, and study goal for adaptive behavior)
-    const systemPrompt = getSystemPrompt(sanitizedContentType, quantity, educationLevel, ageBracket, contentClassification, contentSummary, studyGoal);
-    const userPrompt = getUserPrompt(sanitizedContentType, quantity, sanitizedNotebookTitle, sanitizedMaterialContent);
+    // 8. Generate content via LLM (with content classification, summary, study goal, and source count)
+    const systemPrompt = getSystemPrompt(sanitizedContentType, quantity, educationLevel, ageBracket, contentClassification, contentSummary, studyGoal, sourceCount);
+    const userPrompt = getUserPrompt(sanitizedContentType, quantity, sanitizedNotebookTitle, sanitizedMaterialContent, sourceCount);
 
     console.log('Calling LLM...');
     const llmResult = await callLLMWithRetry(
@@ -514,15 +541,16 @@ function getSystemPrompt(
   ageBracket: string,
   contentClassification?: ContentClassification,
   contentSummary?: ContentSummary,
-  studyGoal: 'exam_prep' | 'retention' | 'quick_review' | 'all' = 'all'
+  studyGoal: 'exam_prep' | 'retention' | 'quick_review' | 'all' = 'all',
+  sourceCount: number = 1
 ): string {
   const isPastPaper = contentClassification?.type === 'past_paper';
   const subjectArea = contentClassification?.subject_area || contentSummary?.primary_subject || 'this subject';
   const examFormat = contentClassification?.detected_format;
   const examRelevance = contentSummary?.exam_relevance || contentClassification?.exam_relevance || 'medium';
 
-  // Multi-material mode: notebook has BOTH notes AND past paper
-  const isMultiMaterial = contentSummary && contentSummary.material_count > 1;
+  // Multi-material mode: notebook has multiple sources
+  const isMultiMaterial = sourceCount > 1 || (contentSummary && contentSummary.material_count > 1);
   const hasMixedContent = contentSummary?.has_past_paper && contentSummary?.has_notes;
 
   // HYBRID MODE LOGIC: Combine user goal with content classification
@@ -692,26 +720,27 @@ function getUserPrompt(
   contentType: string,
   count: number,
   notebookTitle: string,
-  materialContent: string
+  materialContent: string,
+  sourceCount: number = 1
 ): string {
   if (contentType === 'flashcards') {
-    return `Generate ${count} flashcards from this study material.
+    return `Generate ${count} flashcards from ${sourceCount > 1 ? `these ${sourceCount} study sources` : 'this study material'}.
 
 Material Title: ${notebookTitle}
 
-Material Content:
+${sourceCount > 1 ? 'Sources Context' : 'Material Content'}:
 ${materialContent}
 
-Generate exactly ${count} flashcards covering all major topics in the material. Return ONLY the JSON response, no other text.`;
+${sourceCount > 1 ? `Analyze content from all ${sourceCount} sources, identify key topics across sources, and ` : ''}Generate exactly ${count} flashcards covering all major topics. Return ONLY the JSON response, no other text.`;
   } else {
-    return `Generate a ${count}-question quiz from this study material.
+    return `Generate a ${count}-question quiz from ${sourceCount > 1 ? `these ${sourceCount} study sources` : 'this study material'}.
 
 Material Title: ${notebookTitle}
 
-Material Content:
+${sourceCount > 1 ? 'Sources Context' : 'Material Content'}:
 ${materialContent}
 
-Generate exactly ${count} quiz questions covering all major topics. Return ONLY the JSON response, no other text.`;
+${sourceCount > 1 ? `Analyze content from all ${sourceCount} sources, identify recurring topics, and ` : ''}Generate exactly ${count} quiz questions covering all major topics. Return ONLY the JSON response, no other text.`;
   }
 }
 

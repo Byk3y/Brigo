@@ -119,6 +119,35 @@ export class MaterialRepository {
 
     return data || [];
   }
+
+  /**
+   * Count materials that are still processing (not yet completed)
+   * Used to determine if this is the last material in a batch
+   * 
+   * @param notebookId - The notebook ID to check
+   * @param excludeMaterialId - Optional material ID to exclude from count (current material)
+   * @returns Number of materials still processing
+   */
+  async countPendingMaterials(notebookId: string, excludeMaterialId?: string): Promise<number> {
+    let query = this.supabase
+      .from('materials')
+      .select('id', { count: 'exact', head: true })
+      .eq('notebook_id', notebookId)
+      .eq('status', 'processing');
+
+    if (excludeMaterialId) {
+      query = query.neq('id', excludeMaterialId);
+    }
+
+    const { count, error } = await query;
+
+    if (error) {
+      console.error('[MaterialRepository] Error counting pending materials:', error);
+      return 0; // Default to 0 to allow preview generation on error
+    }
+
+    return count || 0;
+  }
 }
 
 /**

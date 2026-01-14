@@ -31,6 +31,7 @@ export interface ScriptGenerationConfig {
     exam_relevance: 'high' | 'medium' | 'low';
     primary_subject?: string;
   };
+  sourceCount?: number; // Number of sources being analyzed
 }
 
 export interface GeneratedScript {
@@ -172,7 +173,8 @@ async function generateDialogueScript(
   ageBracket: string = '25_34',
   contentClassification?: ScriptGenerationConfig['contentClassification'],
   contentSummary?: ScriptGenerationConfig['contentSummary'],
-  studyGoal?: ScriptGenerationConfig['studyGoal']
+  studyGoal?: ScriptGenerationConfig['studyGoal'],
+  sourceCount: number = 1
 ): Promise<{ script: string; tokens: number; speakerMap: Record<string, string> }> {
   console.log(`[Script Generator] Stage 2: Generating dialogue with Brigo and ${petName}...`);
 
@@ -186,6 +188,7 @@ async function generateDialogueScript(
   const kindDescriptor = materialKind ? `the ${materialKind}` : 'the material';
   const isPastPaper = contentClassification?.type === 'past_paper' || contentSummary?.has_past_paper;
   const hasMixedContent = contentSummary?.has_past_paper && contentSummary?.has_notes;
+  const isMultiSource = sourceCount > 1;
   const subjectArea = contentClassification?.subject_area || contentSummary?.primary_subject || 'this subject';
   const examRelevance = contentSummary?.exam_relevance || contentClassification?.exam_relevance || 'medium';
 
@@ -203,7 +206,9 @@ async function generateDialogueScript(
 
   // Adapt intro based on content type AND study goal
   let introRitual: string;
-  if (hasMixedContent) {
+  if (isMultiSource && !hasMixedContent) {
+    introRitual = `${brigoName}: Welcome back. I'm ${brigoName}, and ${petName} is here. Today we're covering ${notebookTitle} using ${sourceCount} different sources, so let's see what they all agree on and where they differ.`;
+  } else if (hasMixedContent) {
     introRitual = `${brigoName}: Welcome back. I'm ${brigoName}, and ${petName} is here. Today we've got your notes AND a past paper on ${notebookTitle}, so let's connect the theory to what matters most.`;
   } else if (isPastPaper) {
     introRitual = `${brigoName}: Welcome back. I'm ${brigoName}, and ${petName} is here to help me walk you through this ${subjectArea} past paper.`;
@@ -215,7 +220,15 @@ async function generateDialogueScript(
 
   // Content-aware instructions based on mode
   let modeInstructions = '';
-  if (hasMixedContent) {
+  if (isMultiSource && !hasMixedContent) {
+    modeInstructions = `
+MULTI-SOURCE MODE:
+- You're analyzing ${sourceCount} different sources on the same topic
+- Look for themes that appear across multiple sources
+- When sources agree: "All ${sourceCount} sources mention this..." or "This keeps coming up..."
+- When sources differ: "Interestingly, one source emphasizes X while another focuses on Y..."
+- Synthesize the key takeaways that emerge from combining these sources`;
+  } else if (hasMixedContent) {
     modeInstructions = `
 MULTI-SOURCE MODE:
 - Bridge concepts from notes with exam patterns from the past paper
@@ -330,7 +343,8 @@ export async function generatePodcastScript(
       config.ageBracket,
       config.contentClassification,
       config.contentSummary,
-      config.studyGoal
+      config.studyGoal,
+      config.sourceCount || 1
     );
 
     const totalTokens = stage1Tokens + stage2Tokens;

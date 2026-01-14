@@ -34,6 +34,15 @@ export const useAudioGeneration = (
             setActiveJobs(prev => {
                 const updated = new Set(prev);
                 updated.delete(id);
+
+                // Update generating type based on remaining jobs
+                const hasAudio = Array.from(updated).some(jid => jid.startsWith('audio_'));
+                const hasPred = Array.from(updated).some(jid => jid.startsWith('pred_'));
+
+                if (hasAudio) setGeneratingType('audio');
+                else if (hasPred) setGeneratingType('prediction');
+                else setGeneratingType(null);
+
                 return updated;
             });
         } else {
@@ -41,6 +50,7 @@ export const useAudioGeneration = (
             pollIntervalsRef.current.forEach(interval => clearInterval(interval));
             pollIntervalsRef.current.clear();
             setActiveJobs(new Set());
+            setGeneratingType(null);
         }
     }, []);
 
@@ -51,23 +61,16 @@ export const useAudioGeneration = (
         );
     }, [activeJobs]);
 
-    // sync generatingType with activeJobs
+    // sync generatingType with activeJobs (Addition only, cleanup is handled in stopPolling)
     useEffect(() => {
-        if (activeJobs.size === 0) {
-            // If no active background jobs, but generatingType was set manually (e.g. flashcards/quiz)
-            // we don't want to overwrite it to null yet unless it's audio/prediction
-            if (generatingType === 'audio' || generatingType === 'prediction') {
-                setGeneratingType(null);
-            }
-            return;
-        }
+        if (activeJobs.size === 0) return;
 
         const hasAudio = isJobTypeRunning('audio');
         const hasPred = isJobTypeRunning('prediction');
 
         if (hasAudio) setGeneratingType('audio');
         else if (hasPred) setGeneratingType('prediction');
-    }, [activeJobs, isJobTypeRunning, generatingType]);
+    }, [activeJobs, isJobTypeRunning]);
 
     const startAudioPolling = useCallback((overviewId: string) => {
         const jobId = `audio_${overviewId}`;

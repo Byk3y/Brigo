@@ -10,7 +10,7 @@ import { getRequiredEnv, getOptionalEnv } from '../_shared/env.ts';
 import { getCorsHeaders, getCorsPreflightHeaders } from '../_shared/cors.ts';
 import { checkRateLimit, RATE_LIMITS } from '../_shared/ratelimit.ts';
 import { validateUUID } from '../_shared/validation.ts';
-import { sanitizeForLLM, sanitizeTitle } from '../_shared/sanitization.ts';
+import { sanitizeForLLM, sanitizeTitle, createSafeContext } from '../_shared/sanitization.ts';
 import { validatePredictionResponse } from '../_shared/llm-validation.ts';
 import { initSentry, captureException, setUser } from '../_shared/sentry.ts';
 
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
         // 4. Fetch notebook and AUTHORIZE (verify ownership)
         const { data: notebook, error: notebookError } = await supabase
             .from('notebooks')
-            .select('id, user_id, title, material_id, meta')
+            .select('id, user_id, title, meta')
             .eq('id', notebook_id)
             .single();
 
@@ -154,29 +154,54 @@ Deno.serve(async (req) => {
 
         console.log(`Quota check passed. Remaining: ${quotaCheck.remaining}`);
 
-        // 6. Fetch material content and classification
-        const { data: material, error: materialError } = await supabase
+        // 6. Fetch ALL processed materials for this notebook (multi-material aware)
+        const { data: materials, error: materialsError } = await supabase
             .from('materials')
-            .select('content, meta')
-            .eq('id', notebook.material_id)
-            .single();
+            .select('id, content, meta, kind')
+            .eq('notebook_id', notebook_id)
+            .eq('status', 'processed')
+            .order('created_at', { ascending: true });
 
-        if (materialError || !material?.content) {
-            console.error('Material not found or empty:', materialError);
+        if (materialsError) {
+            console.error('Error fetching materials:', materialsError);
             return new Response(
-                JSON.stringify({ error: 'Material content not found or empty' }),
+                JSON.stringify({ error: 'Failed to fetch materials' }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
+        // Filter to materials with actual content
+        const processedMaterials = (materials || []).filter(m => m.content && m.content.length > 0);
+
+        if (processedMaterials.length === 0) {
+            console.error('No processed materials found for notebook:', notebook_id);
+            return new Response(
+                JSON.stringify({ error: 'No processed materials found. Please wait for content extraction to complete.' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        if (material.content.length < 500) {
+        // Combine content from all materials (for multi-source notebooks)
+        const combinedContent = processedMaterials.map((m, i) => {
+            const title = (m.meta as any)?.title || (m.meta as any)?.filename || `Source ${i + 1}`;
+            return createSafeContext(m.content || '', `SOURCE ${i + 1}: ${title} (${m.kind})`);
+        }).join('\n\n');
+
+        // Use the first material's meta for classification as a base, 
+        // but the prompt now knows there are multiple sources.
+        const material = {
+            content: combinedContent,
+            meta: processedMaterials[0].meta,
+        };
+
+        if (combinedContent.length < 500) {
             return new Response(
-                JSON.stringify({ error: 'Material content too short (minimum 500 characters required)' }),
+                JSON.stringify({ error: 'Combined material content too short (minimum 500 characters required)' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        console.log(`Material content length: ${material.content.length} chars`);
+        console.log(`Multi-material mode: ${processedMaterials.length} sources, combined ${combinedContent.length} chars`);
 
         // 6.5 Extract content classification from material meta
         const contentClassification = (material.meta as any)?.content_classification || {
@@ -252,8 +277,13 @@ Deno.serve(async (req) => {
                 });
 
                 // Generate prediction via LLM
-                const systemPrompt = getPredictionSystemPrompt(educationLevel, subjectArea, contentClassification);
-                const userPrompt = getPredictionUserPrompt(sanitizedNotebookTitle, sanitizedMaterialContent);
+                const systemPrompt = getPredictionSystemPrompt(
+                    educationLevel,
+                    subjectArea,
+                    contentClassification,
+                    processedMaterials.length
+                );
+                const userPrompt = getPredictionUserPrompt(sanitizedNotebookTitle, sanitizedMaterialContent, processedMaterials.length);
 
                 const llmResult = await callLLMWithRetry(
                     'studio',
@@ -282,8 +312,14 @@ Deno.serve(async (req) => {
                         status: 'completed',
                         title: parsed.title || initialPrediction.title,
                         report_data: {
-                            summary: parsed.summary,
-                            topics: parsed.topics,
+                            summary: {
+                                ...parsed.summary,
+                                papers_analyzed: processedMaterials.length,
+                            },
+                            topics: (parsed.topics || []).map((t: any) => ({
+                                ...t,
+                                total_papers: processedMaterials.length
+                            })),
                             predictions: parsed.predictions,
                         },
                     })
@@ -384,7 +420,8 @@ interface ContentClassification {
 function getPredictionSystemPrompt(
     educationLevel: string,
     subjectArea: string,
-    contentClassification: ContentClassification
+    contentClassification: ContentClassification,
+    sourceCount: number
 ): string {
     const isPastPaper = contentClassification.type === 'past_paper';
     const detectedFormat = contentClassification.detected_format;
@@ -419,7 +456,7 @@ OUTPUT FORMAT (JSON only):
 {
   "title": "Exam Predictions: [Subject/Topic]",
   "summary": {
-    "papers_analyzed": 1,
+    "papers_analyzed": ${sourceCount},
     "exam_structure": {
       "mcq": <number>,
       "short_answer": <number>,
@@ -430,7 +467,7 @@ OUTPUT FORMAT (JSON only):
     {
       "name": "Topic Name",
       "frequency": <1-10 scale>,
-      "total_papers": 1,
+      "total_papers": ${sourceCount},
       "likelihood": "high|medium|low",
       "trend": "increasing|stable|decreasing"
     }
@@ -462,14 +499,15 @@ CRITICAL: Return ONLY valid JSON, no other text.`;
  */
 function getPredictionUserPrompt(
     notebookTitle: string,
-    materialContent: string
+    materialContent: string,
+    sourceCount: number
 ): string {
-    return `Analyze this study material and generate exam predictions.
+    return `Analyze these ${sourceCount} study sources and generate exam predictions.
 
 Material Title: ${notebookTitle}
 
-Material Content:
+Sources Context:
 ${materialContent}
 
-Analyze the content, identify key topics, and predict the most likely exam questions with complete answers. Return ONLY the JSON response.`;
+Analyze the content from all ${sourceCount} sources, identify recurring key topics, and predict the most likely exam questions with complete answers. Return ONLY the JSON response.`;
 }

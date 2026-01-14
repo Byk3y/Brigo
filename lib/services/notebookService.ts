@@ -58,7 +58,7 @@ export const notebookService = {
                 title: m.meta?.title || nb.title,
                 createdAt: m.created_at,
                 processed: !!m.processed,
-                status: m.status || 'processing',
+                status: (m.status as Material['status']) || 'processing',
                 thumbnail: m.thumbnail,
                 meta: m.meta,
             })),
@@ -75,52 +75,12 @@ export const notebookService = {
         }
     ) => {
         try {
-            // Generating a unique material ID manually for path predictability
-            // Must be a valid UUID for the DB schema
-            const materialId = uuidv4();
-
-            // Step 1: Pre-calculate storage path if there's a file
-            let storagePath: string | undefined;
-            const isFileUpload = !!(notebook.material?.fileUri && notebook.material?.filename);
-
-            if (isFileUpload) {
-                // We use a predictable path so we can insert the record BEFORE uploading
-                const sanitizedFilename = storageService.sanitizeFilename(notebook.material!.filename!);
-                storagePath = `${userId}/${materialId}/${sanitizedFilename}`;
-            }
-
-            // Step 2: Create material record FIRST (Fast)
-            const materialData: any = {
-                id: materialId,
-                user_id: userId,
-                kind: notebook.material?.type || 'text',
-                storage_path: storagePath,
-                external_url: notebook.material?.uri?.startsWith('http')
-                    ? notebook.material.uri
-                    : null,
-                content: isFileUpload ? null : notebook.material?.content,
-                processed: false,
-                status: 'processing',
-                processed_at: null,
-            };
-
-            const { data: material, error: materialError } = await supabase
-                .from('materials')
-                .insert(materialData)
-                .select()
-                .single();
-
-            if (materialError) {
-                throw materialError;
-            }
-
-            // Step 3: Create notebook record (Fast)
+            // Step 1: Create notebook record FIRST (Clean flow)
             const notebookData: any = {
                 user_id: userId,
-                material_id: material.id,
                 title: notebook.title,
                 color: notebook.color,
-                status: 'extracting',
+                status: 'extracting', // Initially extracting if material is present
                 meta: {},
                 flashcard_count: notebook.flashcardCount || 0,
                 progress: notebook.progress || 0,
@@ -129,21 +89,66 @@ export const notebookService = {
             const { data: newNotebook, error: notebookError } = await supabase
                 .from('notebooks')
                 .insert(notebookData)
-                .select(`
-                    *,
-                    materials!materials_notebook_id_fkey (*)
-                `)
+                .select()
                 .single();
 
             if (notebookError) {
                 throw notebookError;
             }
 
-            // Step 4: Link material to notebook (Fast)
-            await supabase
-                .from('materials')
-                .update({ notebook_id: newNotebook.id })
-                .eq('id', material.id);
+            // Step 2: Handle material if provided
+            let material;
+            let isFileUpload = false;
+            let storagePath;
+
+            if (notebook.material) {
+                const materialId = uuidv4();
+                isFileUpload = !!(notebook.material.fileUri && notebook.material.filename);
+
+                if (isFileUpload) {
+                    const sanitizedFilename = storageService.sanitizeFilename(notebook.material.filename!);
+                    storagePath = `${userId}/${materialId}/${sanitizedFilename}`;
+                }
+
+                const materialData: any = {
+                    id: materialId,
+                    user_id: userId,
+                    notebook_id: newNotebook.id, // Direct link!
+                    kind: notebook.material.type || 'text',
+                    storage_path: storagePath,
+                    external_url: notebook.material.uri?.startsWith('http')
+                        ? notebook.material.uri
+                        : null,
+                    content: isFileUpload ? null : notebook.material.content,
+                    processed: false,
+                    status: 'processing',
+                    processed_at: null,
+                };
+
+                const { data: createdMaterial, error: materialError } = await supabase
+                    .from('materials')
+                    .insert(materialData)
+                    .select()
+                    .single();
+
+                if (materialError) {
+                    // Cleanup notebook if material creation fails? 
+                    // Better to just let it exist or handle recovery
+                    throw materialError;
+                }
+
+                material = createdMaterial;
+
+                // Step 3: Backward compatibility - Set the "primary" material_id on the notebook
+                // This keeps existing queries like `notebooks.material_id` working for now.
+                await supabase
+                    .from('notebooks')
+                    .update({ material_id: material.id })
+                    .eq('id', newNotebook.id);
+            } else {
+                // If no material, set status to 'ready' or similar if applicable
+                // For now, keep as 'extracting' if the intention is to add materials later
+            }
 
             // Step 5: Optimization - Return early so UI can navigate
             // The caller (Store/Hook) will handle the background upload and processing.
@@ -416,62 +421,67 @@ export const notebookService = {
 
     deleteNotebook: async (userId: string, notebookId: string) => {
         try {
-            // Step 1: Fetch notebook with material to get storage path
+            // Step 1: Fetch notebook with materials AND audio overviews to get storage paths
             const { data: notebook, error: fetchError } = await supabase
                 .from('notebooks')
                 .select(`
-          *,
-          materials!materials_notebook_id_fkey (*)
-        `)
+                    id,
+                    materials!materials_notebook_id_fkey (id, storage_path),
+                    audio_overviews!audio_overviews_notebook_id_fkey (id, storage_path)
+                `)
                 .eq('id', notebookId)
                 .eq('user_id', userId)
                 .single();
 
             if (fetchError || !notebook) {
-                await handleError(fetchError || new Error('Notebook not found'), {
-                    operation: 'delete_notebook_fetch',
-                    component: 'notebook-service',
-                    userId,
-                    metadata: { notebookId, userId }
-                });
+                console.warn('[NotebookService] Notebook not found or fetch error during deletion:', fetchError);
+                // Still try to delete from notebook table just in case it exists but fetch failed
+                await supabase.from('notebooks').delete().eq('id', notebookId).eq('user_id', userId);
                 return;
             }
 
-            const materials = notebook.materials as any;
-            const material = Array.isArray(materials) ? materials[0] : materials;
-
-            // Step 2: Delete storage file if it exists
-            if (material?.storage_path) {
-                const { error } = await storageService.deleteFile(material.storage_path);
-                if (error) {
-                    // Error already handled by storageService
+            // Step 2: Delete storage files for all materials
+            const materials = (notebook.materials as any[]) || [];
+            for (const material of materials) {
+                if (material.storage_path) {
+                    await storageService.deleteFile(material.storage_path).catch(e =>
+                        console.error('[NotebookService] Failed to delete material storage:', e)
+                    );
                 }
             }
 
-            // Step 3: Delete material (cascades)
-            if (material?.id) {
-                const { error: deleteError } = await supabase
-                    .from('materials')
-                    .delete()
-                    .eq('id', material.id)
-                    .eq('user_id', userId);
-
-                if (deleteError) {
-                    await handleError(deleteError, {
-                        operation: 'delete_notebook_material',
-                        component: 'notebook-service',
-                        userId,
-                        metadata: { notebookId, materialId: material?.id }
-                    });
-                    return;
+            // Step 3: Delete storage files for all audio overviews
+            const audioOverviews = (notebook.audio_overviews as any[]) || [];
+            for (const audio of audioOverviews) {
+                if (audio.storage_path) {
+                    await storageService.deleteFile(audio.storage_path).catch(e =>
+                        console.error('[NotebookService] Failed to delete audio storage:', e)
+                    );
                 }
+            }
+
+            // Step 4: Delete the notebook record (Cascades to materials, studio_flashcard_sets, studio_quizzes, etc.)
+            const { error: deleteError } = await supabase
+                .from('notebooks')
+                .delete()
+                .eq('id', notebookId)
+                .eq('user_id', userId);
+
+            if (deleteError) {
+                const appError = await handleError(deleteError, {
+                    operation: 'delete_notebook_record',
+                    component: 'notebook-service',
+                    userId,
+                    metadata: { notebookId }
+                });
+                throw appError;
             }
         } catch (error) {
             const appError = await handleError(error, {
-                operation: 'delete_notebook',
+                operation: 'delete_notebook_fatal',
                 component: 'notebook-service',
                 userId,
-                metadata: { notebookId, userId }
+                metadata: { notebookId }
             });
             throw appError;
         }
@@ -573,6 +583,7 @@ export const notebookService = {
                     preview_text: m.preview_text || undefined,
                     title: m.meta?.title || data.title,
                     createdAt: m.created_at || new Date().toISOString(),
+                    status: (m.status as Material['status']) || 'processing',
                     processed: !!m.processed,
                     thumbnail: m.thumbnail || undefined,
                     meta: m.meta,

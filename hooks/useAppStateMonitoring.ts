@@ -41,7 +41,7 @@ export function useAppStateMonitoring() {
           const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
           const { data: stuckNotebooks, error } = await supabase
             .from('notebooks')
-            .select('id, material_id')
+            .select('id')
             .eq('user_id', currentAuthUser.id)
             .eq('status', 'extracting')
             .lt('updated_at', threeMinutesAgo);
@@ -54,6 +54,22 @@ export function useAppStateMonitoring() {
           if (stuckNotebooks && stuckNotebooks.length > 0) {
             // Retry Edge Function for each stuck notebook
             for (const notebook of stuckNotebooks) {
+              // Find the first unprocessed material for this notebook (multi-material aware)
+              const { data: unprocessedMaterial } = await supabase
+                .from('materials')
+                .select('id')
+                .eq('notebook_id', notebook.id)
+                .neq('status', 'processed')
+                .order('created_at', { ascending: true })
+                .limit(1)
+                .single();
+
+              // Skip if no unprocessed materials found (notebook might be in weird state)
+              if (!unprocessedMaterial) {
+                console.warn('[AppState] No unprocessed material found for stuck notebook:', notebook.id);
+                continue;
+              }
+
               // Create timeout promise
               const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Retry timeout after 60s')), 60000)
@@ -62,7 +78,7 @@ export function useAppStateMonitoring() {
               // Retry Edge Function invocation
               Promise.race([
                 supabase.functions.invoke('process-material', {
-                  body: { material_id: notebook.material_id },
+                  body: { material_id: unprocessedMaterial.id },
                 }),
                 timeoutPromise,
               ])

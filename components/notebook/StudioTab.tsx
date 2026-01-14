@@ -29,6 +29,7 @@ interface StudioTabProps {
 
 export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }) => {
   const isExtracting = notebook.status === 'extracting';
+  const isProcessingSources = notebook.materials?.some(m => m.status === 'processing') || false;
 
   // Theme
   const { isDarkMode } = useTheme();
@@ -132,6 +133,7 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
           onGenerateFlashcards={handleGenerateFlashcards}
           onGenerateQuiz={handleGenerateQuiz}
           onGeneratePrediction={handleGeneratePrediction}
+          isProcessingSources={isProcessingSources}
         />
 
         {/* Generated Media Section */}

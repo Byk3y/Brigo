@@ -3,8 +3,8 @@
  * Shows loading state during extraction, preview when ready
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, Alert, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import type { Notebook, Material } from '@/lib/store';
@@ -14,6 +14,7 @@ import { useTheme, getThemeColors, getThemeShadows } from '@/lib/ThemeContext';
 import { HomeActionButtons } from '@/components/home/HomeActionButtons';
 import { TikTokLoader } from '@/components/TikTokLoader';
 import { useStore } from '@/lib/store';
+import { supabase } from '@/lib/supabase';
 
 interface SourcesTabProps {
   notebook: Notebook;
@@ -36,11 +37,74 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
   const shadows = getThemeShadows(isDarkMode);
   const { loadNotebooks } = useStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Navigation lock to prevent double-tap opening source twice
+  const isNavigatingRef = useRef(false);
 
   const handleManualRefresh = async () => {
     setRefreshing(true);
     await loadNotebooks();
     setRefreshing(false);
+  };
+
+  const handleDeleteSource = async (materialId: string, materialTitle: string) => {
+    Alert.alert(
+      'Delete Source',
+      `Are you sure you want to delete "${materialTitle}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingId(materialId);
+
+              // SECURITY: Get current user to verify ownership
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) {
+                throw new Error('Not authenticated');
+              }
+
+              // SECURITY: Only delete if material belongs to current user
+              const { error } = await supabase
+                .from('materials')
+                .delete()
+                .eq('id', materialId)
+                .eq('user_id', user.id);  // IDOR Prevention
+
+              if (error) throw error;
+
+              // Refresh notebooks to reflect the deletion
+              await loadNotebooks();
+            } catch (err) {
+              console.error('Failed to delete source:', err);
+              Alert.alert('Error', 'Failed to delete source. Please try again.');
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleMenuPress = () => {
+    if (notebook.materials && notebook.materials.length > 0) {
+      setShowMenu(true);
+    }
+  };
+
+  const handleDeleteModeToggle = () => {
+    setShowMenu(false);
+    setIsDeleteMode(true);
+  };
+
+  const handleExitDeleteMode = () => {
+    setIsDeleteMode(false);
   };
 
   const handleViewImage = async (mat: Material) => {
@@ -56,14 +120,40 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
 
   const getMaterialIcon = (type?: string) => {
     switch (type) {
-      case 'pdf': return 'document-text';
-      case 'audio': return 'musical-notes';
+      case 'pdf':
+        return { name: 'file-pdf-box' as any, color: '#ef4444', library: 'MaterialCommunityIcons' };
+      case 'audio':
+        return { name: 'musical-notes' as any, color: colors.textSecondary, library: 'Ionicons' };
       case 'image':
-      case 'photo': return 'image';
-      case 'website': return 'globe';
-      case 'youtube': return 'logo-youtube';
-      default: return 'document';
+      case 'photo':
+        return { name: 'image' as any, color: colors.textSecondary, library: 'Ionicons' };
+      case 'website':
+        return { name: 'newspaper-variant' as any, color: '#3b82f6', library: 'MaterialCommunityIcons' };
+      case 'youtube':
+        return { name: 'logo-youtube' as any, color: '#ef4444', library: 'Ionicons' };
+      default:
+        return { name: 'document' as any, color: colors.textSecondary, library: 'Ionicons' };
     }
+  };
+
+  const renderIcon = (type?: string, isProcessing?: boolean, isFailed?: boolean) => {
+    if (isProcessing) {
+      return <TikTokLoader size={10} color="#6366f1" containerWidth={40} />;
+    }
+    if (isFailed) {
+      return <Ionicons name="alert-circle" size={24} color={colors.error} />;
+    }
+
+    const config = getMaterialIcon(type);
+    if (config.library === 'MaterialCommunityIcons') {
+      const IconLib = require('@expo/vector-icons').MaterialCommunityIcons;
+      return <IconLib name={config.name} size={24} color={config.color} />;
+    }
+    if (config.library === 'MaterialIcons') {
+      const IconLib = require('@expo/vector-icons').MaterialIcons;
+      return <IconLib name={config.name} size={24} color={config.color} />;
+    }
+    return <Ionicons name={config.name} size={24} color={config.color} />;
   };
 
   const renderContent = () => {
@@ -85,9 +175,6 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
       );
     }
 
-    // If all materials failed and there's a notebook error, we might still show a message,
-    // but we generally want to avoid blocking the whole notebook view now.
-
     return (
       <ScrollView
         style={{ flex: 1 }}
@@ -100,21 +187,62 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
           <View style={styles.headerLeft}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Sources</Text>
           </View>
-          <Text style={{ color: colors.textSecondary, fontFamily: 'Nunito-Medium' }}>
-            {notebook.materials?.length || 0} items
-          </Text>
+          {isDeleteMode ? (
+            <TouchableOpacity onPress={handleExitDeleteMode} style={styles.doneButton}>
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={handleMenuPress} style={{ padding: 4 }}>
+              <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
         </View>
 
-        <View style={{ gap: 12 }}>
+        {/* Dropdown Menu */}
+        <Modal
+          visible={showMenu}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowMenu(false)}
+        >
+          <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)}>
+            <View style={[
+              styles.menuContainer,
+              {
+                backgroundColor: isDarkMode ? colors.surface : '#FFFFFF',
+                borderColor: colors.border,
+              }
+            ]}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={handleDeleteModeToggle}
+              >
+                <Ionicons name="trash-outline" size={18} color={colors.text} />
+                <Text style={[styles.menuItemText, { color: colors.text }]}>Delete a source</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
+
+        <View style={{ gap: 4 }}>
           {/* Phase A Loading: Uploading (Local State) */}
           {isAddingMaterial && (
-            <View style={[styles.materialItem, { backgroundColor: colors.surface, borderColor: colors.border, borderStyle: 'dashed' }]}>
-              <View style={[styles.iconContainer, { backgroundColor: colors.surfaceAlt }]}>
+            <View style={styles.materialItem}>
+              <View style={styles.iconContainer}>
                 <TikTokLoader size={10} color="#6366f1" containerWidth={40} />
               </View>
-              <View style={{ flex: 1, marginLeft: 16 }}>
-                <Text style={[styles.materialTitle, { color: colors.text }]}>Uploading source...</Text>
-                <Text style={[styles.materialSubtitle, { color: colors.textSecondary }]}>Please wait a moment</Text>
+              <View style={{ flex: 1, marginHorizontal: 8 }}>
+                <Text
+                  style={{
+                    fontSize: 17,
+                    fontFamily: 'Nunito-SemiBold',
+                    color: colors.text
+                  }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  Uploading source...
+                </Text>
               </View>
             </View>
           )}
@@ -124,52 +252,80 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
             const isImage = mat.type === 'image' || mat.type === 'photo';
             const isProcessing = mat.processed === false || mat.status === 'processing';
             const isFailed = mat.status === 'failed';
-            const errorMessage = mat.meta?.error;
+            const hasContent = mat.status === 'processed' || mat.processed === true;
+            const isDeleting = deletingId === mat.id;
+
+            const handleSourcePress = () => {
+              // In delete mode, don't navigate
+              if (isDeleteMode) return;
+              if (isProcessing || isFailed) return;
+
+              // Prevent double-tap navigation
+              if (isNavigatingRef.current) return;
+              isNavigatingRef.current = true;
+
+              // Reset navigation lock after navigation completes
+              setTimeout(() => {
+                isNavigatingRef.current = false;
+              }, 1000);
+
+              // For images, open the image viewer
+              if (isImage) {
+                handleViewImage(mat);
+                return;
+              }
+
+              // For all other sources, open the source content viewer
+              router.push({
+                pathname: '/source-viewer',
+                params: { id: mat.id },
+              });
+            };
 
             return (
               <TouchableOpacity
                 key={mat.id || index}
-                onPress={() => (isImage && !isProcessing && !isFailed) ? handleViewImage(mat) : undefined}
-                activeOpacity={(isImage && !isProcessing && !isFailed) ? 0.7 : 1}
-                style={[
-                  styles.materialItem,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: isFailed ? colors.error : isProcessing ? '#6366f1' : colors.border,
-                    borderWidth: (isProcessing || isFailed) ? 1.5 : 1
-                  },
-                  shadows.small
-                ]}
+                onPress={handleSourcePress}
+                activeOpacity={isDeleteMode ? 1 : (hasContent ? 0.7 : 1)}
+                style={[styles.materialItem, { opacity: isDeleting ? 0.5 : 1 }]}
               >
-                <View style={[styles.iconContainer, { backgroundColor: isFailed ? colors.error + '15' : colors.surfaceAlt }]}>
-                  {isProcessing ? (
-                    <TikTokLoader size={10} color="#6366f1" containerWidth={40} />
-                  ) : isFailed ? (
-                    <Ionicons name="alert-circle" size={24} color={colors.error} />
-                  ) : (
-                    <Ionicons name={getMaterialIcon(mat.type)} size={22} color={colors.textSecondary} />
-                  )}
+                <View style={styles.iconContainer}>
+                  {renderIcon(mat.type, isProcessing, isFailed)}
                 </View>
-                <View style={{ flex: 1, marginLeft: 16 }}>
-                  <Text numberOfLines={1} style={[
-                    styles.materialTitle,
-                    { color: isFailed ? colors.error : (isProcessing ? '#6366f1' : colors.text) }
-                  ]}>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={[
+                      styles.materialTitle,
+                      { color: colors.text, opacity: isProcessing ? 0.6 : 1 }
+                    ]}
+                  >
                     {mat.title || mat.filename || 'Untitled Source'}
                   </Text>
-                  <Text style={[styles.materialSubtitle, { color: isFailed ? colors.error : colors.textSecondary }]}>
-                    {isProcessing ? 'Analyzing content...' :
-                      isFailed ? (errorMessage || 'Processing failed') :
-                        `${mat.type ? mat.type.charAt(0).toUpperCase() + mat.type.slice(1) : 'Source'} • ${new Date(mat.createdAt).toLocaleDateString()}`}
-                  </Text>
                 </View>
-                {(!isProcessing && !isFailed) && <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />}
-                {isFailed && (
+                {isFailed && !isDeleteMode && (
                   <TouchableOpacity
                     onPress={() => onRetryMaterial?.(mat.id)}
                     style={styles.miniRetryButton}
                   >
                     <Ionicons name="refresh" size={16} color="#FFF" />
+                  </TouchableOpacity>
+                )}
+                {hasContent && !isImage && !isDeleteMode && (
+                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                )}
+                {isDeleteMode && (
+                  <TouchableOpacity
+                    onPress={() => handleDeleteSource(mat.id, mat.title || mat.filename || 'Source')}
+                    style={styles.deleteButton}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <TikTokLoader size={8} color="#ef4444" containerWidth={24} />
+                    ) : (
+                      <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
+                    )}
                   </TouchableOpacity>
                 )}
               </TouchableOpacity>
@@ -200,12 +356,12 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
 
 const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontFamily: 'Nunito-Bold' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   loadingSourceItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, borderWidth: 1, marginTop: 16 },
-  materialItem: { borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1 },
-  iconContainer: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  materialTitle: { fontSize: 15, fontFamily: 'Nunito-Bold' },
+  materialItem: { paddingVertical: 12, flexDirection: 'row', alignItems: 'center' },
+  iconContainer: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
+  materialTitle: { fontSize: 16, fontFamily: 'Nunito-SemiBold' },
   materialSubtitle: { fontSize: 12, fontFamily: 'Nunito-Medium', marginTop: 2 },
   emptyContainer: { borderRadius: 16, padding: 32, alignItems: 'center', borderWidth: 1, borderStyle: 'dashed' },
   emptyTitle: { fontSize: 16, fontFamily: 'Nunito-Bold' },
@@ -216,4 +372,49 @@ const styles = StyleSheet.create({
   retryButton: { marginTop: 24, backgroundColor: '#3B82F6', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
   retryButtonText: { color: '#FFFFFF', fontFamily: 'Nunito-SemiBold' },
   miniRetryButton: { backgroundColor: '#6366f1', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  // Menu styles
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'flex-start',
+    paddingTop: 120,
+    paddingRight: 20,
+    alignItems: 'flex-end',
+  },
+  menuContainer: {
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    minWidth: 180,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontFamily: 'Nunito-Medium',
+  },
+  // Done button styles
+  doneButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  doneButtonText: {
+    fontSize: 15,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#3b82f6',
+  },
+  // Delete button styles
+  deleteButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
 });

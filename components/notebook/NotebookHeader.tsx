@@ -29,8 +29,6 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
       }}
     >
       <TouchableOpacity
@@ -40,8 +38,16 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
         <Ionicons name="arrow-back" size={24} color={colors.icon} />
       </TouchableOpacity>
 
-      <View style={{ flex: 1, marginHorizontal: 12 }}>
-        <Text style={{ fontSize: 16, fontWeight: '500', color: colors.text }} numberOfLines={1}>
+      <View style={{ flex: 1, marginHorizontal: 8 }}>
+        <Text
+          style={{
+            fontSize: 17,
+            fontFamily: 'Nunito-SemiBold',
+            color: colors.text
+          }}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
           {title}
         </Text>
       </View>

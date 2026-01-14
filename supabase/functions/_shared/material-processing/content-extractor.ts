@@ -16,7 +16,7 @@ type SupabaseClient = any;
  * Handles content extraction for different material types
  */
 export class ContentExtractor {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: SupabaseClient) { }
 
   /**
    * Extract content based on material type
@@ -150,27 +150,56 @@ export class ContentExtractor {
 
   /**
    * Extract content from YouTube video
+   * 
+   * Uses smart 2-tier extraction + AI cleanup:
+   * 1. Direct caption extraction (fastest, ~2-5s)
+   * 2. RapidAPI fallback (reliable, ~3-8s)
+   * 3. AI cleanup for transcription errors (e.g., "Claude" heard as "Cloud")
    */
   private async extractYouTube(material: Material): Promise<ContentExtractionResult> {
+    const { getYoutubeTranscriptSmart, cleanTranscriptWithAI } = await import('../youtube.ts');
     const { getRequiredEnv } = await import('../env.ts');
-    const { getYoutubeTranscript, cleanTranscriptWithAI } = await import('../youtube.ts');
 
-    const apiKey = getRequiredEnv('GOOGLE_AI_API_KEY');
-    const rapidApiKey = getRequiredEnv('RAPIDAPI_KEY');
+    if (!material.external_url) {
+      throw new Error('YouTube material missing external_url');
+    }
+
+    console.log(`[ContentExtractor] Starting YouTube extraction for: ${material.external_url}`);
+    const startTime = Date.now();
 
     try {
-      // Step 1: Fetch raw transcript via Professional API (handles blocks/fallbacks)
-      const rawTranscript = await getYoutubeTranscript(material.external_url!, rapidApiKey);
+      // Step 1: Extract raw transcript (direct or RapidAPI)
+      const result = await getYoutubeTranscriptSmart(material.external_url);
 
-      // Step 2: Clean it up with AI for that "Premium" Brigo feel
-      const cleanedText = await cleanTranscriptWithAI(rawTranscript, apiKey);
+      console.log(
+        `[ContentExtractor] Raw extraction complete: ` +
+        `${result.transcript.length} chars via ${result.method}`
+      );
 
-      return { text: cleanedText };
+      // Step 2: Clean up transcript with AI (fixes "Cloud Code" → "Claude Code" etc.)
+      const apiKey = getRequiredEnv('GOOGLE_AI_API_KEY');
+      const cleanedTranscript = await cleanTranscriptWithAI(result.transcript, apiKey);
+
+      const processingTime = Date.now() - startTime;
+      console.log(
+        `[ContentExtractor] YouTube extraction SUCCESS: ` +
+        `${cleanedTranscript.length} chars in ${processingTime}ms (method: ${result.method})`
+      );
+
+      return {
+        text: cleanedTranscript,
+        metadata: {
+          youtube_extraction: {
+            method: result.method,
+            videoId: result.videoId,
+            processingTime,
+            rawLength: result.transcript.length,
+            cleanedLength: cleanedTranscript.length,
+          },
+        },
+      };
     } catch (error: any) {
-      console.warn(`[ContentExtractor] YouTube transcript failed, falling back to audio: ${error.message}`);
-
-      // TODO: Implement the Audio Fallback (extracting audio from video and using transcribeAudio)
-      // For now, re-throw to show error in UI
+      console.error(`[ContentExtractor] YouTube extraction FAILED: ${error.message}`);
       throw new Error(`YouTube Import Failed: ${error.message}`);
     }
   }

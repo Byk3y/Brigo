@@ -374,18 +374,23 @@ export const useNotebookCreation = () => {
                     },
                 });
 
-                // Reload notebooks to show the new one immediately
-                await loadNotebooks();
+                // FAST NAVIGATION: Return ID immediately so user can navigate to notebook
+                // while background processing continues. Don't wait for loadNotebooks().
+                setIsAddingNotebook(false);
 
-                // Trigger "Add your first study material" task
+                // Trigger background notebook list refresh (non-blocking)
+                loadNotebooks().catch(console.error);
+
+                // Trigger "Add your first study material" task (non-blocking)
                 const { checkAndAwardTask } = useStore.getState();
                 if (checkAndAwardTask) {
                     checkAndAwardTask('add_material_daily');
                 }
 
                 return notebookId;
-            } finally {
+            } catch (error) {
                 setIsAddingNotebook(false);
+                throw error;
             }
         }, {
             operation: 'youtube_import',

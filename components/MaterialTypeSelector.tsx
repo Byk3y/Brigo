@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { AnimatedGradientBorder } from '@/components/AnimatedGradientBorder';
 import Animated, {
@@ -43,6 +44,7 @@ interface MaterialTypeSelectorProps {
   visible: boolean;
   onClose: () => void;
   onSelectType: (type: MaterialType, url?: string) => void;
+  notebookId?: string; // If provided, sources will be added to this notebook
 }
 
 const CYCLING_WORDS = ['EXAM', 'TEST', 'FINALS', 'MIDTERM', 'SEMESTER'];
@@ -84,7 +86,9 @@ export default function MaterialTypeSelector({
   visible,
   onClose,
   onSelectType,
+  notebookId,
 }: MaterialTypeSelectorProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const translateY = useRef(new RNAnimated.Value(SCREEN_HEIGHT)).current;
 
@@ -214,15 +218,44 @@ export default function MaterialTypeSelector({
     });
   };
 
+  /**
+   * Check if input looks like a URL
+   */
+  const isUrl = (text: string): boolean => {
+    return (
+      text.startsWith('http://') ||
+      text.startsWith('https://') ||
+      text.includes('.com') ||
+      text.includes('.org') ||
+      text.includes('.edu') ||
+      text.includes('.net') ||
+      text.includes('.io') ||
+      text.includes('.co') ||
+      text.includes('www.')
+    );
+  };
+
   const handleSearch = () => {
     const query = searchQuery.trim();
     if (query) {
       // Check if it's a YouTube URL
       if (query.includes('youtube.com') || query.includes('youtu.be')) {
         handleSelectType('youtube', query);
-      } else {
-        // Default to website
+      } else if (isUrl(query)) {
+        // It's a direct URL - process as website
         handleSelectType('website', query);
+      } else {
+        // It's a topic query - navigate to discover sources
+        handleClose();
+        setTimeout(() => {
+          const params = notebookId
+            ? { query, notebookId }
+            : { query };
+          router.push({
+            pathname: '/discover-sources',
+            params,
+          });
+        }, 400);
       }
     }
   };
@@ -261,7 +294,7 @@ export default function MaterialTypeSelector({
           style={[
             styles.sheet,
             {
-              height: SCREEN_HEIGHT * 0.85,
+              height: SCREEN_HEIGHT * 0.95,
               transform: [{ translateY }],
               backgroundColor: colors.background,
             },
@@ -323,7 +356,7 @@ export default function MaterialTypeSelector({
                           height: '100%', // Ensure it fills the border container
                         }
                       ]}
-                      placeholder="Find sources from the web"
+                      placeholder="Search a topic or paste URL"
                       placeholderTextColor={colors.textMuted}
                       value={searchQuery}
                       onChangeText={setSearchQuery}
@@ -398,7 +431,7 @@ export default function MaterialTypeSelector({
                       )}
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.buttonLabel, { color: colors.text }]}>{option.label}</Text>
-                        <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2, fontFamily: 'Nunito-Regular' }}>
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 0, fontFamily: 'Nunito-Regular' }}>
                           {option.description}
                         </Text>
                       </View>
@@ -442,7 +475,7 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    minHeight: SCREEN_HEIGHT * 0.85,
+    minHeight: SCREEN_HEIGHT * 0.95,
   },
   contentWrapper: {
     flex: 1,
@@ -539,14 +572,14 @@ const styles = StyleSheet.create({
   optionsContainer: {
     paddingHorizontal: 24,
     paddingBottom: 40,
-    gap: 12,
+    gap: 8,
   },
   optionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderWidth: 1,
   },
   buttonIcon: {

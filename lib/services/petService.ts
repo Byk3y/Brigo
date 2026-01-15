@@ -54,22 +54,36 @@ export const petService = {
    */
   savePetState: async (userId: string, petState: PetState): Promise<void> => {
     try {
-      // Calculate stage from points (always authoritative)
+      // Default pet names that should not overwrite custom names
+      const DEFAULT_PET_NAMES = ['Nova', 'Sparky', 'Pet', 'Bridget', ''];
 
-      // 1. Fetch current database state to prevent downgrading progress due to stale client state
+      // 1. Fetch current database state to prevent downgrading progress or losing custom name
       const { data: existing } = await supabase
         .from('pet_states')
-        .select('current_points' as any)
+        .select('current_points, name' as any)
         .eq('user_id', userId)
         .single();
 
       let pointsToSave = petState.points;
+      let nameToSave = petState.name;
 
       if (existing) {
         const dbPoints = (existing as any).current_points || 0;
+        const dbName = (existing as any).name;
+
+        // Points protection: prevent downgrade
         if (petState.points < dbPoints) {
           console.warn(`[PetService] Progress protection: preventing downgrade from ${dbPoints} back to ${petState.points}. Using ${dbPoints}.`);
           pointsToSave = dbPoints;
+        }
+
+        // Name protection: if DB has a custom name and incoming name is a default, preserve DB name
+        const dbHasCustomName = dbName && dbName.trim() !== '' && !DEFAULT_PET_NAMES.includes(dbName.trim());
+        const incomingIsDefault = !petState.name || petState.name.trim() === '' || DEFAULT_PET_NAMES.includes(petState.name.trim());
+
+        if (dbHasCustomName && incomingIsDefault) {
+          console.warn(`[PetService] Name protection: preserving custom name "${dbName}" instead of default "${petState.name}".`);
+          nameToSave = dbName;
         }
       }
 
@@ -85,7 +99,7 @@ export const petService = {
             user_id: userId,
             current_stage: Math.floor(pointsToSave / 100) + 1,
             current_points: pointsToSave,
-            name: petState.name,
+            name: nameToSave,
             mood: petState.mood,
           } as any,
           {

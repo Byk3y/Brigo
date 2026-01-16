@@ -47,7 +47,7 @@ export const useStudioGeneration = ({
   checkForPendingPrediction,
 }: UseStudioGenerationParams) => {
 
-  const { checkAndAwardTask, tier, status, isExpired, studioJobsUsed, studioJobsLimit, audioJobsUsed, audioJobsLimit, trialEndsAt, trialStartedAt, subscriptionSyncedAt, user, notebooks, cachedPetState, flashcardsStudied, notify } = useStore();
+  const { checkAndAwardTask, tier, status, isExpired, studioGenerationsCount, audioGenerationsCount, subscriptionSyncedAt, user, notebooks, cachedPetState, flashcardsStudied, notify } = useStore();
   const { handleError, withErrorHandling } = useErrorHandler();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeModalSource, setUpgradeModalSource] = useState<'create_attempt' | null>(null);
@@ -58,15 +58,11 @@ export const useStudioGeneration = ({
   const subscription: SubscriptionData = useMemo(() => ({
     tier,
     status,
-    trialEndsAt,
-    trialStartedAt,
-    studioJobsUsed,
-    audioJobsUsed,
-    studioJobsLimit,
-    audioJobsLimit,
+    studioGenerationsCount,
+    audioGenerationsCount,
     isExpired,
     subscriptionSyncedAt,
-  }), [tier, status, trialEndsAt, trialStartedAt, studioJobsUsed, audioJobsUsed, studioJobsLimit, audioJobsLimit, isExpired, subscriptionSyncedAt]);
+  }), [tier, status, studioGenerationsCount, audioGenerationsCount, isExpired, subscriptionSyncedAt]);
 
   /**
    * Get notebook title for notifications
@@ -82,6 +78,7 @@ export const useStudioGeneration = ({
     try {
       // Check quota before proceeding with detailed reason
       const quotaCheck = checkQuotaRemaining('studio', subscription);
+
       if (!quotaCheck.hasQuota) {
         trackCreateAttemptBlocked('flashcards');
         trackUpgradeModalShown('create_attempt');
@@ -143,6 +140,7 @@ export const useStudioGeneration = ({
     try {
       // Check quota before proceeding with detailed reason
       const quotaCheck = checkQuotaRemaining('studio', subscription);
+
       if (!quotaCheck.hasQuota) {
         trackCreateAttemptBlocked('quiz');
         trackUpgradeModalShown('create_attempt');

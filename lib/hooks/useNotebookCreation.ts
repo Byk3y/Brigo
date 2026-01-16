@@ -39,10 +39,10 @@ export const useNotebookCreation = () => {
 
     // Check if user can create content (based on subscription status)
     const checkCanCreate = useCallback(() => {
-        const { tier, status, isExpired, trialEndsAt } = useStore.getState();
+        const { tier, status, isExpired } = useStore.getState();
 
         // Check if user can create content with detailed reason
-        const check = checkCanCreateContent(tier, status, isExpired, trialEndsAt);
+        const check = checkCanCreateContent(tier, status, isExpired);
         if (!check.canCreate) {
             // Track blocked attempt
             trackCreateAttemptBlocked('notebook');

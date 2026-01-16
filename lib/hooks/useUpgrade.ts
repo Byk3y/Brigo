@@ -12,21 +12,7 @@ export function useUpgrade() {
   // Get subscription state from store for event properties
   const getSubscriptionState = useCallback(() => {
     const { tier, isExpired } = useStore.getState();
-    return { tier: tier || 'trial', is_expired: isExpired };
-  }, []);
-
-  const trackReminderShown = useCallback((daysRemaining: number) => {
-    track('trial_reminder_shown', {
-      days_remaining: daysRemaining,
-      tier: 'trial',
-      is_expired: false,
-    });
-  }, []);
-
-  const trackReminderDismissed = useCallback((daysRemaining: number) => {
-    track('trial_reminder_dismissed', {
-      days_remaining: daysRemaining,
-    });
+    return { tier: tier || 'free', is_expired: isExpired };
   }, []);
 
   const trackUpgradeButtonClicked = useCallback((source: string) => {
@@ -88,8 +74,6 @@ export function useUpgrade() {
   }, [getSubscriptionState]);
 
   return {
-    trackReminderShown,
-    trackReminderDismissed,
     trackUpgradeButtonClicked,
     trackLockedNotebookAccessed,
     trackCreateAttemptBlocked,
@@ -99,3 +83,4 @@ export function useUpgrade() {
     trackUpgradeScreenViewed,
   };
 }
+

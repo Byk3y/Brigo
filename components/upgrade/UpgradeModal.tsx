@@ -1,6 +1,6 @@
 /**
  * Upgrade Modal Component
- * Full-screen modal for prompting upgrades when trial expires or features are locked
+ * Full-screen modal for prompting upgrades when subscription expires or features are locked
  */
 
 import React from 'react';
@@ -17,7 +17,7 @@ import { usePaywall } from '@/lib/hooks/usePaywall';
 interface UpgradeModalProps {
   visible: boolean;
   onDismiss: () => void;
-  source: 'trial_expired' | 'create_attempt' | 'locked_notebook';
+  source: 'subscription_expired' | 'create_attempt' | 'locked_notebook';
   notebooksCount?: number;
   flashcardsStudied?: number;
   streakDays?: number;
@@ -47,72 +47,52 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
     // For create_attempt source, show specific message based on limit reason
     if (source === 'create_attempt' && limitReason) {
       switch (limitReason) {
-        case 'trial_expired':
+        case 'subscription_expired':
+        case 'not_subscribed':
           return {
             emoji: '⏰',
-            title: 'Your access has ended',
+            title: 'Subscription required',
             message:
-              "Unlock Pro for just $1.99 to continue creating notebooks and unlock all premium features.",
-          };
-        case 'quota_studio_exhausted':
-          return {
-            emoji: '🎴',
-            title: 'Generation limit reached',
-            message:
-              "You've used your included Studio generations. Upgrade to Pro for unlimited flashcards and quizzes!",
-          };
-        case 'quota_audio_exhausted':
-          return {
-            emoji: '🎧',
-            title: 'Podcast limit reached',
-            message:
-              "You've used your included podcasts. Upgrade to Pro for unlimited studio-quality audio summaries!",
-          };
-        case 'subscription_expired':
-          return {
-            emoji: '🔒',
-            title: 'Subscription expired',
-            message:
-              "Your subscription has expired. Upgrade to Pro to continue accessing all features.",
+              "Upgrade to Pro to continue creating notebooks, generating flashcards, and using all premium features.",
           };
         default:
           return {
             emoji: '🔒',
-            title: 'Trial limit reached',
+            title: 'Upgrade required',
             message:
-              "You've reached your trial limit. Upgrade to Pro to create unlimited notebooks and unlock all features.",
+              "Upgrade to Pro to create unlimited notebooks and unlock all features.",
           };
       }
     }
 
     // For other sources, use original logic
     switch (source) {
-      case 'trial_expired':
+      case 'subscription_expired':
         return {
           emoji: '🎉',
-          title: 'Unlock more features',
+          title: 'Keep studying with Pro',
           message:
-            "You've made amazing progress! Unlock Pro for just $1.99 to continue using Smart Chat, Flashcards, and all your notebooks.",
+            "You've made amazing progress! Upgrade to Pro to continue using Smart Chat, Flashcards, Podcasts, and all your study tools.",
         };
       case 'create_attempt':
         return {
           emoji: '🔒',
           title: 'Upgrade required',
           message:
-            "Unlock Pro for just $1.99 to get unlimited Smart Chat, Notebooks, and Podcasts.",
+            "Upgrade to Pro for unlimited Smart Chat, Notebooks, Flashcards, and AI Podcasts.",
         };
       case 'locked_notebook':
         return {
           emoji: '📚',
           title: 'Unlock all notebooks',
           message:
-            'Upgrade to Pro to access all your notebooks, unlock Mastery Gap Analysis, and continue deep-diving with Smart Chat.',
+            'Upgrade to Pro to access all your notebooks and continue deep-diving with Smart Chat.',
         };
       default:
         return {
           emoji: '⭐',
           title: 'Upgrade to Pro',
-          message: 'Unlock Strategic Briefings, Mastery Gap Analysis, and unlimited Study Tools to conquer your exams.',
+          message: 'Unlock unlimited Flashcards, Quizzes, AI Podcasts, and Smart Chat to conquer your exams.',
         };
     }
   };

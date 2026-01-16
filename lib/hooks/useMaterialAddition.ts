@@ -22,8 +22,8 @@ export const useMaterialAddition = (notebookId: string) => {
     // Check if user can add content (based on subscription status)
     // For now reusing notebook creation logic as per MVP rules
     const checkCanAdd = useCallback(() => {
-        const { tier, status, isExpired, trialEndsAt } = useStore.getState();
-        const check = checkCanCreateContent(tier, status, isExpired, trialEndsAt);
+        const { tier, status, isExpired } = useStore.getState();
+        const check = checkCanCreateContent(tier, status, isExpired);
         if (!check.canCreate) {
             trackCreateAttemptBlocked('material');
             trackUpgradeModalShown('create_attempt');

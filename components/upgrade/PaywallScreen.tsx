@@ -121,7 +121,12 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
     const totalPriceString = selectedPackage?.product.priceString || (
         billingCycle === 'semester' ? `${currencySymbol}17.99` : `${currencySymbol}4.99`
     );
-    const trialPriceString = `${currencySymbol}1.99`;
+
+    // Use RevenueCat's intro price (from App Store Connect) instead of hardcoding
+    // This ensures proper localization for all currencies (USD, NGN, EUR, etc.)
+    const trialPriceString = selectedPackage?.product.introPrice?.priceString || `${currencySymbol}1.99`;
+    const hasIntroOffer = !!selectedPackage?.product.introPrice;
+
     const durationText = billingCycle === 'semester' ? 'every 3 months' : 'per week';
 
     const handlePurchase = async () => {

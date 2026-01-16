@@ -1,151 +1,95 @@
 /**
- * Hook for managing trial/subscription UI state
- * Handles trial reminders, upgrade modals, and limited access banners
+ * Hook for managing subscription UI state
+ * Handles subscription expired modals and limited access banners
+ * 
+ * NOTE: With the "Library vs Factory" model:
+ * - All notebooks are accessible (no more 3-notebook limit)
+ * - showLimitedAccess still shows a banner for expired users
+ * - accessibleNotebookIds returns ALL notebook IDs
  */
 
 import { useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStore } from '@/lib/store';
 import { useUpgrade } from '@/lib/hooks/useUpgrade';
-import {
-  getDaysUntilExpiration,
-  shouldShowTrialReminder,
-  shouldShowLimitedAccessBanner,
-  getAccessibleNotebookIds,
-} from '@/lib/services/subscriptionService';
+import { shouldShowLimitedAccessBanner } from '@/lib/services/subscriptionService';
 import { SUBSCRIPTION_CONSTANTS } from '@/lib/constants';
 import type { Notebook } from '@/lib/store';
 
 /**
- * Hook to manage all trial/subscription UI state
+ * Hook to manage subscription UI state
+ * 
+ * With the "Library vs Factory" model:
+ * - accessibleNotebookIds now returns ALL notebooks (no filtering)
+ * - showLimitedAccess indicates expired status for showing upgrade banners
+ * - Expired modal is shown once when subscription expires
  */
-export function useTrialSubscriptionUI(notebooks: Notebook[]) {
+export function useSubscriptionUI(notebooks: Notebook[]) {
   const {
     authUser,
     isInitialized,
     tier,
     status,
-    trialEndsAt,
-    trialStartedAt,
-    studioJobsUsed,
-    audioJobsUsed,
-    studioJobsLimit,
-    audioJobsLimit,
     subscriptionSyncedAt,
     isExpired,
-    user,
   } = useStore();
 
-  const [showTrialReminder, setShowTrialReminder] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const {
-    trackReminderShown,
     trackUpgradeModalShown,
     trackLimitedAccessBannerShown,
   } = useUpgrade();
 
-  // Create full subscription object matching SubscriptionSlice interface
+  // Create subscription object for service functions
   const subscription = useMemo(
     () => ({
       tier,
       status,
-      trialEndsAt,
-      trialStartedAt,
-      studioJobsUsed,
-      audioJobsUsed,
-      studioJobsLimit,
-      audioJobsLimit,
+      studioGenerationsCount: 0,
+      audioGenerationsCount: 0,
       isExpired,
       subscriptionSyncedAt,
     }),
-    [
-      tier,
-      status,
-      trialEndsAt,
-      trialStartedAt,
-      studioJobsUsed,
-      audioJobsUsed,
-      studioJobsLimit,
-      audioJobsLimit,
-      isExpired,
-      subscriptionSyncedAt,
-    ]
+    [tier, status, isExpired, subscriptionSyncedAt]
   );
 
-  const daysRemaining = getDaysUntilExpiration(trialEndsAt);
   const showLimitedAccess = shouldShowLimitedAccessBanner(subscription);
 
-  // Calculate accessible notebook IDs and counts
+  // All notebook IDs are accessible now (Library model)
   const accessibleIds = useMemo(
-    () =>
-      getAccessibleNotebookIds(
-        notebooks,
-        SUBSCRIPTION_CONSTANTS.LIMITED_ACCESS_NOTEBOOK_COUNT
-      ),
+    () => notebooks.map((n) => n.id),
     [notebooks]
   );
 
-  const accessibleCount = accessibleIds.length;
+  const accessibleCount = notebooks.length; // All are accessible
   const totalCount = notebooks.length;
 
-  // Check if trial reminder should be shown
+  // Check if subscription expired modal should be shown on first app open after expiration
   useEffect(() => {
-    const checkTrialReminder = async () => {
-      if (shouldShowTrialReminder(subscription)) {
-        const dismissed = await AsyncStorage.getItem(
-          SUBSCRIPTION_CONSTANTS.TRIAL_REMINDER_DISMISSED_KEY
-        );
-        const shouldShow = !dismissed;
-        setShowTrialReminder(shouldShow);
-        if (shouldShow) {
-          trackReminderShown(daysRemaining);
-        }
-      } else {
-        setShowTrialReminder(false);
-        // Clear dismissal flag when trial status changes (e.g., user upgrades, trial expires)
-        // This ensures the reminder can show again if conditions are met
-        await AsyncStorage.removeItem(
-          SUBSCRIPTION_CONSTANTS.TRIAL_REMINDER_DISMISSED_KEY
-        );
-      }
-    };
-    checkTrialReminder();
-  }, [
-    tier,
-    status,
-    trialEndsAt,
-    isExpired,
-    subscription,
-    daysRemaining,
-    trackReminderShown,
-  ]);
-
-  // Check if trial expired modal should be shown on first app open after expiration
-  useEffect(() => {
-    const checkTrialExpiredModal = async () => {
-      // Only show if: trial expired, not premium, and not already shown
+    const checkSubscriptionExpiredModal = async () => {
+      // Only show if: expired, not premium, and not already shown
       if (isExpired && tier !== 'premium' && authUser && isInitialized) {
         const alreadyShown = await AsyncStorage.getItem(
-          SUBSCRIPTION_CONSTANTS.TRIAL_EXPIRED_MODAL_SHOWN_KEY
+          SUBSCRIPTION_CONSTANTS.SUBSCRIPTION_EXPIRED_MODAL_SHOWN_KEY
         );
         if (!alreadyShown) {
           setShowUpgradeModal(true);
-          trackUpgradeModalShown('trial_expired');
-          // Mark as shown (but don't persist forever - allow it to show again if user upgrades then downgrades)
+          trackUpgradeModalShown('subscription_expired');
+          // Mark as shown
           await AsyncStorage.setItem(
-            SUBSCRIPTION_CONSTANTS.TRIAL_EXPIRED_MODAL_SHOWN_KEY,
+            SUBSCRIPTION_CONSTANTS.SUBSCRIPTION_EXPIRED_MODAL_SHOWN_KEY,
             'true'
           );
         }
       } else if (tier === 'premium' || !isExpired) {
-        // Clear the flag if user upgrades or trial becomes active again
+        // Clear the flag if user upgrades or subscription becomes active again
         await AsyncStorage.removeItem(
-          SUBSCRIPTION_CONSTANTS.TRIAL_EXPIRED_MODAL_SHOWN_KEY
+          SUBSCRIPTION_CONSTANTS.SUBSCRIPTION_EXPIRED_MODAL_SHOWN_KEY
         );
       }
     };
-    checkTrialExpiredModal();
+    checkSubscriptionExpiredModal();
   }, [isExpired, tier, authUser, isInitialized, trackUpgradeModalShown]);
 
   // Track limited access banner shown
@@ -156,21 +100,14 @@ export function useTrialSubscriptionUI(notebooks: Notebook[]) {
   }, [showLimitedAccess, trackLimitedAccessBannerShown]);
 
   return {
-    showTrialReminder,
     showUpgradeModal,
     showLimitedAccess,
-    daysRemaining,
     accessibleNotebookIds: accessibleIds,
     accessibleCount,
     totalCount,
-    setShowTrialReminder,
     setShowUpgradeModal,
   };
 }
 
-
-
-
-
-
-
+// Keep the old name as an alias for backward compatibility during migration
+export { useSubscriptionUI as useTrialSubscriptionUI };

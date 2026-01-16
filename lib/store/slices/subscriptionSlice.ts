@@ -1,23 +1,19 @@
 /**
- * Subscription slice - Subscription and trial state management
- * Fetches subscription/trial data from user_subscriptions table
+ * Subscription slice - Subscription state management
+ * Fetches subscription data from user_subscriptions table
+ * Uses free/premium tier model (no trial)
  */
 
 import type { StateCreator } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { setUserProperties, setSuperProperties } from '@/lib/services/analyticsService';
-import { getDaysUntilExpiration } from '@/lib/services/subscriptionService';
 import { checkProEntitlement } from '@/lib/purchases';
 
 export interface SubscriptionSlice {
-  tier: 'trial' | 'premium' | null;
+  tier: 'free' | 'premium' | null;
   status: 'active' | 'canceled' | 'expired' | null;
-  trialEndsAt: string | null;  // ISO timestamp
-  trialStartedAt: string | null;
-  studioJobsUsed: number;
-  audioJobsUsed: number;
-  studioJobsLimit: number;  // 5 for trial, Infinity for premium
-  audioJobsLimit: number;   // 3 for trial, Infinity for premium
+  studioGenerationsCount: number;  // For analytics tracking only
+  audioGenerationsCount: number;   // For analytics tracking only
   isExpired: boolean;
   subscriptionSyncedAt: number | null;
 
@@ -34,12 +30,8 @@ export const createSubscriptionSlice: StateCreator<
 > = (set, get) => ({
   tier: null,
   status: null,
-  trialEndsAt: null,
-  trialStartedAt: null,
-  studioJobsUsed: 0,
-  audioJobsUsed: 0,
-  studioJobsLimit: 5,  // Default to trial limits
-  audioJobsLimit: 3,
+  studioGenerationsCount: 0,
+  audioGenerationsCount: 0,
   isExpired: false,
   subscriptionSyncedAt: null,
 
@@ -53,38 +45,31 @@ export const createSubscriptionSlice: StateCreator<
       // Fetch subscription data from user_subscriptions table
       const { data, error } = await supabase
         .from('user_subscriptions')
-        .select('tier, status, trial_ends_at, trial_started_at, trial_studio_jobs_used, trial_audio_jobs_used')
+        .select('tier, status, studio_generations_count, audio_generations_count')
         .eq('user_id', userId)
         .single();
 
       if (error) {
         // Check if this is a "no rows" error (expected for new users) vs actual error
         if (error.code === 'PGRST116') {
-          // No subscription record found - this is expected for new users
-          // The trigger should create one, but we'll set defaults until it does
+          // No subscription record found - new user, default to free/expired
           set({
-            tier: 'trial',
+            tier: 'free',
             status: 'expired',
-            trialEndsAt: null,
-            trialStartedAt: null,
-            studioJobsUsed: 0,
-            audioJobsUsed: 0,
-            studioJobsLimit: 5,
-            audioJobsLimit: 3,
+            studioGenerationsCount: 0,
+            audioGenerationsCount: 0,
             isExpired: true,
             subscriptionSyncedAt: Date.now(),
           });
 
-          // Set default Mixpanel user properties (omit null values)
           setUserProperties({
-            tier: 'trial',
+            tier: 'free',
             subscription_status: 'expired',
             is_expired: true,
           });
 
-          // Set super properties (included in all events)
           setSuperProperties({
-            tier: 'trial',
+            tier: 'free',
             is_expired: true,
           });
           return;
@@ -94,101 +79,66 @@ export const createSubscriptionSlice: StateCreator<
         console.error('Error loading subscription:', error);
 
         // Set restrictive default state on error (fail-secure)
-        // Default to expired trial to prevent unauthorized access if subscription check fails
         set({
-          tier: 'trial',
+          tier: 'free',
           status: 'expired',
-          trialEndsAt: null,
-          trialStartedAt: null,
-          studioJobsUsed: 0,
-          audioJobsUsed: 0,
-          studioJobsLimit: 5,
-          audioJobsLimit: 3,
+          studioGenerationsCount: 0,
+          audioGenerationsCount: 0,
           isExpired: true,
           subscriptionSyncedAt: Date.now(),
         });
 
-        // Set default Mixpanel user properties (omit null values)
         setUserProperties({
-          tier: 'trial',
+          tier: 'free',
           subscription_status: 'expired',
           is_expired: true,
         });
 
-        // Set super properties (included in all events)
         setSuperProperties({
-          tier: 'trial',
+          tier: 'free',
           is_expired: true,
         });
         return;
       }
 
       if (data) {
-        // Use Supabase data FIRST for quick initial render (non-blocking)
-        // RevenueCat check will happen in background and update if needed
-        const now = new Date();
-        const trialEnds = data.trial_ends_at ? new Date(data.trial_ends_at) : null;
+        // Determine tier and expiration status
+        const isPremium = data.tier === 'premium' && data.status === 'active';
+        const tier: 'free' | 'premium' = isPremium ? 'premium' : 'free';
+        const isExpiredNow = !isPremium;
 
-        // Initially use database tier (fast, non-blocking)
-        const initialTier: 'trial' | 'premium' = data.tier === 'premium' ? 'premium' : 'trial';
-
-        const isExpiredInitial: boolean =
-          initialTier !== 'premium' && (
-            data.status === 'expired' ||
-            (initialTier === 'trial' && trialEnds !== null && now > trialEnds)
-          );
-
-        // Set quota limits based on tier
-        const studioJobsLimit = initialTier === 'premium' ? Infinity : 5;
-        const audioJobsLimit = initialTier === 'premium' ? Infinity : 3;
-
-        // Set initial state immediately (allows auth flow to proceed)
+        // Set state immediately
         set({
-          tier: initialTier,
+          tier,
           status: data.status as 'active' | 'canceled' | 'expired',
-          trialEndsAt: data.trial_ends_at,
-          trialStartedAt: data.trial_started_at,
-          studioJobsUsed: data.trial_studio_jobs_used || 0,
-          audioJobsUsed: data.trial_audio_jobs_used || 0,
-          studioJobsLimit,
-          audioJobsLimit,
-          isExpired: isExpiredInitial,
+          studioGenerationsCount: data.studio_generations_count || 0,
+          audioGenerationsCount: data.audio_generations_count || 0,
+          isExpired: isExpiredNow,
           subscriptionSyncedAt: Date.now(),
         });
 
-        // Update Mixpanel with initial state
-        const trialDaysRemaining = initialTier === 'trial' && data.trial_ends_at
-          ? getDaysUntilExpiration(data.trial_ends_at)
-          : null;
-
-        const userProps: Record<string, any> = {
-          tier: initialTier,
+        // Update analytics
+        setUserProperties({
+          tier,
           subscription_status: data.status,
-          is_expired: isExpiredInitial,
-          is_revenuecat_pro: false, // Will update in background
-        };
+          is_expired: isExpiredNow,
+          is_revenuecat_pro: false,
+        });
 
-        if (trialDaysRemaining !== null) {
-          userProps.trial_days_remaining = trialDaysRemaining;
-        }
-
-        setUserProperties(userProps);
         setSuperProperties({
-          tier: initialTier,
-          is_expired: isExpiredInitial,
+          tier,
+          is_expired: isExpiredNow,
         });
 
         // BACKGROUND: Check RevenueCat and update if different (non-blocking)
         checkProEntitlement().then(async (isProRC) => {
-          if (isProRC && initialTier !== 'premium') {
-            // RevenueCat says Pro but DB says trial - update both
+          if (isProRC && tier !== 'premium') {
+            // RevenueCat says Pro but DB says free - update both
             if (__DEV__) console.log('Self-healing: Updating to premium based on RevenueCat');
 
             set({
               tier: 'premium',
               isExpired: false,
-              studioJobsLimit: Infinity,
-              audioJobsLimit: Infinity,
             });
 
             // Update database
@@ -212,30 +162,23 @@ export const createSubscriptionSlice: StateCreator<
       console.error('Error loading subscription:', error);
 
       // Set restrictive default state on error (fail-secure)
-      // Default to expired trial to prevent unauthorized access if subscription check fails
       set({
-        tier: 'trial',
+        tier: 'free',
         status: 'expired',
-        trialEndsAt: null,
-        trialStartedAt: null,
-        studioJobsUsed: 0,
-        audioJobsUsed: 0,
-        studioJobsLimit: 5,
-        audioJobsLimit: 3,
+        studioGenerationsCount: 0,
+        audioGenerationsCount: 0,
         isExpired: true,
         subscriptionSyncedAt: Date.now(),
       });
 
-      // Set default Mixpanel user properties (omit null values)
       setUserProperties({
-        tier: 'trial',
+        tier: 'free',
         subscription_status: 'expired',
         is_expired: true,
       });
 
-      // Set super properties (included in all events)
       setSuperProperties({
-        tier: 'trial',
+        tier: 'free',
         is_expired: true,
       });
     }
@@ -245,12 +188,8 @@ export const createSubscriptionSlice: StateCreator<
     set({
       tier: null,
       status: null,
-      trialEndsAt: null,
-      trialStartedAt: null,
-      studioJobsUsed: 0,
-      audioJobsUsed: 0,
-      studioJobsLimit: 5,
-      audioJobsLimit: 3,
+      studioGenerationsCount: 0,
+      audioGenerationsCount: 0,
       isExpired: false,
       subscriptionSyncedAt: null,
     }),

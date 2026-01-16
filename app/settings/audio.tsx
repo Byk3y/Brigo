@@ -121,26 +121,6 @@ export default function AudioSettingsScreen() {
                         value={audioSettings.voiceVolume}
                         onValueChange={setVoiceVolume}
                     />
-
-                    {/* Voice Preview Button */}
-                    <View style={styles.previewContainer}>
-                        <TouchableOpacity
-                            style={[styles.previewButton, { backgroundColor: colors.surfaceAlt }]}
-                            onPress={async () => {
-                                const { Audio } = await import('expo-av');
-                                try {
-                                    const { sound } = await Audio.Sound.createAsync(
-                                        require('../../assets/sfx/tap.m4a'),
-                                        { volume: audioSettings.voiceVolume, shouldPlay: true }
-                                    );
-                                    setTimeout(() => sound.unloadAsync(), 2000);
-                                } catch (e) { }
-                            }}
-                        >
-                            <Ionicons name="play" size={14} color={colors.primary} />
-                            <Text style={[styles.previewButtonText, { color: colors.primary }]}>Test Volume</Text>
-                        </TouchableOpacity>
-                    </View>
                 </Section>
 
                 <Section title="PLAYBACK BEHAVIOR">

@@ -13,7 +13,7 @@ export default function SubscriptionScreen() {
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
     const router = useRouter();
-    const { tier, trialEndsAt, isExpired, loadSubscription, authUser } = useStore();
+    const { tier, isExpired, loadSubscription, authUser } = useStore();
     const { showPaywall } = usePaywall({ source: 'settings_subscription' });
 
     const handleRestore = async () => {
@@ -42,22 +42,10 @@ export default function SubscriptionScreen() {
         }
     };
 
-    const getDaysLeft = () => {
-        if (!trialEndsAt) return 0;
-        const now = new Date();
-        const end = new Date(trialEndsAt);
-        const diffTime = end.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return Math.max(0, diffDays);
-    };
-
-    const daysLeft = getDaysLeft();
-    const isPro = tier === 'premium';
-    const trialStatusText = isPro
+    const isPro = tier === 'premium' && !isExpired;
+    const statusText = isPro
         ? 'Premium • Active'
-        : isExpired
-            ? 'Trial expired'
-            : `Trial • ${daysLeft} days left`;
+        : 'Free • Upgrade to unlock all features';
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? '#111' : '#F9FAFB' }]}>
@@ -81,9 +69,9 @@ export default function SubscriptionScreen() {
                 >
                     <View style={styles.cardHeader}>
                         <View style={styles.badge}>
-                            <Text style={styles.badgeText}>{isPro ? 'PRO' : 'TRIAL'}</Text>
+                            <Text style={styles.badgeText}>{isPro ? 'PRO' : 'FREE'}</Text>
                         </View>
-                        <Text style={styles.trialStatusText}>{trialStatusText}</Text>
+                        <Text style={styles.statusText}>{statusText}</Text>
                     </View>
 
                     <View style={styles.planTitleRow}>
@@ -94,14 +82,14 @@ export default function SubscriptionScreen() {
                     <Text style={styles.planTagline}>
                         {isPro
                             ? 'Unlimited notebooks • Priority AI access'
-                            : `${daysLeft} days remaining in your pro trial`
+                            : 'Upgrade to unlock unlimited features'
                         }
                     </Text>
 
                     <View style={styles.featuresList}>
                         {[
-                            { text: isPro ? 'Unlimited Studio generations' : '5 Studio generations' },
-                            { text: isPro ? 'Unlimited Podcasts' : '3 Podcasts' },
+                            { text: isPro ? 'Unlimited Studio generations' : 'Limited Studio generations' },
+                            { text: isPro ? 'Unlimited Podcasts' : 'Limited Podcasts' },
                             { text: 'Interactive Smart Chat' }
                         ].map((f, i) => (
                             <View key={i} style={styles.featureItem}>
@@ -202,7 +190,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         letterSpacing: 1,
     },
-    trialStatusText: {
+    statusText: {
         fontSize: 12,
         fontFamily: 'Nunito-Bold',
         color: '#FFFFFF',

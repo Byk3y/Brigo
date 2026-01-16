@@ -1,7 +1,7 @@
 /**
  * Onboarding Flow - Main Orchestrator
  * Coordinates 7 screens introducing Brigo's value proposition
- * Science-backed education leading to trial signup
+ * Science-backed education leading to subscription signup
  *
  * Modular architecture with separate screen components
  */
@@ -257,7 +257,7 @@ export default function OnboardingScreen() {
       setIsNavigating(true);
       try {
         await markOnboardingComplete();
-        // Redirect to trial offer payment screen
+        // Redirect to paywall screen
         router.replace('/paywall?source=onboarding');
       } catch (error) {
         console.error('Failed to mark onboarding complete:', error);

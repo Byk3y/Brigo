@@ -115,7 +115,7 @@ export function useAuthSetup() {
 
               setUserProperties({
                 subscription_tier: subscriptionData?.tier || 'free',
-                is_trial: subscriptionData?.is_trial || false,
+                is_premium: subscriptionData?.tier === 'premium',
                 streak: user?.streak || 0,
                 total_notebooks: notebooks?.length || 0,
                 pet_stage: petState?.stage || 1,

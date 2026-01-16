@@ -13,14 +13,13 @@ import { SourcesTab } from '@/components/notebook/SourcesTab';
 import { ChatTab } from '@/components/notebook/ChatTab';
 import { StudioTab } from '@/components/notebook/StudioTab';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
-import { LockedNotebookOverlay } from '@/components/upgrade/LockedNotebookOverlay';
-import { SUBSCRIPTION_CONSTANTS } from '@/lib/constants';
+// Note: LockedNotebookOverlay removed - all notebooks are now accessible (Library vs Factory model)
 import { NotebookHeader } from '@/components/notebook/NotebookHeader';
 import { NotebookTabBar, type TabType } from '@/components/notebook/NotebookTabBar';
 import { RenameNotebookModal } from '@/components/notebook/RenameNotebookModal';
 import { useNotebookDetail } from '@/hooks/useNotebookDetail';
 import { useNotebookSubscription } from '@/hooks/useNotebookSubscription';
-import { useNotebookAccess } from '@/hooks/useNotebookAccess';
+// Note: useNotebookAccess removed - all notebooks are now accessible
 import { useNotebookActions } from '@/hooks/useNotebookActions';
 import { useMaterialAddition } from '@/lib/hooks/useMaterialAddition';
 import MaterialTypeSelector from '@/components/MaterialTypeSelector';
@@ -50,8 +49,7 @@ export default function NotebookDetailScreen() {
   // Set up real-time subscription
   useNotebookSubscription(id, setNotebook);
 
-  // Check access control
-  const { showLockedOverlay, setShowLockedOverlay } = useNotebookAccess(id);
+  // Note: Notebook access is no longer locked - all users can access all notebooks
 
   // Material Addition Logic (Hoisted to parent to survive tab switches)
   const {
@@ -239,18 +237,7 @@ export default function NotebookDetailScreen() {
         limitReason={limitReason}
       />
 
-      {/* Locked Notebook Overlay */}
-      <LockedNotebookOverlay
-        visible={showLockedOverlay}
-        totalNotebooks={notebooks.length}
-        notebookId={id}
-        delayMs={SUBSCRIPTION_CONSTANTS.LOCKED_NOTEBOOK_OVERLAY_DELAY_MS}
-        onUpgrade={() => {
-          setShowLockedOverlay(false);
-          router.push('/upgrade');
-        }}
-        onDismiss={() => setShowLockedOverlay(false)}
-      />
+      {/* Note: Locked Notebook Overlay removed - all notebooks accessible under Library vs Factory model */}
     </SafeAreaView>
   );
 }

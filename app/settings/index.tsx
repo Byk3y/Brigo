@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
@@ -13,7 +13,10 @@ export default function SettingsScreen() {
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
     const router = useRouter();
-    const { authUser, resetPetState, tier, trialEndsAt, isExpired, loadSubscription } = useStore();
+    const { authUser, resetPetState, tier, isExpired, loadSubscription } = useStore();
+
+    // Navigation guard to prevent double-click issues
+    const isNavigating = useRef(false);
 
     // Handle restore purchases
     const handleRestore = async () => {
@@ -31,21 +34,9 @@ export default function SettingsScreen() {
     };
 
     // Calculate subscription status
-    const getDaysLeft = () => {
-        if (!trialEndsAt) return 0;
-        const now = new Date();
-        const end = new Date(trialEndsAt);
-        const diffTime = end.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return Math.max(0, diffDays);
-    };
+    const isPro = tier === 'premium' && !isExpired;
+    const subscriptionSubtext = isPro ? 'Pro • Active' : 'Free • Tap to upgrade';
 
-    const daysLeft = getDaysLeft();
-    const subscriptionSubtext = tier === 'premium'
-        ? 'Pro • Active'
-        : isExpired
-            ? 'Trial expired'
-            : `Trial • ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`;
 
     const handleOpenURL = async (url: string) => {
         try {
@@ -93,7 +84,14 @@ export default function SettingsScreen() {
                 if (action) {
                     action();
                 } else if (route) {
+                    // Prevent double navigation
+                    if (isNavigating.current) return;
+                    isNavigating.current = true;
                     router.push(route as any);
+                    // Reset after a short delay
+                    setTimeout(() => {
+                        isNavigating.current = false;
+                    }, 500);
                 }
             }}
             activeOpacity={0.7}

@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Alert } from 'react-native';
+import { View, Alert, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useSegments } from 'expo-router';
 import { useStore } from '@/lib/store';
@@ -22,10 +22,13 @@ import { UpgradeModal } from '@/components/upgrade/UpgradeModal';
 import { useUpgrade } from '@/lib/hooks/useUpgrade';
 import { useHomeSubscriptions } from '@/hooks/useHomeSubscriptions';
 import { useHomeNavigation } from '@/hooks/useHomeNavigation';
-import { useTrialSubscriptionUI } from '@/hooks/useTrialSubscriptionUI';
+import { useSubscriptionUI } from '@/hooks/useTrialSubscriptionUI';
 import { useNotebookList } from '@/hooks/useNotebookList';
 import { useHomeAnalytics } from '@/hooks/useHomeAnalytics';
 import { PendingSyncIndicator } from '@/components/PendingSyncIndicator';
+import { supabase } from '@/lib/supabase';
+
+
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -71,17 +74,14 @@ export default function HomeScreen() {
   // Real-time subscriptions (needs navigation ref to prevent flash)
   useHomeSubscriptions(isNavigatingRef);
 
-  // Trial/subscription UI state
+  // Subscription UI state
   const {
-    showTrialReminder,
     showUpgradeModal,
     showLimitedAccess,
-    daysRemaining,
     accessibleCount,
     totalCount,
-    setShowTrialReminder,
     setShowUpgradeModal,
-  } = useTrialSubscriptionUI(notebooks);
+  } = useSubscriptionUI(notebooks);
 
   // Notebook list filtering and sorting
   const { accessibleNotebooks } = useNotebookList({
@@ -235,6 +235,8 @@ export default function HomeScreen() {
     >
       <HomeHeader />
 
+
+
       {/* Content */}
       {shouldShowLoading ? (
         // Show blank loading state while routing redirects (prevents flash)
@@ -248,15 +250,12 @@ export default function HomeScreen() {
           onRefresh={handleRefresh}
           onNotebookPress={handleNotebookPress}
           onCreateNotebook={handleCreateNotebook}
-          showTrialReminder={showTrialReminder}
-          daysRemaining={daysRemaining}
           notebooksCount={notebooks.length}
           streakDays={user.streak || 0}
           showLimitedAccess={showLimitedAccess}
           accessibleCount={accessibleCount}
           totalCount={totalCount}
           onUpgrade={() => router.push('/upgrade')}
-          onDismissTrialReminder={() => setShowTrialReminder(false)}
           showStreakRestore={(() => {
             // Guard: Don't show anything until user is loaded and initialized
             if (!user.id || !isInitialized) return false;
@@ -334,14 +333,14 @@ export default function HomeScreen() {
         onSave={onTextSave}
       />
 
-      {/* Upgrade Modal (trial expired on first app open) */}
+      {/* Upgrade Modal (subscription expired on first app open) */}
       <UpgradeModal
         visible={showUpgradeModal && !showCreateUpgradeModal}
         onDismiss={() => {
-          trackUpgradeModalDismissed('trial_expired');
+          trackUpgradeModalDismissed('subscription_expired');
           setShowUpgradeModal(false);
         }}
-        source="trial_expired"
+        source="subscription_expired"
         notebooksCount={notebooks.length}
         flashcardsStudied={flashcardsStudied}
         streakDays={user.streak || 0}

@@ -1,6 +1,6 @@
 /**
  * Limited Access Banner
- * Persistent banner shown on home screen when trial has expired
+ * Persistent banner shown on home screen when subscription has expired
  * Non-dismissible reminder of limited access state
  */
 
@@ -39,7 +39,7 @@ export function LimitedAccessBanner({
       <View style={styles.content}>
         <Text style={styles.emoji}>⏰</Text>
         <Text style={[styles.text, { color: colors.text }]}>
-          <Text style={styles.boldText}>Trial ended</Text>
+          <Text style={styles.boldText}>Subscription required</Text>
         </Text>
       </View>
 

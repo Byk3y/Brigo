@@ -30,6 +30,7 @@ import { BackgroundProcessingIndicator } from '@/components/BackgroundProcessing
 import { SourceSelectionModal } from './SourceSelectionModal';
 import { useNotebookChat } from '@/lib/hooks/useNotebookChat';
 import { useStore } from '@/lib/store';
+import { useRouter } from 'expo-router';
 
 const EMPTY_ARRAY: any[] = [];
 
@@ -85,6 +86,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
     notebook.materials?.map(m => m.id) || []
   );
   const [sourceModalVisible, setSourceModalVisible] = useState(false);
+  const router = useRouter();
 
   const materialCount = notebook.materials?.length || 0;
   const selectedCount = selectedMaterialIds.length;
@@ -103,7 +105,12 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
   const [isReadyToShow, setIsReadyToShow] = useState(hasCachedDataOnMount);
   const contentOpacity = useRef(new Animated.Value(hasCachedDataOnMount ? 1 : 0)).current;
 
-  const { sendMessage, isStreaming } = useNotebookChat(notebook.id);
+  const { sendMessage, isStreaming, remainingMessages, limitReached } = useNotebookChat(notebook.id);
+
+  // Get subscription status to show remaining messages for expired users
+  const isExpired = useStore(state => state.isExpired);
+  const tier = useStore(state => state.tier);
+  const isPremium = tier === 'premium' && !isExpired;
 
   // Reactively select chat messages from the store
   const chatMessages = useStore(state =>
@@ -735,18 +742,48 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
         )}
 
         {!isInputFocused && inputText.length === 0 && (
-          <Text
-            style={{
-              fontSize: 10,
-              color: colors.textMuted,
-              textAlign: 'center',
-              marginBottom: 8,
-              fontFamily: 'Nunito-Regular',
-              opacity: 0.8,
-            }}
-          >
-            Brigo can be inaccurate, so double-check.
-          </Text>
+          <View style={{ alignItems: 'center', marginBottom: 8 }}>
+            {/* Show remaining messages for expired users */}
+            {!isPremium && remainingMessages !== null && (
+              <TouchableOpacity
+                onPress={() => router.push('/upgrade')}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: remainingMessages <= 2 ? '#f59e0b' : colors.primary,
+                    fontFamily: 'Nunito-SemiBold',
+                  }}
+                >
+                  {remainingMessages === 0
+                    ? '0 messages left today'
+                    : `${remainingMessages} message${remainingMessages !== 1 ? 's' : ''} left today`}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: colors.primary,
+                    fontFamily: 'Nunito-Medium',
+                  }}
+                >
+                  • Upgrade for unlimited →
+                </Text>
+              </TouchableOpacity>
+            )}
+            <Text
+              style={{
+                fontSize: 10,
+                color: colors.textMuted,
+                textAlign: 'center',
+                marginTop: !isPremium && remainingMessages !== null ? 4 : 0,
+                fontFamily: 'Nunito-Regular',
+                opacity: 0.8,
+              }}
+            >
+              Brigo can be inaccurate, so double-check.
+            </Text>
+          </View>
         )}
 
         <TouchableWithoutFeedback onPress={() => inputRef.current?.focus()}>

@@ -6,7 +6,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { NotebookCard } from '@/components/NotebookCard';
-import { TrialReminderCard } from '@/components/upgrade/TrialReminderCard';
 import { LimitedAccessBanner } from '@/components/upgrade/LimitedAccessBanner';
 import { StreakFreezeBanner } from '@/components/home/StreakFreezeBanner';
 import { AddNotebookCard } from '@/components/home/AddNotebookCard';
@@ -20,15 +19,12 @@ interface NotebookListProps {
   onRefresh: () => void;
   onNotebookPress: (id: string) => void;
   onCreateNotebook: () => void;
-  showTrialReminder: boolean;
-  daysRemaining: number;
   notebooksCount: number;
   streakDays: number;
   showLimitedAccess: boolean;
   accessibleCount: number;
   totalCount: number;
   onUpgrade: () => void;
-  onDismissTrialReminder: () => void;
   showStreakRestore?: boolean;
   previousStreak?: number;
   freezesLeft?: number;
@@ -42,15 +38,12 @@ export function NotebookList({
   onRefresh,
   onNotebookPress,
   onCreateNotebook,
-  showTrialReminder,
-  daysRemaining,
   notebooksCount,
   streakDays,
   showLimitedAccess,
   accessibleCount,
   totalCount,
   onUpgrade,
-  onDismissTrialReminder,
   showStreakRestore,
   previousStreak = 0,
   freezesLeft = 0,
@@ -96,15 +89,7 @@ export function NotebookList({
         />
       )}
 
-      {/* Trial Reminder (3 days or less remaining) */}
-      {showTrialReminder && (
-        <TrialReminderCard
-          daysRemaining={daysRemaining}
-          onDismiss={onDismissTrialReminder}
-        />
-      )}
-
-      {/* Limited Access Banner (trial expired) */}
+      {/* Limited Access Banner (subscription expired) */}
       {showLimitedAccess && (
         <LimitedAccessBanner
           accessibleCount={accessibleCount}
@@ -130,10 +115,3 @@ export function NotebookList({
     </ScrollView>
   );
 }
-
-
-
-
-
-
-

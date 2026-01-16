@@ -73,3 +73,7 @@ yarn-error.*
 coverage/
 *.lcov
 destinations.txt
+
+# Supabase
+supabase/.temp/
+supabase/.env.local

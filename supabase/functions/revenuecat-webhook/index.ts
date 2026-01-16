@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
                 break;
 
             case "EXPIRATION":
-                updates.tier = "trial";
+                updates.tier = "free";
                 updates.status = "expired";
                 break;
 
@@ -58,24 +58,16 @@ Deno.serve(async (req) => {
                 return new Response(JSON.stringify({ message: "Event ignored" }), { status: 200 });
         }
 
-        // Fetch existing subscription to prevent stale overwrites
+        // Fetch existing subscription to check current state
         const { data: existingSub } = await supabase
             .from("user_subscriptions")
-            .select("trial_ends_at, tier, status")
+            .select("tier, status")
             .eq("user_id", app_user_id)
             .single();
 
-        // DEFENSIVE: If it's an EXPIRATION event, don't expire if they have a valid internal trial
-        if (type === "EXPIRATION" && existingSub) {
-            const now = new Date();
-            const dbTrialEnds = existingSub.trial_ends_at ? new Date(existingSub.trial_ends_at) : null;
-
-            // If DB trial is still active (ends in future), ignore the expiration webhook
-            // likely coming from a recycled Apple ID or stale event.
-            if (dbTrialEnds && dbTrialEnds > now) {
-                console.log(`Ignoring EXPIRATION event for user ${app_user_id} because DB trial is still active until ${existingSub.trial_ends_at}`);
-                return new Response(JSON.stringify({ message: "In-app trial takes precedence" }), { status: 200 });
-            }
+        // Log current state for debugging
+        if (existingSub) {
+            console.log(`Current subscription state for ${app_user_id}: tier=${existingSub.tier}, status=${existingSub.status}`);
         }
 
         // Update the record

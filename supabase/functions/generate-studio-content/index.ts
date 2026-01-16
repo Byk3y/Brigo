@@ -153,21 +153,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5. CHECK QUOTA (trial users: 5 Studio jobs)
+    // 5. CHECK QUOTA (free users: blocked, premium users: unlimited)
     const quotaCheck = await checkQuota(supabase, user.id, 'studio');
     if (!quotaCheck.allowed) {
-      console.warn('Quota exceeded:', quotaCheck);
+      console.warn('Quota check failed:', quotaCheck.reason);
       return new Response(
         JSON.stringify({
           error: quotaCheck.reason,
-          remaining: quotaCheck.remaining,
-          limit: quotaCheck.limit,
         }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Quota check passed. Remaining: ${quotaCheck.remaining}`);
+    console.log(`Quota check passed for ${quotaCheck.tier} user`);
+
 
     // 6. Fetch ALL processed materials for this notebook (multi-material aware)
     const { data: materials, error: materialsError } = await supabase

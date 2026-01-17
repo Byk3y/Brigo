@@ -76,9 +76,9 @@ supabase secrets set UPSTASH_REDIS_REST_TOKEN=<your-token>
 If you're already using the access token approach:
 
 ```bash
-SUPABASE_ACCESS_TOKEN=sbp_528f8be63e1c57dbc1c22831662e992f7fa96c4f supabase secrets set UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
+SUPABASE_ACCESS_TOKEN=<your-supabase-access-token> supabase secrets set UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
 
-SUPABASE_ACCESS_TOKEN=sbp_528f8be63e1c57dbc1c22831662e992f7fa96c4f supabase secrets set UPSTASH_REDIS_REST_TOKEN=<your-token>
+SUPABASE_ACCESS_TOKEN=<your-supabase-access-token> supabase secrets set UPSTASH_REDIS_REST_TOKEN=<your-token>
 ```
 
 ### Step 5: Deploy Edge Functions
@@ -87,12 +87,12 @@ After adding the secrets, redeploy your edge functions to pick up the new config
 
 ```bash
 # Deploy all functions
-SUPABASE_ACCESS_TOKEN=sbp_528f8be63e1c57dbc1c22831662e992f7fa96c4f supabase functions deploy
+SUPABASE_ACCESS_TOKEN=<your-supabase-access-token> supabase functions deploy
 
 # Or deploy individually
-SUPABASE_ACCESS_TOKEN=sbp_528f8be63e1c57dbc1c22831662e992f7fa96c4f supabase functions deploy process-material
-SUPABASE_ACCESS_TOKEN=sbp_528f8be63e1c57dbc1c22831662e992f7fa96c4f supabase functions deploy generate-studio-content
-SUPABASE_ACCESS_TOKEN=sbp_528f8be63e1c57dbc1c22831662e992f7fa96c4f supabase functions deploy generate-audio-overview
+SUPABASE_ACCESS_TOKEN=<your-supabase-access-token> supabase functions deploy process-material
+SUPABASE_ACCESS_TOKEN=<your-supabase-access-token> supabase functions deploy generate-studio-content
+SUPABASE_ACCESS_TOKEN=<your-supabase-access-token> supabase functions deploy generate-audio-overview
 ```
 
 ### Step 6: Verify Setup
@@ -157,7 +157,7 @@ This ensures your app doesn't break if Redis has issues.
 
 1. **Check secrets are set**:
    ```bash
-   SUPABASE_ACCESS_TOKEN=sbp_528f8be63e1c57dbc1c22831662e992f7fa96c4f supabase secrets list
+   SUPABASE_ACCESS_TOKEN=<your-supabase-access-token> supabase secrets list
    ```
    Should show `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
 
@@ -223,7 +223,7 @@ export const RATE_LIMITS = {
 
 Then redeploy:
 ```bash
-SUPABASE_ACCESS_TOKEN=sbp_528f8be63e1c57dbc1c22831662e992f7fa96c4f supabase functions deploy
+SUPABASE_ACCESS_TOKEN=<your-supabase-access-token> supabase functions deploy
 ```
 
 ## Response Format

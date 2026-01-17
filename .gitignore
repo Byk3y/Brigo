@@ -77,3 +77,6 @@ destinations.txt
 # Supabase
 supabase/.temp/
 supabase/.env.local
+
+# AI Assistant Config (contains local permissions and potentially sensitive tokens)
+.claude/

@@ -6,7 +6,8 @@ import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { useStore } from '@/lib/store';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { generateGradientFromString, getInitials } from '@/lib/utils/avatarGradient';
+import { generateGradientFromString, getInitials, getAvatarUrl, AVATAR_STYLES, CURATED_LORELEI_SEEDS, CURATED_ADVENTURER_SEEDS } from '@/lib/utils/avatarGradient';
+import { SvgUri } from 'react-native-svg';
 
 export default function EditProfileScreen() {
     const { isDarkMode } = useTheme();
@@ -16,16 +17,13 @@ export default function EditProfileScreen() {
 
     const [firstName, setFirstName] = useState(user.first_name || '');
     const [lastName, setLastName] = useState(user.last_name || '');
+    const [avatarStyle, setAvatarStyle] = useState<'lorelei' | 'adventurer'>(user.avatar?.includes('/lorelei/') ? 'lorelei' : 'adventurer');
+    const [avatarSeed, setAvatarSeed] = useState(user.avatar ? (user.avatar.split('seed=')[1]?.split('&')[0] || user.id) : authUser?.id || 'default');
     const [isSaving, setIsSaving] = useState(false);
 
-    const gradientColors = useMemo(() => {
-        const identifier = authUser?.id || authUser?.email || 'default';
-        return generateGradientFromString(identifier, isDarkMode);
-    }, [authUser?.id, authUser?.email, isDarkMode]);
-
-    const initials = useMemo(() => {
-        return getInitials(firstName, lastName, authUser?.email || 'U');
-    }, [firstName, lastName, authUser?.email]);
+    const avatarUrl = useMemo(() => {
+        return getAvatarUrl(avatarSeed, avatarStyle);
+    }, [avatarSeed, avatarStyle]);
 
     const handleSave = async () => {
         if (!firstName.trim()) {
@@ -39,11 +37,12 @@ export default function EditProfileScreen() {
                 const { userService } = await import('@/lib/services/userService');
                 const success = await userService.updateProfile(authUser.id, {
                     first_name: firstName,
-                    last_name: lastName
+                    last_name: lastName,
+                    avatar: avatarUrl
                 });
 
                 if (success) {
-                    setUser({ first_name: firstName, last_name: lastName });
+                    setUser({ first_name: firstName, last_name: lastName, avatar: avatarUrl });
                     router.back();
                 } else {
                     Alert.alert('Error', 'Failed to save changes');
@@ -75,19 +74,74 @@ export default function EditProfileScreen() {
                 </View>
 
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                    {/* Avatar - Display Only */}
+                    {/* Avatar Preview */}
                     <View style={styles.avatarSection}>
                         <View style={styles.avatarWrapper}>
-                            <LinearGradient
-                                colors={gradientColors as [string, string]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.avatarGradient}
-                            >
-                                <Text style={styles.initialsText}>{initials}</Text>
-                            </LinearGradient>
+                            <View style={[styles.avatarContainer, { backgroundColor: isDarkMode ? '#1c1c1e' : '#f2f2f7' }]}>
+                                <SvgUri
+                                    uri={avatarUrl}
+                                    width="100%"
+                                    height="100%"
+                                />
+                            </View>
                         </View>
-                        <Text style={[styles.avatarHint, { color: colors.textMuted }]}>Gradient avatar</Text>
+                        <Text style={[styles.avatarHint, { color: colors.textSecondary }]}>Pick your character</Text>
+                    </View>
+
+                    {/* Curated Avatar Grid */}
+                    <View style={styles.selectionSection}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={[styles.label, { color: colors.textSecondary }]}>Characters</Text>
+                            <View style={styles.tabContainer}>
+                                {AVATAR_STYLES.map((style) => (
+                                    <TouchableOpacity
+                                        key={style.id}
+                                        onPress={() => setAvatarStyle(style.id as any)}
+                                        style={[
+                                            styles.tabButton,
+                                            { borderBottomColor: avatarStyle === style.id ? colors.primary : 'transparent' }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            styles.tabText,
+                                            {
+                                                color: avatarStyle === style.id ? colors.primary : colors.textSecondary,
+                                                fontFamily: avatarStyle === style.id ? 'Nunito-Bold' : 'Nunito-Medium'
+                                            }
+                                        ]}>
+                                            {style.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.avatarGrid}>
+                            {(avatarStyle === 'lorelei' ? CURATED_LORELEI_SEEDS : CURATED_ADVENTURER_SEEDS).map((seed) => (
+                                <TouchableOpacity
+                                    key={seed}
+                                    onPress={() => setAvatarSeed(seed)}
+                                    style={[
+                                        styles.gridItem,
+                                        {
+                                            backgroundColor: isDarkMode ? '#1c1c1e' : '#f2f2f7',
+                                            borderColor: avatarSeed === seed && avatarUrl.includes(`/${avatarStyle}/`) ? colors.primary : colors.border
+                                        }
+                                    ]}
+                                >
+                                    <SvgUri
+                                        uri={getAvatarUrl(seed, avatarStyle)}
+                                        width={60}
+                                        height={60}
+                                    />
+                                    {avatarSeed === seed && avatarUrl.includes(`/${avatarStyle}/`) && (
+                                        <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]}>
+                                            <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
 
                     {/* Form */}
@@ -179,33 +233,74 @@ const styles = StyleSheet.create({
     },
     avatarSection: {
         alignItems: 'center',
-        marginBottom: 40,
+        marginBottom: 32,
     },
     avatarWrapper: {
-        width: 100,
-        height: 100,
-        marginBottom: 12,
+        width: 140,
+        height: 140,
+        marginBottom: 8,
     },
-    avatarGradient: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+    avatarContainer: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    initialsText: {
-        fontSize: 32,
-        fontFamily: 'Nunito-Bold',
-        color: '#FFFFFF',
+        overflow: 'hidden',
+        borderWidth: 3,
+        borderColor: '#9333ea',
     },
     avatarHint: {
         fontSize: 14,
-        fontFamily: 'Nunito-Medium',
+        fontFamily: 'Nunito-Bold',
+        marginTop: 12,
+    },
+    selectionSection: {
+        marginBottom: 32,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    tabButton: {
+        paddingVertical: 4,
+        borderBottomWidth: 2,
+    },
+    tabText: {
+        fontSize: 14,
+    },
+    avatarGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        justifyContent: 'flex-start',
+    },
+    gridItem: {
+        width: 76,
+        height: 76,
+        borderRadius: 38,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        position: 'relative',
+    },
+    activeIndicator: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
     },
     form: {
         gap: 24,

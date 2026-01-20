@@ -1,12 +1,13 @@
 import React, { useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Modal, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { useStore } from '@/lib/store';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { generateGradientFromString, getInitials } from '@/lib/utils/avatarGradient';
+import { generateGradientFromString, getInitials, getAvatarUrl, CURATED_LORELEI_SEEDS, CURATED_ADVENTURER_SEEDS, AVATAR_STYLES } from '@/lib/utils/avatarGradient';
+import { SvgUri } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 
@@ -23,8 +24,13 @@ export default function ProfileScreen() {
         flashcardsStudied,
         loadUserProfile,
         loadNotebooks,
-        loadPetState
+        loadPetState,
+        setUser
     } = useStore();
+
+    const [isPickerVisible, setIsPickerVisible] = React.useState(false);
+    const [isSaving, setIsSaving] = React.useState(false);
+    const [modalStyle, setModalStyle] = React.useState<'lorelei' | 'adventurer'>('adventurer');
 
     // Load fresh data on mount
     useEffect(() => {
@@ -37,10 +43,11 @@ export default function ProfileScreen() {
         getInitials(user.first_name || '', user.last_name || '', authUser?.email || 'U'),
         [user.first_name, user.last_name, authUser?.email]);
 
-    const gradientColors = useMemo(() => {
+    const avatarUrl = useMemo(() => {
+        if (user.avatar) return user.avatar;
         const identifier = authUser?.id || authUser?.email || 'default';
-        return generateGradientFromString(identifier, isDarkMode);
-    }, [authUser?.id, authUser?.email, isDarkMode]);
+        return getAvatarUrl(identifier);
+    }, [user.avatar, authUser?.id, authUser?.email]);
 
     const joinedDate = useMemo(() => {
         if (!user.created_at) return 'Joined January 2025';
@@ -51,6 +58,42 @@ export default function ProfileScreen() {
     // Assessment/Preferences data
     const learningStyle = (user.meta as any)?.learning_style || 'Visual learner';
     const dailyGoal = (user.meta as any)?.daily_commitment_minutes || 15;
+
+    // Detect current style when modal opens
+    useEffect(() => {
+        if (isPickerVisible && user.avatar) {
+            if (user.avatar.includes('/adventurer/')) {
+                setModalStyle('adventurer');
+            } else {
+                setModalStyle('lorelei');
+            }
+        }
+    }, [isPickerVisible, user.avatar]);
+
+    const handleAvatarSelect = async (seed: string) => {
+        const newAvatarUrl = getAvatarUrl(seed, modalStyle);
+        setIsSaving(true);
+        try {
+            if (authUser) {
+                const { userService } = await import('@/lib/services/userService');
+                const success = await userService.updateProfile(authUser.id, {
+                    avatar: newAvatarUrl
+                });
+
+                if (success) {
+                    setUser({ avatar: newAvatarUrl });
+                    setIsPickerVisible(false);
+                } else {
+                    Alert.alert('Error', 'Failed to update avatar');
+                }
+            }
+        } catch (error) {
+            console.error('Error updating avatar:', error);
+            Alert.alert('Error', 'An unexpected error occurred');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -72,15 +115,18 @@ export default function ProfileScreen() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Avatar Section */}
                 <View style={styles.avatarContainer}>
-                    <View style={styles.avatarWrapper}>
-                        <LinearGradient
-                            colors={gradientColors as [string, string]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.avatarGradient}
-                        >
-                            <Text style={styles.initialsText}>{initials}</Text>
-                        </LinearGradient>
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => setIsPickerVisible(true)}
+                        style={styles.avatarWrapper}
+                    >
+                        <View style={[styles.avatarContainerStyle, { backgroundColor: isDarkMode ? '#1c1c1e' : '#f2f2f7' }]}>
+                            <SvgUri
+                                uri={avatarUrl}
+                                width="100%"
+                                height="100%"
+                            />
+                        </View>
                         <View style={[
                             styles.badgeContainer,
                             {
@@ -89,9 +135,9 @@ export default function ProfileScreen() {
                                 borderWidth: 1
                             }
                         ]}>
-                            <Text style={styles.badgeEmoji}>🎓</Text>
+                            <Ionicons name="camera" size={16} color={colors.textSecondary} />
                         </View>
-                    </View>
+                    </TouchableOpacity>
                     <Text style={[styles.joinedText, { color: colors.textMuted }]}>{joinedDate}</Text>
                 </View>
 
@@ -171,10 +217,101 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
-
-
                 <View style={{ height: 40 }} />
             </ScrollView>
+
+            {/* Avatar Picker Modal */}
+            <Modal
+                visible={isPickerVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setIsPickerVisible(false)}
+            >
+                <Pressable
+                    style={styles.modalOverlay}
+                    onPress={() => !isSaving && setIsPickerVisible(false)}
+                >
+                    <Pressable style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+                        <View style={styles.modalHeader}>
+                            <View>
+                                <Text style={[styles.modalTitle, { color: colors.text }]}>Choose Character</Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => setIsPickerVisible(false)}
+                                disabled={isSaving}
+                            >
+                                <Ionicons name="close" size={24} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Style Selector Tabs */}
+                        <View style={styles.tabContainer}>
+                            {AVATAR_STYLES.map((style) => (
+                                <TouchableOpacity
+                                    key={style.id}
+                                    onPress={() => setModalStyle(style.id as any)}
+                                    style={[
+                                        styles.tabButton,
+                                        { borderBottomColor: modalStyle === style.id ? colors.primary : 'transparent' }
+                                    ]}
+                                >
+                                    <Text style={[
+                                        styles.tabText,
+                                        {
+                                            color: modalStyle === style.id ? colors.primary : colors.textSecondary,
+                                            fontFamily: modalStyle === style.id ? 'Nunito-Bold' : 'Nunito-Medium'
+                                        }
+                                    ]}>
+                                        {style.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <ScrollView
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={styles.gridContainer}
+                        >
+                            {(modalStyle === 'lorelei' ? CURATED_LORELEI_SEEDS : CURATED_ADVENTURER_SEEDS).map((seed) => {
+                                const currentUrl = getAvatarUrl(seed, modalStyle);
+                                const isSelected = user.avatar === currentUrl;
+
+                                return (
+                                    <TouchableOpacity
+                                        key={seed}
+                                        onPress={() => handleAvatarSelect(seed)}
+                                        disabled={isSaving}
+                                        style={[
+                                            styles.gridItem,
+                                            {
+                                                backgroundColor: isDarkMode ? '#2c2c2e' : '#f2f2f7',
+                                                borderColor: isSelected ? colors.primary : 'transparent'
+                                            }
+                                        ]}
+                                    >
+                                        <SvgUri
+                                            uri={currentUrl}
+                                            width={80}
+                                            height={80}
+                                        />
+                                        {isSelected && (
+                                            <View style={[styles.checkBadge, { backgroundColor: colors.primary }]}>
+                                                <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+
+                        {isSaving && (
+                            <View style={styles.savingOverlay}>
+                                <ActivityIndicator size="large" color={colors.primary} />
+                            </View>
+                        )}
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -211,25 +348,20 @@ const styles = StyleSheet.create({
         position: 'relative',
         marginBottom: 16,
     },
-    avatarGradient: {
+    avatarContainerStyle: {
         width: 120,
         height: 120,
         borderRadius: 60,
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'hidden',
+        borderWidth: 2,
+        borderColor: '#9333ea',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 10,
         elevation: 6,
-    },
-    initialsText: {
-        fontSize: 40,
-        fontFamily: 'Nunito-Bold',
-        color: '#FFFFFF',
-        textShadowColor: 'rgba(0,0,0,0.1)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 2,
     },
     badgeContainer: {
         position: 'absolute',
@@ -360,11 +492,81 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'Nunito-Medium',
     },
-    soonContent: {
-        gap: 8,
-    },
     soonText: {
         fontSize: 15,
         fontFamily: 'Nunito-Medium',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        maxHeight: '80%',
+        paddingBottom: 40,
+        position: 'relative',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        paddingTop: 24,
+        paddingBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontFamily: 'Nunito-Bold',
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 24,
+        marginBottom: 16,
+        gap: 24,
+    },
+    tabButton: {
+        paddingVertical: 8,
+        borderBottomWidth: 2,
+    },
+    tabText: {
+        fontSize: 15,
+    },
+    gridContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        paddingHorizontal: 20,
+        justifyContent: 'center',
+    },
+    gridItem: {
+        width: width / 3 - 22,
+        height: width / 3 - 22,
+        borderRadius: (width / 3 - 22) / 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 3,
+        position: 'relative',
+    },
+    checkBadge: {
+        position: 'absolute',
+        top: 2,
+        right: 2,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    savingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
     }
 });

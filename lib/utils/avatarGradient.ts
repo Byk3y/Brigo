@@ -93,3 +93,35 @@ export const getInitials = (firstName: string, lastName: string, fallback: strin
   if (fallback) return fallback[0].toUpperCase();
   return '??';
 };
+
+/**
+ * Generate a DiceBear avatar URL
+ * @param seed - Seed for the avatar (user ID or email)
+ * @param style - Avatar style (lorelei, adventurer, bottts, personas, avataaars)
+ * @returns Avatar URL string
+ */
+export const getAvatarUrl = (seed: string, style: string = 'adventurer'): string => {
+  return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
+};
+
+/**
+ * Curated seeds for the Lorelei style to ensure high-quality options
+ */
+export const CURATED_LORELEI_SEEDS = [
+  'Felix', 'Aneka', 'Milo', 'Luna', 'Jasper',
+  'Maya', 'Oliver', 'Sophie', 'Leo', 'Mia',
+  'Charlie', 'Willow', 'Oscar', 'Ruby', 'Noah',
+  'Ivy', 'Finn', 'Zoe', 'Arlo', 'Aria'
+];
+
+export const CURATED_ADVENTURER_SEEDS = [
+  'Jack', 'Mia', 'Leo', 'Sophie', 'Alex',
+  'Ruby', 'Oscar', 'Luna', 'Felix', 'Zoe',
+  'Oliver', 'Chloe', 'Jasper', 'Daisy', 'Milo',
+  'Belle', 'Arlo', 'Willow', 'Bear', 'Coco'
+];
+
+export const AVATAR_STYLES = [
+  { id: 'adventurer', name: 'Adventurer' },
+  { id: 'lorelei', name: 'Lorelei' }
+];

@@ -4,20 +4,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useStore } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
-import { generateGradientFromString } from '@/lib/utils/avatarGradient';
+import { generateGradientFromString, getAvatarUrl } from '@/lib/utils/avatarGradient';
+import { SvgUri } from 'react-native-svg';
 import { BrigoLogo } from '../BrigoLogo';
 
 export const HomeHeader: React.FC = () => {
     const router = useRouter();
-    const { authUser } = useStore();
+    const { authUser, user } = useStore();
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
 
-    // Generate unique gradient for this user
-    const gradientColors = useMemo(() => {
+    // Use persistent avatar from store or generate one
+    const avatarUrl = useMemo(() => {
+        if (user?.avatar) return user.avatar;
         const identifier = authUser?.id || authUser?.email || 'default';
-        return generateGradientFromString(identifier, isDarkMode);
-    }, [authUser?.id, authUser?.email, isDarkMode]);
+        return getAvatarUrl(identifier);
+    }, [user?.avatar, authUser?.id, authUser?.email]);
 
     const handleProfilePress = () => {
         router.push('/profile');
@@ -38,9 +40,9 @@ export const HomeHeader: React.FC = () => {
                     onPress={handleProfilePress}
                     activeOpacity={0.8}
                     style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 20,
+                        width: 48,
+                        height: 48,
+                        borderRadius: 24,
                         overflow: 'hidden',
                         shadowColor: '#000',
                         shadowOffset: { width: 0, height: 2 },
@@ -49,15 +51,10 @@ export const HomeHeader: React.FC = () => {
                         elevation: 4,
                     }}
                 >
-                    <LinearGradient
-                        colors={gradientColors as [string, string]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={{
-                            flex: 1,
-                            width: '100%',
-                            height: '100%',
-                        }}
+                    <SvgUri
+                        uri={avatarUrl}
+                        width="100%"
+                        height="100%"
                     />
                 </TouchableOpacity>
             </View>

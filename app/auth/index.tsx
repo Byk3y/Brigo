@@ -75,10 +75,7 @@ export default function AuthScreen() {
     isAppleAuthAvailable().then(setIsAppleAvailable);
   }, []);
 
-  const handleEmailAuth = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/auth/magic-link');
-  };
+
 
   // Helper to save Apple user name to profile
   const saveAppleUserName = async (userId: string, fullName: string) => {
@@ -223,23 +220,7 @@ export default function AuthScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* Email */}
-            <TouchableOpacity
-              onPress={handleEmailAuth}
-              style={[
-                styles.authMethodButton,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: colors.surfaceElevated,
-                },
-              ]}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="mail-outline" size={24} color={colors.text} />
-              <Text style={[styles.authMethodText, { color: colors.text }]}>
-                Continue with Email
-              </Text>
-            </TouchableOpacity>
+
           </View>
 
           {/* Note: No separate login link needed - magic link works for both signup and login */}

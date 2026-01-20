@@ -7,8 +7,9 @@
  * External URLs
  */
 export const APP_URLS = {
-  TERMS: 'https://fascinated-omelet-141.notion.site/Terms-of-Use-2e3e30482f45800791f8f054e5d6ad9b?source=copy_link',
-  PRIVACY: 'https://fascinated-omelet-141.notion.site/Privacy-Policy-2e3e30482f45809198ffe946357ee4ae?source=copy_link',
+  TERMS: 'https://brigo.app/terms',
+  PRIVACY: 'https://brigo.app/privacy',
+  SUPPORT: 'https://brigo.app/support',
   WEBSITE: 'https://brigo.app',
 } as const;
 

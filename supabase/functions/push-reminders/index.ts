@@ -13,16 +13,6 @@ interface Profile {
     last_notification_sent_at: string | null
 }
 
-interface Notebook {
-    id: string
-    title: string
-}
-
-interface PetState {
-    name: string
-    current_stage: number
-}
-
 interface NotificationPayload {
     to: string
     sound: string
@@ -31,17 +21,216 @@ interface NotificationPayload {
     data: Record<string, any>
     mutableContent: boolean
     _displayInForeground: boolean
-    _profileId: string // Track which profile this is for
+    _profileId: string
 }
+
+interface NotificationContext {
+    petName: string
+    streak: number
+    lastNotebook: string
+    subject: string
+    quizScore: number | null
+    quizTitle: string | null
+    quizCompletedAt: string | null
+    pointsToLevelUp: number
+    petStage: number
+    topic: string
+}
+
+type NotificationCategory = 'passive_aggressive' | 'loss_aversion' | 'hype' | 'context_rich' | 'soft' | 'comeback'
+
+interface MessageTemplate {
+    title: string
+    body: string
+}
+
+// ============================================================================
+// NOTIFICATION TEMPLATE LIBRARY (50+ Duolingo-style messages)
+// ============================================================================
+
+const templateLibrary: Record<NotificationCategory, MessageTemplate[]> = {
+    // Category 1: Passive-Aggressive (The "Unhinged Duo" Move)
+    // Best for: Users who have ignored 2+ reminders
+    passive_aggressive: [
+        { title: `🙄 Wow, okay.`, body: `So we're just ignoring "{{lastNotebook}}" today? I see how it is. 💅` },
+        { title: `🤡 Is this a joke?`, body: `Your streak is crying. I'm crying. Even "{{lastNotebook}}" is crying. Fix it.` },
+        { title: `🤐 No words.`, body: `If you wanted to lose your streak, you could have just said so. 💅` },
+        { title: `Hi, it's {{petName}}.`, body: `These reminders don't seem to be working. I'll stop for now. ✌️` },
+        { title: `Oh, so we're just 'friends' now?`, body: `Cool. {{petName}} noticed you haven't opened "{{lastNotebook}}" today. 💅` },
+        { title: `🤐 Since you're clearly busy...`, body: `I've started studying on my own. I'm already smarter than you. 🧠` },
+        { title: `👀 I see you opening other apps.`, body: `It's okay. I'm not jealous. I'm just... disappointed. 🦉` },
+        { title: `{{petName}} is packing their bags.`, body: `One session in "{{lastNotebook}}" is the only thing that will make them stay.` },
+        { title: `Is this a joke to you?`, body: `Your {{streak}}-day streak is literally crying. Fix it. 🤡` },
+        { title: `I guess "{{lastNotebook}}" isn't important.`, body: `I'll just wait here... forever. 🕯️` },
+    ],
+
+    // Category 2: High-Stakes / Loss Aversion
+    // Best for: Late-night "Streak Saver" nudges
+    loss_aversion: [
+        { title: `🚨 SOS: Save {{petName}}!`, body: `Your {{streak}}-day streak is gasping for air!` },
+        { title: `Don't let the fire go out!`, body: `🕯️ 1 minute in "{{lastNotebook}}" keeps the streak alive.` },
+        { title: `⏰ Last chance!`, body: `In 60 minutes, your {{streak}}-day streak becomes 0. Don't do it. 😱` },
+        { title: `🏃‍♀️ Your streak is in DANGER.`, body: `Open Brigo now to rescue your {{streak}} days!` },
+        { title: `You've worked {{streak}} days for this.`, body: `Don't throw it all away for a TikTok scroll. 📱` },
+        { title: `🧊 The streak freeze is melting!`, body: `Save your {{streak}} days before it's too late.` },
+        { title: `{{petName}} found a lost flashcard!`, body: `Review it to save your streak! 🃏` },
+        { title: `Don't be that person.`, body: `You know, the one who loses a {{streak}}-day streak. 📉` },
+        { title: `⏳ Tik-tok.`, body: `The clock is ticking on those {{streak}} days.` },
+        { title: `Everything you studied is fading...`, body: `Keep "{{lastNotebook}}" fresh! 🌫️` },
+    ],
+
+    // Category 3: The "Hype" Bestie
+    // Best for: Mid-day nudges or milestone mornings
+    hype: [
+        { title: `🚀 LET'S GOOO!`, body: `You're only 1 session away from a {{streak}}-day milestone!` },
+        { title: `You're crushing it!`, body: `{{petName}} is doing a happy dance. 💃 Keep it up!` },
+        { title: `☀️ Morning, superstar!`, body: `Ready to make "{{lastNotebook}}" your masterpiece today?` },
+        { title: `🧠 I just saw your progress—`, body: `you're basically a genius now. Review "{{lastNotebook}}" to confirm.` },
+        { title: `⚡️ Energy check!`, body: `5 minutes of study = 0% guilt later tonight.` },
+        { title: `You + Brigo = Academic Weapon.`, body: `⚔️ Let's get it.` },
+        { title: `🏆 The pet shop is talking about you!`, body: `Your {{streak}}-day streak is legendary!` },
+        { title: `New day, new gains.`, body: `Let's tackle "{{lastNotebook}}" together! 🤝` },
+        { title: `🦸‍♂️ Consistency is your superpower.`, body: `Keep the streak alive!` },
+        { title: `🎯 Something tells me today is the day`, body: `you finally master {{subject}}.` },
+    ],
+
+    // Category 4: Context-Rich / Topic-Specific
+    // Best for: Afternoon "Deep Dive" nudges
+    context_rich: [
+        { title: `🤔 Did you ever figure out that part?`, body: `{{petName}} is still confused about "{{lastNotebook}}".` },
+        { title: `📖 That PDF you uploaded`, body: `isn't going to read itself. Let's dive in!` },
+        { title: `📝 You were doing so well with {{subject}}.`, body: `Ready for a quick quiz?` },
+        { title: `🧩 {{petName}} found a tricky question`, body: `in "{{lastNotebook}}". Can you solve it?` },
+        { title: `✅ Only 5 flashcards left`, body: `to master {{subject}}. You've got this!` },
+        { title: `🧠 Reviewing "{{lastNotebook}}" now`, body: `will save you 2 hours of cramming later. Logic.` },
+        { title: `😤 I bet you can't get 100%`, body: `on the {{subject}} quiz right now. Prove me wrong!` },
+        { title: `☕ Just checking in—`, body: `how's the "{{lastNotebook}}" grind going?` },
+        { title: `👥 Your study group is waiting`, body: `(well, just {{petName}}) in "{{lastNotebook}}".` },
+        { title: `🛀 A quick refresh on {{subject}}`, body: `is exactly what your brain needs right now.` },
+    ],
+
+    // Category 5: Soft / Supportive
+    // Best for: High-stress periods (Exam weeks)
+    soft: [
+        { title: `🧘‍♀️ Take a deep breath.`, body: `2 minutes in Brigo is enough to stay on track.` },
+        { title: `I know it's a lot.`, body: `But {{petName}} is here to help. Just one flashcard? 🕯️` },
+        { title: `🌸 Small steps lead to big wins.`, body: `Keep going gently.` },
+        { title: `☁️ Studying is hard.`, body: `You're doing great. See you in "{{lastNotebook}}"?` },
+        { title: `💖 You're more than your grades.`, body: `But a quick review won't hurt!` },
+        { title: `🏔️ Don't stress about the mountain.`, body: `Just look at the next step.` },
+        { title: `📣 {{petName}} is cheering for you quietly.`, body: `(Shhh, keep studying!)` },
+        { title: `💌 Your future self will thank you`, body: `for those 5 minutes in "{{lastNotebook}}" today.` },
+        { title: `👯‍♀️ You've got the brains,`, body: `I've got the reminders. Perfect team.` },
+        { title: `✨ Stay curious. Keep learning.`, body: `See you inside!` },
+    ],
+
+    // Category 6: Comeback (For users with streak = 0)
+    // Best for: Re-engaging lapsed users without guilt-tripping about "broken" streaks
+    comeback: [
+        { title: `👋 Hey stranger!`, body: `{{petName}} has been waiting for you. No pressure, just one flashcard?` },
+        { title: `🌱 Fresh start?`, body: `Today is a perfect day to begin a new streak. {{petName}} believes in you!` },
+        { title: `🎯 No streak? No problem.`, body: `Everyone starts somewhere. Let's go review "{{lastNotebook}}"!` },
+        { title: `🦋 Welcome back!`, body: `{{petName}} missed you. Ready to pick up where you left off?` },
+        { title: `🔄 Time for a comeback?`, body: `"{{lastNotebook}}" is waiting. Let's start fresh!` },
+        { title: `☀️ New day, new you.`, body: `{{petName}} is ready when you are. No judgment here.` },
+        { title: `🚀 Ready to restart?`, body: `One session today = Day 1 of your new streak!` },
+        { title: `💪 You've got this.`, body: `{{petName}} is cheering for your comeback. Start with "{{lastNotebook}}"?` },
+        { title: `🌈 Every expert was once a beginner.`, body: `Let's build something great together, starting now.` },
+        { title: `🎬 Plot twist incoming!`, body: `{{petName}} senses a comeback arc. Prove them right?` },
+    ],
+}
+
+// ============================================================================
+// SMART CATEGORY SELECTION
+// ============================================================================
+
+function selectCategory(
+    diffDays: number,
+    quizScore: number | null,
+    quizCompletedAt: string | null,
+    pointsToLevelUp: number,
+    currentHour: number,
+    streak: number
+): NotificationCategory {
+    // Priority 0: Streak is 0 - use comeback messages (no guilt-tripping)
+    if (streak === 0) {
+        return 'comeback'
+    }
+
+    // Priority 1: Quiz recovery (only if bombed a quiz in the last 7 days)
+    if (quizScore !== null && quizScore < 50 && quizCompletedAt) {
+        const quizDate = new Date(quizCompletedAt)
+        const now = new Date()
+        const daysSinceQuiz = Math.ceil((now.getTime() - quizDate.getTime()) / (1000 * 60 * 60 * 24))
+        if (daysSinceQuiz <= 7) {
+            return 'context_rich'
+        }
+    }
+
+    // Priority 2: Pet level-up nudge (gamification hook)
+    if (pointsToLevelUp > 0 && pointsToLevelUp <= 20) {
+        return 'hype'
+    }
+
+    // Priority 3: Streak at risk (1 day gap)
+    if (diffDays === 1) {
+        return 'loss_aversion'
+    }
+
+    // Priority 4: Been gone a while (2+ days)
+    if (diffDays > 1) {
+        return 'passive_aggressive'
+    }
+
+    // Priority 5: Morning encouragement
+    if (currentHour >= 8 && currentHour <= 11) {
+        return 'hype'
+    }
+
+    // Default: Random between hype and soft
+    return Math.random() > 0.5 ? 'hype' : 'soft'
+}
+
+// ============================================================================
+// TEMPLATE VARIABLE INJECTION
+// ============================================================================
+
+function injectVariables(template: MessageTemplate, context: NotificationContext): MessageTemplate {
+    let title = template.title
+    let body = template.body
+
+    const replacements: Record<string, string> = {
+        '{{petName}}': context.petName,
+        '{{streak}}': String(context.streak),
+        '{{lastNotebook}}': context.lastNotebook,
+        '{{subject}}': context.subject,
+        '{{quizScore}}': context.quizScore !== null ? String(context.quizScore) : '',
+        '{{quizTitle}}': context.quizTitle || '',
+        '{{pointsToLevelUp}}': String(context.pointsToLevelUp),
+        '{{petStage}}': String(context.petStage),
+        '{{topic}}': context.topic,
+    }
+
+    for (const [key, value] of Object.entries(replacements)) {
+        title = title.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value)
+        body = body.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value)
+    }
+
+    return { title, body }
+}
+
+// ============================================================================
+// MAIN HANDLER
+// ============================================================================
 
 Deno.serve(async (req: Request) => {
     try {
         // Parse body for debug flag
-        let debug = false;
+        let debug = false
         try {
-            const body = await req.json();
-            debug = body?.debug === true;
-        } catch (e) {
+            const body = await req.json()
+            debug = body?.debug === true
+        } catch (_e) {
             // No body or not JSON, ignore
         }
 
@@ -60,17 +249,17 @@ Deno.serve(async (req: Request) => {
 
         const notifications: NotificationPayload[] = []
         const now = new Date()
-        const COOLDOWN_HOURS = 12 // Don't send more than once per 12 hours
+        const COOLDOWN_HOURS = 12
 
         for (const profile of profiles as Profile[]) {
             const timezone = profile.timezone || 'UTC'
 
-            // === SPAM PREVENTION: Skip if notified recently ===
+            // === SPAM PREVENTION ===
             if (profile.last_notification_sent_at && !debug) {
                 const lastSent = new Date(profile.last_notification_sent_at)
                 const hoursSinceLastNotification = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60)
                 if (hoursSinceLastNotification < COOLDOWN_HOURS) {
-                    continue // Skip - already notified recently
+                    continue
                 }
             }
 
@@ -80,90 +269,107 @@ Deno.serve(async (req: Request) => {
                 hour: 'numeric',
                 hour12: false,
             }).format(now)
-
             const currentHour = parseInt(userTime)
 
-            // Only send if it's evening (e.g. 6 PM to 10 PM) in their local time
-            // BYPASS if debug is true
-            const isEvening = currentHour >= 18 && currentHour <= 22
+            // Only send if it's evening (6 PM to 10 PM) or morning (8 AM to 11 AM)
+            const isValidTime = (currentHour >= 18 && currentHour <= 22) || (currentHour >= 8 && currentHour <= 11)
+            if (!isValidTime && !debug) continue
 
-            if (!isEvening && !debug) continue
-
-            // 2. Determine "Mood" based on streak status
-            // Format today's date in user's timezone to compare with last_streak_date
+            // Format today's date in user's timezone
             const userDate = new Intl.DateTimeFormat('en-US', {
                 timeZone: timezone,
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
             }).format(now)
-
             const [mm, dd, yyyy] = userDate.split('/')
             const formattedToday = `${yyyy}-${mm}-${dd}`
 
-            // Skip if they already studied today (BYPASS if debug is true)
+            // Skip if they already studied today
             if (profile.last_streak_date === formattedToday && !debug) continue
 
-            let mood: 'sad' | 'sassy' | 'happy' = 'happy'
+            // Calculate days since last activity
+            let diffDays = 0
             if (profile.last_streak_date) {
                 const lastDate = new Date(profile.last_streak_date)
                 const todayDate = new Date(formattedToday)
                 const diffTime = Math.abs(todayDate.getTime() - lastDate.getTime())
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-                if (diffDays === 1) {
-                    mood = 'sad' // Streak at risk!
-                } else if (diffDays > 1) {
-                    mood = 'sassy' // They've been gone a while
-                }
+                diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
             }
 
-            // 3. Get their context (Notebook & Pet)
+            // ================================================================
+            // PHASE 2: ENHANCED CONTEXT FETCHING
+            // ================================================================
+
+            // Fetch notebook with subject
             const { data: notebook } = await supabase
                 .from('notebooks')
-                .select('id, title')
+                .select('id, title, meta')
                 .eq('user_id', profile.id)
                 .order('updated_at', { ascending: false })
                 .limit(1)
                 .single()
 
+            // Fetch pet with points
             const { data: pet } = await supabase
                 .from('pet_states')
-                .select('name, current_stage')
+                .select('name, current_stage, current_points')
                 .eq('user_id', profile.id)
                 .single()
 
-            const petName = pet?.name || 'Nova'
-            const currentStage = pet?.current_stage || 1
-            const notebookTitle = notebook?.title || 'your notes'
+            // Fetch last quiz score
+            const { data: lastQuiz } = await supabase
+                .from('quiz_completions')
+                .select('score_percentage, completed_at, quiz:studio_quizzes(title)')
+                .eq('user_id', profile.id)
+                .order('completed_at', { ascending: false })
+                .limit(1)
+                .single()
 
-            // Get public URL for pet bubble
-            const bucketUrl = 'https://tunjjtfnvtscgmuxjkng.supabase.co/storage/v1/object/public/assets'
-            const petImageUrl = `${bucketUrl}/pets/stage-${currentStage}/bubble.png`
+            // Extract subject from notebook metadata
+            const contentClassification = notebook?.meta?.content_classification
+            const subject = contentClassification?.subject_area || 'your studies'
 
-            // 4. Personality Library - Sassy, emotional, single-thought messages
-            const streakCount = profile.streak || 0
-
-            const library = {
-                happy: [
-                    { title: `🐾 ${petName} is side-eyeing you`, body: `You have a ${streakCount}-day streak. It would be a shame if something... happened to it. 😏` },
-                    { title: `💅 Focus, bestie!`, body: `"${notebookTitle}" isn't going to study itself. Don't make me come over there.` },
-                    { title: `👀 I see you...`, body: `I know you're not busy. Open "${notebookTitle}" for 5 minutes. Do it for ${petName}.` }
-                ],
-                sassy: [
-                    { title: `🙄 Wow, okay.`, body: `So we're just ignoring "${notebookTitle}" today? I see how it is. 💅` },
-                    { title: `🤡 Is this a joke?`, body: `Your streak is crying. I'm crying. Even "${notebookTitle}" is crying. Fix it.` },
-                    { title: `🤐 No words.`, body: `If you wanted to lose your streak, you could have just said so. 💅` }
-                ],
-                sad: [
-                    { title: `😰 SOS: Save ${petName}!`, body: `Your ${streakCount}-day streak is literally gasping for air. Rescue it now!` },
-                    { title: `💔 Emotional Damage`, body: `${petName} is packging their bags. One session in "${notebookTitle}" will make them stay.` },
-                    { title: `💀 RIP Streak?`, body: `Last chance to save ${petName}! Don't let the fire go out. 🕯️` }
-                ]
+            // Build context object
+            const context: NotificationContext = {
+                petName: pet?.name || 'Nova',
+                streak: profile.streak || 0,
+                lastNotebook: notebook?.title || 'your notes',
+                subject: subject,
+                quizScore: lastQuiz?.score_percentage ?? null,
+                quizTitle: (lastQuiz?.quiz as any)?.title ?? null,
+                quizCompletedAt: lastQuiz?.completed_at ?? null,
+                pointsToLevelUp: ((pet?.current_stage || 1) * 100) - (pet?.current_points || 0),
+                petStage: pet?.current_stage || 1,
+                topic: subject, // Use subject as topic fallback
             }
 
-            const messages = library[mood]
-            const message = messages[Math.floor(Math.random() * messages.length)]
+            // Get pet bubble image
+            const bucketUrl = 'https://tunjjtfnvtscgmuxjkng.supabase.co/storage/v1/object/public/assets'
+            const petImageUrl = `${bucketUrl}/pets/stage-${context.petStage}/bubble.png`
+
+            // ================================================================
+            // PHASE 3: SMART CATEGORY SELECTION
+            // ================================================================
+
+            const category = selectCategory(
+                diffDays,
+                context.quizScore,
+                context.quizCompletedAt,
+                context.pointsToLevelUp,
+                currentHour,
+                context.streak
+            )
+
+            // ================================================================
+            // PHASE 4: TEMPLATE SELECTION & VARIABLE INJECTION
+            // ================================================================
+
+            const templates = templateLibrary[category]
+            const rawTemplate = templates[Math.floor(Math.random() * templates.length)]
+            const message = injectVariables(rawTemplate, context)
+
+            console.log(`[${profile.id}] Category: ${category}, Template: ${rawTemplate.title.substring(0, 30)}...`)
 
             notifications.push({
                 to: profile.expo_push_token,
@@ -173,24 +379,24 @@ Deno.serve(async (req: Request) => {
                 data: {
                     notebookId: notebook?.id,
                     screen: '/(tabs)/home',
-                    imageUrl: petImageUrl
+                    imageUrl: petImageUrl,
+                    category: category, // Track for analytics
                 },
-                // For Rich Notifications on iOS/Android
                 mutableContent: true,
                 _displayInForeground: true,
-                _profileId: profile.id, // Track for updating last_notification_sent_at
+                _profileId: profile.id,
             })
         }
 
-        // 5. Send batches to Expo
+        // ================================================================
+        // SEND TO EXPO
+        // ================================================================
+
         let ticketIds: string[] = []
         const sentProfileIds: string[] = []
 
         if (notifications.length > 0) {
-            // Extract profile IDs before sending (we'll update them after)
             notifications.forEach(n => sentProfileIds.push(n._profileId))
-
-            // Remove internal tracking field before sending to Expo
             const expoPayloads = notifications.map(({ _profileId, ...rest }) => rest)
 
             const response = await fetch(EXPO_PUSH_URL, {
@@ -206,14 +412,13 @@ Deno.serve(async (req: Request) => {
             const result = await response.json()
             console.log('Expo Response:', result)
 
-            // Collect ticket IDs for receipt checking
             if (result.data) {
                 ticketIds = result.data
                     .filter((ticket: any) => ticket.id)
                     .map((ticket: any) => ticket.id)
             }
 
-            // === UPDATE last_notification_sent_at for all sent profiles ===
+            // Update last_notification_sent_at
             if (sentProfileIds.length > 0) {
                 await supabase
                     .from('profiles')
@@ -221,7 +426,7 @@ Deno.serve(async (req: Request) => {
                     .in('id', sentProfileIds)
             }
 
-            // === HANDLE IMMEDIATE ERRORS (invalid tokens) ===
+            // Handle invalid tokens
             if (result.data) {
                 const invalidTokenProfiles: string[] = []
                 result.data.forEach((ticket: any, index: number) => {
@@ -233,7 +438,6 @@ Deno.serve(async (req: Request) => {
                     }
                 })
 
-                // Clean up invalid tokens
                 if (invalidTokenProfiles.length > 0) {
                     console.log(`Cleaning ${invalidTokenProfiles.length} invalid tokens`)
                     await supabase
@@ -244,8 +448,6 @@ Deno.serve(async (req: Request) => {
             }
         }
 
-        // 6. Check receipts for previously sent notifications (async cleanup)
-        // This handles tokens that become invalid after initial send
         await checkAndCleanupReceipts(supabase, ticketIds)
 
         return new Response(JSON.stringify({
@@ -283,16 +485,11 @@ async function checkAndCleanupReceipts(supabase: any, ticketIds: string[]) {
 
         if (!receipts) return
 
-        // Find tokens that need to be invalidated
-        const tokensToInvalidate: string[] = []
-
         for (const [ticketId, receipt] of Object.entries(receipts as Record<string, any>)) {
             if (receipt.status === 'error') {
                 console.log(`Receipt error for ${ticketId}:`, receipt.message)
 
                 if (receipt.details?.error === 'DeviceNotRegistered') {
-                    // We need to find the token associated with this ticket
-                    // For now, log it - in production you'd track ticket->token mapping
                     console.log(`Token for ticket ${ticketId} is no longer valid`)
                 }
             }

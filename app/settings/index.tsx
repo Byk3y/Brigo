@@ -178,7 +178,7 @@ export default function SettingsScreen() {
                     <NavItem
                         label="Help Center"
                         icon="help-circle"
-                        action={() => handleOpenURL(`mailto:${APP_CONFIG.SUPPORT_EMAIL}?subject=Help Center Request`)}
+                        action={() => handleOpenURL(APP_URLS.SUPPORT)}
                         subtext="Get help with Brigo"
                     />
                     <NavItem

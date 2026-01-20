@@ -164,16 +164,7 @@ struct SimpleEntry: TimelineEntry {
     
     // Computed deep link based on suggested activity
     var deepLinkURL: URL? {
-        guard let activity = data.suggestedActivity else {
-            return URL(string: "brigo://home")
-        }
-        
-        let type = activity.type
-        let id = activity.id
-        let notebookId = activity.notebookId
-        
-        // Format: brigo://activity?type=podcast&id=123&notebookId=456
-        return URL(string: "brigo://activity?type=\(type)&id=\(id)&notebookId=\(notebookId)")
+        return URL(string: "brigo://")
     }
 }
 

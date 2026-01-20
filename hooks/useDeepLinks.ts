@@ -17,31 +17,6 @@ export function useDeepLinks() {
       const { url } = event;
       const parsed = Linking.parse(url);
 
-      // 1. Handle Activity Deep Links from Widget
-      if (parsed.path === 'activity' || parsed.path === '/activity') {
-        const queryParams = parsed.queryParams || {};
-        const type = queryParams.type as string; // 'podcast' | 'quiz' | 'notebook'
-        const id = queryParams.id as string;
-        const notebookId = queryParams.notebookId as string;
-
-        console.log(`[Deep Links] Activity route: ${type}, ID: ${id}, Notebook: ${notebookId}`);
-
-        if (type === 'podcast' && id) {
-          router.push(`/audio-player/${id}`);
-        } else if (type === 'quiz' && id) {
-          router.push(`/quiz/${id}`);
-        } else if (type === 'notebook' && id) {
-          router.push(`/notebook/${id}`);
-        }
-        return;
-      }
-
-      // 2. Handle Home/Fallback
-      if (parsed.path === 'home' || parsed.path === '/home') {
-        router.replace('/');
-        return;
-      }
-
       // 3. Handle Auth Callbacks
       if (parsed.path === 'auth/callback' || parsed.path === '/auth/callback') {
         // OAuth callbacks can have tokens in either:

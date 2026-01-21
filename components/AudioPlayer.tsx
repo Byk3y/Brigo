@@ -5,6 +5,7 @@ import {
     TouchableOpacity,
     Alert,
     ActivityIndicator,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
@@ -58,6 +59,7 @@ export function AudioPlayer({
     const { handleError } = useErrorHandler();
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
+    const isPad = Platform.OS === 'ios' && Platform.isPad;
 
     const [currentTime, setCurrentTime] = useState(0);
     const [audioDuration, setAudioDuration] = useState(duration);
@@ -275,15 +277,23 @@ export function AudioPlayer({
     return (
         <View style={{ flex: 1, backgroundColor: colors.background }}>
             <SafeAreaView className="flex-1">
-                <View className="flex-row items-center justify-between px-4 py-3" style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                    <TouchableOpacity onPress={onClose} className="p-2" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <CloseIcon size={22} color={colors.text} />
+                <View style={{
+                    flexDirection: 'row',
+                    itemsCenter: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: isPad ? 40 : 16,
+                    paddingVertical: isPad ? 24 : 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border
+                }}>
+                    <TouchableOpacity onPress={onClose} style={{ padding: 8 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <CloseIcon size={isPad ? 28 : 22} color={colors.text} />
                     </TouchableOpacity>
-                    <View className="flex-1 mx-4">
-                        <Text style={{ color: colors.text }} className="text-base font-medium text-center" numberOfLines={1} ellipsizeMode="tail">{title}</Text>
+                    <View style={{ flex: 1, marginHorizontal: 16 }}>
+                        <Text style={{ color: colors.text, fontSize: isPad ? 18 : 16, fontWeight: '500', textAlign: 'center' }} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
                     </View>
-                    <TouchableOpacity onPress={onDownload} disabled={isDownloading} className="p-2" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ opacity: isDownloading ? 0.5 : 1 }}>
-                        {isDownloading ? <ActivityIndicator size="small" color={colors.text} /> : <DownloadIcon size={22} color={colors.text} />}
+                    <TouchableOpacity onPress={onDownload} disabled={isDownloading} style={{ padding: 8, opacity: isDownloading ? 0.5 : 1 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        {isDownloading ? <ActivityIndicator size="small" color={colors.text} /> : <DownloadIcon size={isPad ? 28 : 22} color={colors.text} />}
                     </TouchableOpacity>
                 </View>
 
@@ -293,10 +303,10 @@ export function AudioPlayer({
                     </View>
                 )}
 
-                <View className="flex-1 justify-end">
-                    <View className="w-full h-0.5 bg-[#4F5BD5] mb-4" />
-                    <View className="flex-1 px-6">
-                        <View style={{ flex: 1, justifyContent: 'center', marginTop: -80 }}>
+                <View style={{ flex: 1, justifyContent: 'flex-end', maxWidth: isPad ? 700 : '100%', alignSelf: 'center', width: '100%' }}>
+                    <View style={{ width: '100%', height: 2, backgroundColor: '#4F5BD5', marginBottom: isPad ? 24 : 16 }} />
+                    <View style={{ flex: 1, paddingHorizontal: isPad ? 40 : 24 }}>
+                        <View style={{ flex: 1, justifyContent: 'center', marginTop: isPad ? -120 : -80 }}>
                             {script ? (
                                 <SubtitleDisplay
                                     script={script}
@@ -307,27 +317,27 @@ export function AudioPlayer({
                                 />
                             ) : <View style={{ height: 140 }} />}
                         </View>
-                        <View style={{ height: 44, marginTop: -110, marginBottom: 20, alignItems: 'center', justifyContent: 'center' }}>
-                            <AudioVisualizer isPlaying={isPlaying} height={44} />
+                        <View style={{ height: isPad ? 60 : 44, marginTop: isPad ? -140 : -110, marginBottom: isPad ? 32 : 20, alignItems: 'center', justifyContent: 'center' }}>
+                            <AudioVisualizer isPlaying={isPlaying} height={isPad ? 60 : 44} />
                         </View>
                     </View>
 
-                    <View className="flex-row items-center justify-center gap-12 mb-8 px-6">
-                        <TouchableOpacity onPress={handleSpeedChange} className="items-center justify-center">
-                            <Text style={{ color: colors.text }} className="text-base font-semibold">{playbackSpeed}X</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: isPad ? 64 : 48, marginBottom: isPad ? 48 : 32, paddingHorizontal: 24 }}>
+                        <TouchableOpacity onPress={handleSpeedChange} style={{ alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: colors.text, fontSize: isPad ? 20 : 16, fontWeight: '600' }}>{playbackSpeed}X</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleLike} className="items-center justify-center">
-                            <ThumbUpIcon size={24} color={liked === true ? '#4F5BD5' : colors.iconMuted} filled={liked === true} />
+                        <TouchableOpacity onPress={handleLike} style={{ alignItems: 'center', justifyContent: 'center' }}>
+                            <ThumbUpIcon size={isPad ? 32 : 24} color={liked === true ? '#4F5BD5' : colors.iconMuted} filled={liked === true} />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleDislike} className="items-center justify-center">
-                            <ThumbDownIcon size={24} color={liked === false ? '#ef4444' : colors.iconMuted} filled={liked === false} />
+                        <TouchableOpacity onPress={handleDislike} style={{ alignItems: 'center', justifyContent: 'center' }}>
+                            <ThumbDownIcon size={isPad ? 32 : 24} color={liked === false ? '#ef4444' : colors.iconMuted} filled={liked === false} />
                         </TouchableOpacity>
                     </View>
 
-                    <View className="px-6 mb-8">
-                        <View className="flex-row items-center">
-                            <Text style={{ color: colors.textSecondary }} className="text-sm w-12 font-medium">{formatTime(displayTime)}</Text>
-                            <View className="flex-1 mx-3">
+                    <View style={{ paddingHorizontal: isPad ? 40 : 24, marginBottom: isPad ? 48 : 32 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={{ color: colors.textSecondary, fontSize: isPad ? 16 : 14, width: isPad ? 60 : 48, fontWeight: '500' }}>{formatTime(displayTime)}</Text>
+                            <View style={{ flex: 1, marginHorizontal: 12 }}>
                                 <Slider
                                     style={{ width: '100%', height: 40 }}
                                     minimumValue={0}
@@ -341,22 +351,27 @@ export function AudioPlayer({
                                     tapToSeek={true}
                                 />
                             </View>
-                            <Text style={{ color: colors.textSecondary }} className="text-sm w-12 text-right font-medium">{formatTime(displayDuration)}</Text>
+                            <Text style={{ color: colors.textSecondary, fontSize: isPad ? 16 : 14, width: isPad ? 60 : 48, textAlign: 'right', fontWeight: '500' }}>{formatTime(displayDuration)}</Text>
                         </View>
                     </View>
 
-                    <View className="flex-row items-center justify-center gap-10 mb-20">
-                        <TouchableOpacity onPress={handleSeekBack} className="w-14 h-14 items-center justify-center">
-                            <View className="items-center justify-center">
-                                <Svg width={32} height={32} viewBox="0 0 32 32" fill="none">
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: isPad ? 64 : 40, marginBottom: isPad ? 80 : 80 }}>
+                        <TouchableOpacity onPress={handleSeekBack} style={{ width: isPad ? 72 : 56, height: isPad ? 72 : 56, alignItems: 'center', justifyContent: 'center' }}>
+                            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                <Svg width={isPad ? 44 : 32} height={isPad ? 44 : 32} viewBox="0 0 32 32" fill="none">
                                     <Path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10" stroke={isDarkMode ? '#818CF8' : '#4F5BD5'} strokeWidth={2} strokeLinecap="round" />
                                     <Path d="M16 2v8l-4-4" stroke={isDarkMode ? '#818CF8' : '#4F5BD5'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                                 </Svg>
-                                <Text style={{ color: isDarkMode ? '#818CF8' : '#4F5BD5' }} className="text-xs font-bold absolute">10</Text>
+                                <Text style={{ color: isDarkMode ? '#818CF8' : '#4F5BD5', fontSize: isPad ? 14 : 12, fontWeight: 'bold', position: 'absolute' }}>10</Text>
                             </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity onPress={handlePlayPause} disabled={loading} className="w-20 h-20 rounded-full items-center justify-center shadow-lg" style={{
+                        <TouchableOpacity onPress={handlePlayPause} disabled={loading} style={{
+                            width: isPad ? 100 : 80,
+                            height: isPad ? 100 : 80,
+                            borderRadius: isPad ? 50 : 40,
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             backgroundColor: isDarkMode ? '#818CF8' : '#4F5BD5',
                             shadowColor: isDarkMode ? '#000' : '#4F5BD5',
                             shadowOffset: { width: 0, height: 8 },
@@ -365,23 +380,23 @@ export function AudioPlayer({
                             elevation: 12,
                             opacity: loading ? 0.7 : 1,
                         }}>
-                            {loading ? <ActivityIndicator size="small" color="#fff" /> : isPlaying ? <PauseIcon size={36} color="#fff" /> : <PlayIcon size={36} color="#fff" />}
+                            {loading ? <ActivityIndicator size="small" color="#fff" /> : isPlaying ? <PauseIcon size={isPad ? 44 : 36} color="#fff" /> : <PlayIcon size={isPad ? 44 : 36} color="#fff" />}
                         </TouchableOpacity>
 
-                        <TouchableOpacity onPress={handleSeekForward} className="w-14 h-14 items-center justify-center">
-                            <View className="items-center justify-center">
-                                <Svg width={32} height={32} viewBox="0 0 32 32" fill="none">
+                        <TouchableOpacity onPress={handleSeekForward} style={{ width: isPad ? 72 : 56, height: isPad ? 72 : 56, alignItems: 'center', justifyContent: 'center' }}>
+                            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                <Svg width={isPad ? 44 : 32} height={isPad ? 44 : 32} viewBox="0 0 32 32" fill="none">
                                     <Path d="M16 6c5.523 0 10 4.477 10 10s-4.477 10-10 10S6 21.523 6 16" stroke={isDarkMode ? '#818CF8' : '#4F5BD5'} strokeWidth={2} strokeLinecap="round" />
                                     <Path d="M16 2v8l4-4" stroke={isDarkMode ? '#818CF8' : '#4F5BD5'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                                 </Svg>
-                                <Text style={{ color: isDarkMode ? '#818CF8' : '#4F5BD5' }} className="text-xs font-bold absolute">10</Text>
+                                <Text style={{ color: isDarkMode ? '#818CF8' : '#4F5BD5', fontSize: isPad ? 14 : 12, fontWeight: 'bold', position: 'absolute' }}>10</Text>
                             </View>
                         </TouchableOpacity>
                     </View>
 
-                    <View className="flex-row items-center justify-center mb-4" style={{ gap: 6, opacity: 0.4 }}>
-                        <Text style={{ fontSize: 11, fontFamily: 'Outfit-Light', color: colors.textMuted }}>Powered by</Text>
-                        <BrigoLogo size={12} textColor={colors.textMuted} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: isPad ? 24 : 16, gap: 6, opacity: 0.4 }}>
+                        <Text style={{ fontSize: isPad ? 14 : 11, fontFamily: 'Outfit-Light', color: colors.textMuted }}>Powered by</Text>
+                        <BrigoLogo size={isPad ? 16 : 12} textColor={colors.textMuted} />
                     </View>
                 </View>
 

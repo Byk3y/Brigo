@@ -7,7 +7,7 @@
  */
 
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, Animated, TouchableOpacity, ScrollView, Image, StyleSheet, ImageSourcePropType } from 'react-native';
+import { View, Text, Animated, TouchableOpacity, ScrollView, Image, StyleSheet, ImageSourcePropType, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MarkdownText } from '@/components/MarkdownText';
 import { CaptionIcon } from './AudioIcons';
@@ -30,6 +30,7 @@ const PET_BUBBLES: Record<number, ImageSourcePropType> = {
 
 // Animation duration constants
 const CROSSFADE_DURATION = 200;
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 interface SubtitleDisplayProps {
     script: string;
@@ -48,26 +49,26 @@ const getSpeakerImage = (speaker: string | undefined, petStage: 1 | 2 | 3): Imag
 // Helper to get image size based on speaker
 const getSpeakerImageSize = (speaker: string | undefined, petStage: 1 | 2 | 3): number => {
     const isBrigo = speaker?.toLowerCase() === 'brigo';
-    if (isBrigo) return 40;
+    if (isBrigo) return isPad ? 60 : 40;
 
     switch (petStage) {
-        case 1: return 74; // Increased from 68
-        case 2: return 86;
-        case 3: return 64; // Increased from 52
-        default: return 60;
+        case 1: return isPad ? 110 : 74;
+        case 2: return isPad ? 130 : 86;
+        case 3: return isPad ? 96 : 64;
+        default: return isPad ? 90 : 60;
     }
 };
 
 // Helper to get positioning offsets
 const getSpeakerOffsets = (speaker: string | undefined, petStage: 1 | 2 | 3): { bottom: number; left: number } => {
     const isBrigo = speaker?.toLowerCase() === 'brigo';
-    if (isBrigo) return { bottom: -12, left: 8 };
+    if (isBrigo) return { bottom: isPad ? -18 : -12, left: isPad ? 12 : 8 };
 
     switch (petStage) {
-        case 1: return { bottom: -20, left: -2 }; // Adjusted for better card integration
-        case 2: return { bottom: -28, left: -6 };
-        case 3: return { bottom: -16, left: 2 }; // Adjusted for better card integration (was -10, 6)
-        default: return { bottom: -12, left: 4 };
+        case 1: return { bottom: isPad ? -30 : -20, left: isPad ? -4 : -2 };
+        case 2: return { bottom: isPad ? -42 : -28, left: isPad ? -10 : -6 };
+        case 3: return { bottom: isPad ? -24 : -16, left: isPad ? 4 : 2 };
+        default: return { bottom: isPad ? -18 : -12, left: isPad ? 6 : 4 };
     }
 };
 
@@ -105,27 +106,27 @@ const SpeakerBubble = React.memo(({ segment, petStage, colors, isDarkMode }: Spe
             <View
                 style={{
                     backgroundColor: colors.surfaceElevated,
-                    borderRadius: 20,
-                    paddingTop: 16,
-                    paddingBottom: 20,
-                    paddingHorizontal: 20,
+                    borderRadius: isPad ? 28 : 20,
+                    paddingTop: isPad ? 24 : 16,
+                    paddingBottom: isPad ? 32 : 20,
+                    paddingHorizontal: isPad ? 32 : 20,
                     borderWidth: 1,
                     borderColor: colors.border,
                     shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
+                    shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: isDarkMode ? 0.3 : 0.05,
-                    shadowRadius: 8,
-                    elevation: 2,
+                    shadowRadius: isPad ? 12 : 8,
+                    elevation: 4,
                 }}
             >
                 {/* Speaker name */}
                 <Text
                     style={{
-                        fontSize: 14,
+                        fontSize: isPad ? 18 : 14,
                         fontWeight: '600',
                         color: speakerColor,
                         fontFamily: 'Nunito-Bold',
-                        marginBottom: 8,
+                        marginBottom: isPad ? 12 : 8,
                     }}
                 >
                     {segment.speaker || 'Speaker'}
@@ -133,14 +134,14 @@ const SpeakerBubble = React.memo(({ segment, petStage, colors, isDarkMode }: Spe
 
                 {/* Dialogue text - scrollable for long segments */}
                 <ScrollView
-                    style={{ maxHeight: 180 }}
+                    style={{ maxHeight: isPad ? 320 : 180 }}
                     showsVerticalScrollIndicator={false}
                     nestedScrollEnabled={true}
                 >
                     <MarkdownText
                         style={{
-                            fontSize: 16,
-                            lineHeight: 24,
+                            fontSize: isPad ? 22 : 16,
+                            lineHeight: isPad ? 32 : 24,
                             color: colors.text,
                             fontFamily: 'Nunito-Regular',
                         }}

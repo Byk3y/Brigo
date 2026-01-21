@@ -38,7 +38,8 @@ export function Screen3_AhaMoment({ colors, onComplete }: Screen3_AhaMomentProps
     const [selectedFacts, setSelectedFacts] = useState<string[]>([]);
     const [passiveScore, setPassiveScore] = useState(0);
     const [activeScore, setActiveScore] = useState(0);
-    const [showScrollHint, setShowScrollHint] = useState(true);
+    const [showScrollHint, setShowScrollHint] = useState(false);
+    const [scrollContainerHeight, setScrollContainerHeight] = useState(0);
 
     // Active recall state: 'reading' (showing fact) or 'answering' (showing question)
     const [activeRecallStage, setActiveRecallStage] = useState<'reading' | 'answering'>('reading');
@@ -124,7 +125,8 @@ export function Screen3_AhaMoment({ colors, onComplete }: Screen3_AhaMomentProps
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setStudyGoal(value);
         setPhase('passiveTest');
-        setShowScrollHint(true);
+        // Reset scroll hint - it will be set based on actual content size
+        setShowScrollHint(false);
     };
 
     const handleFactSelect = (fact: string) => {
@@ -370,12 +372,21 @@ export function Screen3_AhaMoment({ colors, onComplete }: Screen3_AhaMomentProps
                 </Text>
             </MotiView>
 
-            <View style={{ flex: 1, width: '100%', position: 'relative' }}>
+            <View
+                style={{ flex: 1, width: '100%', position: 'relative' }}
+                onLayout={(e) => setScrollContainerHeight(e.nativeEvent.layout.height)}
+            >
                 <ScrollView
                     style={styles.optionsContainer}
                     showsVerticalScrollIndicator={false}
                     onScroll={() => setShowScrollHint(false)}
                     scrollEventThrottle={16}
+                    onContentSizeChange={(_, contentHeight) => {
+                        // Only show scroll hint if content is taller than container
+                        if (scrollContainerHeight > 0 && contentHeight > scrollContainerHeight) {
+                            setShowScrollHint(true);
+                        }
+                    }}
                 >
                     {allOptions.map((option, idx) => (
                         <TouchableOpacity
@@ -566,11 +577,11 @@ export function Screen3_AhaMoment({ colors, onComplete }: Screen3_AhaMomentProps
                                 {currentFact.fact}
                             </Text>
                             <MotiView
-                                animate={{ opacity: [0.4, 1, 0.4] }}
+                                animate={{ opacity: [0.6, 1, 0.6] }}
                                 transition={{ loop: true, type: 'timing', duration: 1500 } as any}
                                 style={{ marginTop: 16 }}
                             >
-                                <Text style={{ color: colors.textMuted, fontSize: 14, fontFamily: 'SpaceGrotesk-Medium' }}>
+                                <Text style={{ color: colors.textSecondary, fontSize: 14, fontFamily: 'SpaceGrotesk-Medium' }}>
                                     Question coming...
                                 </Text>
                             </MotiView>
@@ -632,12 +643,20 @@ export function Screen3_AhaMoment({ colors, onComplete }: Screen3_AhaMomentProps
                 </Text>
             </MotiView>
 
-            <View style={{ flex: 1, width: '100%', position: 'relative' }}>
+            <View
+                style={{ flex: 1, width: '100%', position: 'relative' }}
+                onLayout={(e) => setScrollContainerHeight(e.nativeEvent.layout.height)}
+            >
                 <ScrollView
                     style={styles.optionsContainer}
                     showsVerticalScrollIndicator={false}
                     onScroll={() => setShowScrollHint(false)}
                     scrollEventThrottle={16}
+                    onContentSizeChange={(_, contentHeight) => {
+                        if (scrollContainerHeight > 0 && contentHeight > scrollContainerHeight) {
+                            setShowScrollHint(true);
+                        }
+                    }}
                 >
                     {allOptions.map((option, idx) => (
                         <TouchableOpacity

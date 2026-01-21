@@ -7,6 +7,12 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
+// Cap dimensions for tablet optimization
+const MASCOT_SIZE = Math.min(width * 0.32, 130);
+const MASCOT_SIZE_SMALL = Math.min(width * 0.25, 100);
+const MASCOT_SECTION_HEIGHT = Math.min(width * 0.35, 140);
+const MAX_CONTENT_WIDTH = 500;
+
 export const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -21,18 +27,18 @@ export const styles = StyleSheet.create({
 
     // Mascot styles
     mascotSection: {
-        height: width * 0.35,
+        height: MASCOT_SECTION_HEIGHT,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
     },
     mascotImage: {
-        width: width * 0.32,
-        height: width * 0.32,
+        width: MASCOT_SIZE,
+        height: MASCOT_SIZE,
     },
     mascotImageSmall: {
-        width: width * 0.25,
-        height: width * 0.25,
+        width: MASCOT_SIZE_SMALL,
+        height: MASCOT_SIZE_SMALL,
     },
 
     // Speech bubble styles
@@ -40,6 +46,8 @@ export const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 24,
         width: '100%',
+        maxWidth: MAX_CONTENT_WIDTH,
+        alignSelf: 'center',
         marginBottom: 24,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -75,6 +83,8 @@ export const styles = StyleSheet.create({
         borderRadius: 16,
         gap: 8,
         width: '100%',
+        maxWidth: MAX_CONTENT_WIDTH,
+        alignSelf: 'center',
     },
     primaryButtonText: {
         color: '#fff',
@@ -92,6 +102,8 @@ export const styles = StyleSheet.create({
         padding: 10,
         borderRadius: 16,
         width: '100%',
+        maxWidth: MAX_CONTENT_WIDTH,
+        alignSelf: 'center',
         marginBottom: 8,
         alignItems: 'center',
     },
@@ -177,6 +189,8 @@ export const styles = StyleSheet.create({
     // Motivation selection styles
     motivationGrid: {
         width: '100%',
+        maxWidth: MAX_CONTENT_WIDTH,
+        alignSelf: 'center',
         gap: 12,
     },
     motivationCard: {
@@ -211,6 +225,8 @@ export const styles = StyleSheet.create({
     optionsContainer: {
         flex: 1,
         width: '100%',
+        maxWidth: MAX_CONTENT_WIDTH,
+        alignSelf: 'center',
         marginBottom: 16,
     },
     optionCard: {
@@ -267,6 +283,8 @@ export const styles = StyleSheet.create({
         padding: 24,
         borderRadius: 24,
         width: '100%',
+        maxWidth: MAX_CONTENT_WIDTH,
+        alignSelf: 'center',
         alignItems: 'center',
         borderWidth: 2,
     },
@@ -303,6 +321,8 @@ export const styles = StyleSheet.create({
     // Multiple choice styles (for active test)
     multiChoiceContainer: {
         width: '100%',
+        maxWidth: MAX_CONTENT_WIDTH,
+        alignSelf: 'center',
         gap: 10,
     },
     multiChoiceButton: {

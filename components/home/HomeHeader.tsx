@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react';
-import { View, TouchableOpacity, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useStore } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
-import { generateGradientFromString, getAvatarUrl } from '@/lib/utils/avatarGradient';
+import { getAvatarUrl } from '@/lib/utils/avatarGradient';
 import { Image } from 'expo-image';
 import { BrigoLogo } from '../BrigoLogo';
 import { StreakCount } from './StreakCount';

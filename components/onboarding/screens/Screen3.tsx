@@ -11,8 +11,13 @@ import { useStore } from '@/lib/store';
 import { TypewriterText } from '../components/TypewriterText';
 import Svg, { Path } from 'react-native-svg';
 import { track } from '@/lib/services/analyticsService';
+import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 
 const { width, height } = Dimensions.get('window');
+
+// Cap dimensions for tablet optimization
+const MASCOT_SIZE = Math.min(width * 0.4, 160);
+const MASCOT_GROUP_HEIGHT = Math.min(width * 0.45, 180);
 
 const FeatureItem = ({ icon, title, color, delay, isVisible, colors }: { icon: any, title: string, color: string, delay: number, isVisible: boolean, colors: any }) => (
   <MotiView
@@ -108,165 +113,167 @@ export function Screen3({ colors, onContinue }: Screen3Props) {
 
   return (
     <View style={styles.screenContainer}>
-      {/* Top Section: Character + Speech Bubble */}
-      <View style={styles.topSection}>
-        {/* Mascot + Shadow Group */}
-        <View style={styles.mascotGroup}>
-          <MotiView
-            animate={{
-              scale: [0.8, 1.05, 0.8],
-              opacity: [0.03, 0.08, 0.03]
-            }}
-            transition={{ loop: true, type: 'timing', duration: 3200 } as any}
-            style={[styles.shadow, { backgroundColor: '#000' }]}
-          />
-          <MotiView
-            from={{ opacity: 0, scale: 0.5, translateY: 20 }}
-            animate={{ opacity: 1, scale: 1, translateY: 0 }}
-            transition={{ type: 'spring', damping: 15, delay: 300 } as any}
-            style={styles.characterContainer}
-          >
+      <ResponsiveContainer>
+        {/* Top Section: Character + Speech Bubble */}
+        <View style={styles.topSection}>
+          {/* Mascot + Shadow Group */}
+          <View style={styles.mascotGroup}>
             <MotiView
-              animate={{ translateY: [-6, 6, -6] }}
-              transition={{ loop: true, type: 'timing', duration: 4000 } as any}
+              animate={{
+                scale: [0.8, 1.05, 0.8],
+                opacity: [0.03, 0.08, 0.03]
+              }}
+              transition={{ loop: true, type: 'timing', duration: 3200 } as any}
+              style={[styles.shadow, { backgroundColor: '#000' }]}
+            />
+            <MotiView
+              from={{ opacity: 0, scale: 0.5, translateY: 20 }}
+              animate={{ opacity: 1, scale: 1, translateY: 0 }}
+              transition={{ type: 'spring', damping: 15, delay: 300 } as any}
+              style={styles.characterContainer}
             >
-              <Image
-                source={BrigoSmug}
-                style={styles.characterImage}
-                resizeMode="contain"
-              />
+              <MotiView
+                animate={{ translateY: [-6, 6, -6] }}
+                transition={{ loop: true, type: 'timing', duration: 4000 } as any}
+              >
+                <Image
+                  source={BrigoSmug}
+                  style={styles.characterImage}
+                  resizeMode="contain"
+                />
+              </MotiView>
             </MotiView>
+          </View>
+
+          <MotiView
+            from={{ opacity: 0, scale: 0.9, translateY: 20 }}
+            animate={{ opacity: 1, scale: 1, translateY: 0 }}
+            transition={{ type: 'spring', damping: 28, delay: 600 } as any}
+            style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
+          >
+            <TypewriterText
+              text="You felt the difference. Let's make it permanent."
+              style={[styles.headline, { color: colors.text }]}
+              speed={40}
+              delay={1000}
+              onComplete={handleHeadlineComplete}
+            />
+            <View style={styles.bubbleTail}>
+              <Svg width="20" height="12" viewBox="0 0 20 12">
+                <Path
+                  d="M10 12C10 12 7.5 4 0 0L20 0C12.5 4 10 12 10 12Z"
+                  fill={colors.surfaceElevated}
+                />
+              </Svg>
+            </View>
           </MotiView>
         </View>
 
+        {/* Hero Headline */}
         <MotiView
-          from={{ opacity: 0, scale: 0.9, translateY: 20 }}
-          animate={{ opacity: 1, scale: 1, translateY: 0 }}
-          transition={{ type: 'spring', damping: 28, delay: 600 } as any}
-          style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
+          from={{ opacity: 0, translateY: 10 }}
+          animate={{ opacity: headlineComplete ? 1 : 0, translateY: headlineComplete ? 0 : 10 }}
+          style={styles.centerSection}
         >
-          <TypewriterText
-            text="You felt the difference. Let's make it permanent."
-            style={[styles.headline, { color: colors.text }]}
-            speed={40}
-            delay={1000}
-            onComplete={handleHeadlineComplete}
-          />
-          <View style={styles.bubbleTail}>
-            <Svg width="20" height="12" viewBox="0 0 20 12">
-              <Path
-                d="M10 12C10 12 7.5 4 0 0L20 0C12.5 4 10 12 10 12Z"
-                fill={colors.surfaceElevated}
-              />
-            </Svg>
-          </View>
+          <Text style={[styles.mainHeading, { color: colors.text }]}>
+            Create your <Text style={{ color: colors.primary }}>account</Text>
+          </Text>
         </MotiView>
-      </View>
 
-      {/* Hero Headline */}
-      <MotiView
-        from={{ opacity: 0, translateY: 10 }}
-        animate={{ opacity: headlineComplete ? 1 : 0, translateY: headlineComplete ? 0 : 10 }}
-        style={styles.centerSection}
-      >
-        <Text style={[styles.mainHeading, { color: colors.text }]}>
-          Create your <Text style={{ color: colors.primary }}>account</Text>
-        </Text>
-      </MotiView>
+        {/* Feature Grid */}
+        <View style={styles.featureGrid}>
+          <FeatureItem
+            icon="copy-outline"
+            title="Flashcards"
+            color="#F97316"
+            delay={200}
+            isVisible={headlineComplete}
+            colors={colors}
+          />
+          <FeatureItem
+            icon="list-outline"
+            title="Quizzes"
+            color="#3B82F6"
+            delay={400}
+            isVisible={headlineComplete}
+            colors={colors}
+          />
+          <FeatureItem
+            icon="chatbubbles-outline"
+            title="Smart Chat"
+            color="#10B981"
+            delay={600}
+            isVisible={headlineComplete}
+            colors={colors}
+          />
+          <FeatureItem
+            icon="headset-outline"
+            title="Podcasts"
+            color="#8B5CF6"
+            delay={800}
+            isVisible={headlineComplete}
+            colors={colors}
+          />
+        </View>
 
-      {/* Feature Grid */}
-      <View style={styles.featureGrid}>
-        <FeatureItem
-          icon="copy-outline"
-          title="Flashcards"
-          color="#F97316"
-          delay={200}
-          isVisible={headlineComplete}
-          colors={colors}
-        />
-        <FeatureItem
-          icon="list-outline"
-          title="Quizzes"
-          color="#3B82F6"
-          delay={400}
-          isVisible={headlineComplete}
-          colors={colors}
-        />
-        <FeatureItem
-          icon="chatbubbles-outline"
-          title="Smart Chat"
-          color="#10B981"
-          delay={600}
-          isVisible={headlineComplete}
-          colors={colors}
-        />
-        <FeatureItem
-          icon="headset-outline"
-          title="Podcasts"
-          color="#8B5CF6"
-          delay={800}
-          isVisible={headlineComplete}
-          colors={colors}
-        />
-      </View>
-
-      {/* Auth Section */}
-      <View style={styles.authSection}>
-        <MotiView
-          from={{ opacity: 0, translateY: 20 }}
-          animate={{ opacity: headlineComplete ? 1 : 0, translateY: headlineComplete ? 0 : 20 }}
-          transition={{ type: 'timing', duration: 600, delay: 1000 } as any}
-        >
-          {/* Terms Checkbox */}
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setTermsAccepted(!termsAccepted);
-            }}
-            style={styles.termsContainer}
-            activeOpacity={0.7}
+        {/* Auth Section */}
+        <View style={styles.authSection}>
+          <MotiView
+            from={{ opacity: 0, translateY: 20 }}
+            animate={{ opacity: headlineComplete ? 1 : 0, translateY: headlineComplete ? 0 : 20 }}
+            transition={{ type: 'timing', duration: 600, delay: 1000 } as any}
           >
-            <View style={[
-              styles.checkbox,
-              { borderColor: termsAccepted ? colors.primary : colors.border },
-              termsAccepted && { backgroundColor: colors.primary }
-            ]}>
-              {termsAccepted && <Ionicons name="checkmark" size={12} color="white" />}
-            </View>
-            <Text style={[styles.termsText, { color: colors.textSecondary }]}>
-              I agree to the{' '}
-              <Text style={styles.linkText} onPress={handleTermsPress}>Terms</Text>
-              {' & '}
-              <Text style={styles.linkText} onPress={handlePrivacyPress}>Privacy Policy</Text>
-            </Text>
-          </TouchableOpacity>
-
-          {/* Action Buttons */}
-          <View style={styles.buttonGroup}>
+            {/* Terms Checkbox */}
             <TouchableOpacity
-              onPress={handleCreateAccount}
-              style={[
-                styles.primaryButton,
-                { backgroundColor: termsAccepted ? colors.primary : colors.border }
-              ]}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryButtonText}>Get Started</Text>
-              <Ionicons name="arrow-forward" size={18} color="white" style={{ marginLeft: 8 }} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleLogin}
-              style={styles.secondaryButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setTermsAccepted(!termsAccepted);
+              }}
+              style={styles.termsContainer}
               activeOpacity={0.7}
             >
-              <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>
-                Already a member? <Text style={{ color: colors.primary, fontWeight: '700' }}>Sign in</Text>
+              <View style={[
+                styles.checkbox,
+                { borderColor: termsAccepted ? colors.primary : colors.border },
+                termsAccepted && { backgroundColor: colors.primary }
+              ]}>
+                {termsAccepted && <Ionicons name="checkmark" size={12} color="white" />}
+              </View>
+              <Text style={[styles.termsText, { color: colors.textSecondary }]}>
+                I agree to the{' '}
+                <Text style={styles.linkText} onPress={handleTermsPress}>Terms</Text>
+                {' & '}
+                <Text style={styles.linkText} onPress={handlePrivacyPress}>Privacy Policy</Text>
               </Text>
             </TouchableOpacity>
-          </View>
-        </MotiView>
-      </View>
+
+            {/* Action Buttons */}
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity
+                onPress={handleCreateAccount}
+                style={[
+                  styles.primaryButton,
+                  { backgroundColor: termsAccepted ? colors.primary : colors.border }
+                ]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.primaryButtonText}>Get Started</Text>
+                <Ionicons name="arrow-forward" size={18} color="white" style={{ marginLeft: 8 }} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleLogin}
+                style={styles.secondaryButton}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>
+                  Already a member? <Text style={{ color: colors.primary, fontWeight: '700' }}>Sign in</Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </MotiView>
+        </View>
+      </ResponsiveContainer>
     </View>
   );
 }
@@ -286,12 +293,12 @@ const styles = StyleSheet.create({
   mascotGroup: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: width * 0.45,
-    width: width,
+    height: MASCOT_GROUP_HEIGHT,
+    width: '100%',
   },
   characterContainer: {
-    width: width * 0.4,
-    height: width * 0.4,
+    width: MASCOT_SIZE,
+    height: MASCOT_SIZE,
     zIndex: 1,
   },
   characterImage: {

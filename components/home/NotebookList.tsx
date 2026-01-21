@@ -11,6 +11,7 @@ import { StreakFreezeBanner } from '@/components/home/StreakFreezeBanner';
 import { AddNotebookCard } from '@/components/home/AddNotebookCard';
 import { TikTokLoader } from '@/components/TikTokLoader';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
+import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 import type { Notebook } from '@/lib/store';
 
 interface NotebookListProps {
@@ -73,45 +74,46 @@ export function NotebookList({
         />
       }
     >
-      {isRefreshing && (
-        <View style={{ alignItems: 'center', paddingVertical: 12 }}>
-          <TikTokLoader size={10} color="#6366f1" containerWidth={60} />
-        </View>
-      )}
+      <ResponsiveContainer>
+        {isRefreshing && (
+          <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+            <TikTokLoader size={10} color="#6366f1" containerWidth={60} />
+          </View>
+        )}
 
-      {/* Streak Freeze Banner */}
-      {showStreakRestore && onApplyFreeze && onDismissStreakRestore && (
-        <StreakFreezeBanner
-          previousStreak={previousStreak}
-          freezesLeft={freezesLeft}
-          onFreeze={onApplyFreeze}
-          onDismiss={onDismissStreakRestore}
-        />
-      )}
+        {/* Streak Freeze Banner */}
+        {showStreakRestore && onApplyFreeze && onDismissStreakRestore && (
+          <StreakFreezeBanner
+            previousStreak={previousStreak}
+            freezesLeft={freezesLeft}
+            onFreeze={onApplyFreeze}
+            onDismiss={onDismissStreakRestore}
+          />
+        )}
 
-      {/* Limited Access Banner (subscription expired) */}
-      {showLimitedAccess && (
-        <LimitedAccessBanner
-          accessibleCount={accessibleCount}
-          totalCount={totalCount}
-          onUpgrade={onUpgrade}
-        />
-      )}
+        {/* Limited Access Banner (subscription expired) */}
+        {showLimitedAccess && (
+          <LimitedAccessBanner
+            accessibleCount={accessibleCount}
+            totalCount={totalCount}
+            onUpgrade={onUpgrade}
+          />
+        )}
 
-      {/* Add Notebook Card (Empty State) */}
-      {notebooks.length === 0 && !isRefreshing && (
-        <AddNotebookCard onPress={onCreateNotebook} />
-      )}
+        {/* Add Notebook Card (Empty State) */}
+        {notebooks.length === 0 && !isRefreshing && (
+          <AddNotebookCard onPress={onCreateNotebook} />
+        )}
 
-      {/* Notebook Cards */}
-      {notebooks.map((notebook) => (
-        <NotebookCard
-          key={notebook.id}
-          notebook={notebook}
-          onPress={() => onNotebookPress(notebook.id)}
-        />
-      ))}
-
+        {/* Notebook Cards */}
+        {notebooks.map((notebook) => (
+          <NotebookCard
+            key={notebook.id}
+            notebook={notebook}
+            onPress={() => onNotebookPress(notebook.id)}
+          />
+        ))}
+      </ResponsiveContainer>
     </ScrollView>
   );
 }

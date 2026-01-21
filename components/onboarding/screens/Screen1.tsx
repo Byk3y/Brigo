@@ -5,8 +5,13 @@ import { getThemeColors } from '@/lib/ThemeContext';
 import { TypewriterText } from '../components/TypewriterText';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
+import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 
 const { width, height } = Dimensions.get('window');
+
+// Cap dimensions for tablet optimization
+const MASCOT_SIZE = Math.min(width * 0.45, 180);
+const MASCOT_GROUP_HEIGHT = Math.min(width * 0.55, 220);
 
 // Words to cycle through
 const ROTATING_WORDS = ['remember.', 'succeed.', 'excel.', 'master.'];
@@ -32,124 +37,126 @@ export function Screen1({ colors }: Screen1Props) {
 
   return (
     <View style={styles.screenContainer}>
-      {/* Top Section: Character + Speech Bubble */}
-      <View style={styles.topSection}>
-        {/* Mascot + Shadow Group */}
-        <View style={styles.mascotGroup}>
-          <MotiView
-            animate={{
-              scale: [0.8, 1.1, 0.8],
-              opacity: [0.03, 0.08, 0.03]
-            }}
-            transition={{ loop: true, type: 'timing', duration: 3200 } as any}
-            style={[styles.shadow, { backgroundColor: '#000' }]}
-          />
-
-          <MotiView
-            from={{ opacity: 0, translateY: 30 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: 'timing', duration: 500, delay: 300 } as any}
-            style={styles.characterContainer}
-          >
+      <ResponsiveContainer>
+        {/* Top Section: Character + Speech Bubble */}
+        <View style={styles.topSection}>
+          {/* Mascot + Shadow Group */}
+          <View style={styles.mascotGroup}>
             <MotiView
-              animate={{ translateY: [-8, 8, -8] }}
-              transition={{ loop: true, type: 'timing', duration: 3000 } as any}
+              animate={{
+                scale: [0.8, 1.1, 0.8],
+                opacity: [0.03, 0.08, 0.03]
+              }}
+              transition={{ loop: true, type: 'timing', duration: 3200 } as any}
+              style={[styles.shadow, { backgroundColor: '#000' }]}
+            />
+
+            <MotiView
+              from={{ opacity: 0, translateY: 30 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: 'timing', duration: 500, delay: 300 } as any}
+              style={styles.characterContainer}
             >
-              <Image
-                source={BrigoSmug}
-                style={styles.characterImage}
-                resizeMode="contain"
-              />
+              <MotiView
+                animate={{ translateY: [-8, 8, -8] }}
+                transition={{ loop: true, type: 'timing', duration: 3000 } as any}
+              >
+                <Image
+                  source={BrigoSmug}
+                  style={styles.characterImage}
+                  resizeMode="contain"
+                />
+              </MotiView>
             </MotiView>
+          </View>
+
+          {/* Speech Bubble - Brigo's Provocation */}
+          <MotiView
+            from={{ opacity: 0, scale: 0.9, translateY: 10 }}
+            animate={{ opacity: 1, scale: 1, translateY: 0 }}
+            transition={{ type: 'spring', damping: 28, delay: 1000 } as any}
+            style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
+          >
+            <TypewriterText
+              text="Reading alone won't help you remember."
+              style={[styles.bubbleText, { color: colors.text }]}
+              speed={35}
+              delay={1500}
+              onComplete={() => setSpeechComplete(true)}
+            />
+            <MotiView
+              from={{ opacity: 0 }}
+              animate={{ opacity: speechComplete ? 1 : 0 }}
+              transition={{ type: 'timing', duration: 500 } as any}
+            >
+              <Text style={[styles.bubbleTextBold, { color: colors.primary }]}>Brigo makes sure you do.</Text>
+            </MotiView>
+
+            <View style={styles.bubbleTail}>
+              <Svg width="20" height="12" viewBox="0 0 20 12">
+                <Path
+                  d="M10 12C10 12 7.5 4 0 0L20 0C12.5 4 10 12 10 12Z"
+                  fill={colors.surfaceElevated}
+                />
+              </Svg>
+            </View>
           </MotiView>
         </View>
 
-        {/* Speech Bubble - Brigo's Provocation */}
+        {/* Center Section: Core Headline */}
         <MotiView
-          from={{ opacity: 0, scale: 0.9, translateY: 10 }}
-          animate={{ opacity: 1, scale: 1, translateY: 0 }}
-          transition={{ type: 'spring', damping: 28, delay: 1000 } as any}
-          style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 800, delay: 800 } as any}
+          style={styles.headlineContainer}
         >
-          <TypewriterText
-            text="Reading alone won't help you remember."
-            style={[styles.bubbleText, { color: colors.text }]}
-            speed={35}
-            delay={1500}
-            onComplete={() => setSpeechComplete(true)}
-          />
-          <MotiView
-            from={{ opacity: 0 }}
-            animate={{ opacity: speechComplete ? 1 : 0 }}
-            transition={{ type: 'timing', duration: 500 } as any}
-          >
-            <Text style={[styles.bubbleTextBold, { color: colors.primary }]}>Brigo makes sure you do.</Text>
-          </MotiView>
-
-          <View style={styles.bubbleTail}>
-            <Svg width="20" height="12" viewBox="0 0 20 12">
-              <Path
-                d="M10 12C10 12 7.5 4 0 0L20 0C12.5 4 10 12 10 12Z"
-                fill={colors.surfaceElevated}
-              />
-            </Svg>
+          <Text style={[styles.headline, { color: colors.text }]}>
+            You deserve to
+          </Text>
+          <View style={styles.rotatingWordContainer}>
+            <AnimatePresence exitBeforeEnter>
+              <MotiView
+                key={currentWordIndex}
+                from={{ opacity: 0, translateY: 15 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                exit={{ opacity: 0, translateY: -15 }}
+                transition={{ type: 'timing', duration: 300 } as any}
+              >
+                <Text style={[styles.headline, { color: colors.primary }]}>
+                  {ROTATING_WORDS[currentWordIndex]}
+                </Text>
+              </MotiView>
+            </AnimatePresence>
           </View>
         </MotiView>
-      </View>
 
-      {/* Center Section: Core Headline */}
-      <MotiView
-        from={{ opacity: 0, translateY: 20 }}
-        animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: 'timing', duration: 800, delay: 800 } as any}
-        style={styles.headlineContainer}
-      >
-        <Text style={[styles.headline, { color: colors.text }]}>
-          You deserve to
-        </Text>
-        <View style={styles.rotatingWordContainer}>
-          <AnimatePresence exitBeforeEnter>
-            <MotiView
-              key={currentWordIndex}
-              from={{ opacity: 0, translateY: 15 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              exit={{ opacity: 0, translateY: -15 }}
-              transition={{ type: 'timing', duration: 300 } as any}
-            >
-              <Text style={[styles.headline, { color: colors.primary }]}>
-                {ROTATING_WORDS[currentWordIndex]}
-              </Text>
-            </MotiView>
-          </AnimatePresence>
-        </View>
-      </MotiView>
-
-      {/* Bottom Section: Clinical Insight Card */}
-      <MotiView
-        from={{ opacity: 0, translateY: 40 }}
-        animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: 'timing', duration: 600, delay: 1200 } as any}
-        style={[
-          styles.insightCard,
-          {
-            backgroundColor: colors.surfaceElevated,
-            borderColor: colors.primary + '20',
-          },
-        ]}
-      >
-        <View style={styles.insightContent}>
-          <View style={styles.insightHeader}>
-            <View style={[styles.iconCircle, { backgroundColor: colors.primary + '15' }]}>
-              <Ionicons name="analytics-outline" size={16} color={colors.primary} />
+        {/* Bottom Section: Clinical Insight Card */}
+        <MotiView
+          from={{ opacity: 0, translateY: 40 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 600, delay: 1200 } as any}
+          style={[
+            styles.insightCard,
+            {
+              backgroundColor: colors.surfaceElevated,
+              borderColor: colors.primary + '20',
+            },
+          ]}
+        >
+          <View style={styles.insightContent}>
+            <View style={styles.insightHeader}>
+              <View style={[styles.iconCircle, { backgroundColor: colors.primary + '15' }]}>
+                <Ionicons name="analytics-outline" size={16} color={colors.primary} />
+              </View>
+              <Text style={[styles.insightLabel, { color: colors.primary }]}>THE PROBLEM</Text>
             </View>
-            <Text style={[styles.insightLabel, { color: colors.primary }]}>THE PROBLEM</Text>
-          </View>
 
-          <Text style={[styles.body, { color: colors.textSecondary }]}>
-            Most people forget <Text style={{ color: colors.text, fontWeight: '900', fontFamily: 'SpaceGrotesk-Bold' }}>80% of what they learn</Text>. That's hours of hard work—gone. Brigo uses proven science to make knowledge stick.
-          </Text>
-        </View>
-      </MotiView>
+            <Text style={[styles.body, { color: colors.textSecondary }]}>
+              Most people forget <Text style={{ color: colors.text, fontWeight: '900', fontFamily: 'SpaceGrotesk-Bold' }}>80% of what they learn</Text>. That's hours of hard work—gone. Brigo uses proven science to make knowledge stick.
+            </Text>
+          </View>
+        </MotiView>
+      </ResponsiveContainer>
     </View>
   );
 }
@@ -169,13 +176,13 @@ const styles = StyleSheet.create({
   mascotGroup: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: width * 0.55,
-    width: width,
+    height: MASCOT_GROUP_HEIGHT,
+    width: '100%',
     marginTop: -15,
   },
   characterContainer: {
-    width: width * 0.45,
-    height: width * 0.45,
+    width: MASCOT_SIZE,
+    height: MASCOT_SIZE,
     zIndex: 1,
   },
   characterImage: {

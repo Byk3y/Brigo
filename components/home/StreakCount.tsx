@@ -18,8 +18,8 @@ export const StreakCount: React.FC = () => {
     const today = getLocalDateString();
     const isAtRisk = streakCount > 0 && user?.last_streak_date !== today && !isSecureTaskCompleted;
 
-    // Don't render anything if streak is 0 (nothing to highlight)
-    if (streakCount === 0) return null;
+    // Streak is 0 or at risk - show dimmed state
+    const isDimmed = streakCount === 0 || isAtRisk;
 
     return (
         // @ts-ignore - Library type mismatch for children
@@ -32,12 +32,12 @@ export const StreakCount: React.FC = () => {
                     loop
                     style={[
                         styles.lottie,
-                        isAtRisk && { opacity: 0.3 } // Dim the flame if you haven't studied today
+                        isDimmed && { opacity: 0.3 } // Dim the flame if streak is 0 or at risk
                     ]}
                 />
                 <Text style={[
                     styles.text,
-                    { color: isAtRisk ? (isDarkMode ? '#4B5563' : '#9CA3AF') : '#FF5F06' }
+                    { color: isDimmed ? (isDarkMode ? '#4B5563' : '#9CA3AF') : '#FF5F06' }
                 ]}>
                     {streakCount}
                 </Text>

@@ -59,27 +59,32 @@ export function StreakFreezeBanner({
                 {/* Content in the middle */}
                 <View style={styles.content}>
                     <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-                        {previousStreak > 0 ? `Protect your ${previousStreak}-day streak` : 'Recover your streak'}
+                        {freezesLeft === 0
+                            ? (previousStreak > 0 ? `You lost your ${previousStreak}-day streak` : 'Streak lost')
+                            : (previousStreak > 0 ? `Protect your ${previousStreak}-day streak` : 'Recover your streak')}
                     </Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                        {freezesLeft} {freezesLeft === 1 ? 'Streak Freeze' : 'Streak Freezes'} remaining
+                        {freezesLeft === 0
+                            ? 'No Streak Freezes remaining'
+                            : `${freezesLeft} ${freezesLeft === 1 ? 'Streak Freeze' : 'Streak Freezes'} remaining`}
                     </Text>
                 </View>
 
                 {/* Button on the right */}
                 <TouchableOpacity
-                    onPress={handleFreeze}
-                    disabled={isApplying || freezesLeft <= 0}
+                    onPress={freezesLeft === 0 ? onDismiss : handleFreeze}
+                    disabled={isApplying}
                     style={[
                         styles.actionButton,
-                        (isApplying || freezesLeft <= 0) && styles.actionButtonDisabled
+                        freezesLeft === 0 && styles.actionButtonDismiss,
+                        isApplying && styles.actionButtonDisabled
                     ]}
                     activeOpacity={0.7}
                 >
                     {isApplying ? (
                         <ActivityIndicator size="small" color="white" />
                     ) : (
-                        <Text style={styles.actionButtonText}>Use</Text>
+                        <Text style={styles.actionButtonText}>{freezesLeft === 0 ? 'Dismiss' : 'Use'}</Text>
                     )}
                 </TouchableOpacity>
             </View>
@@ -142,6 +147,9 @@ const styles = StyleSheet.create({
     },
     actionButtonDisabled: {
         opacity: 0.5,
+    },
+    actionButtonDismiss: {
+        backgroundColor: '#9CA3AF',
     },
     actionButtonText: {
         color: 'white',

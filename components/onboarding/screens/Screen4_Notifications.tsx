@@ -8,8 +8,13 @@ import Svg, { Path } from 'react-native-svg';
 import { notificationService } from '@/lib/services/notificationService';
 import { useStore } from '@/lib/store';
 import { track } from '@/lib/services/analyticsService';
+import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 
 const { width, height } = Dimensions.get('window');
+
+// Cap dimensions for tablet optimization
+const MASCOT_SIZE = Math.min(width * 0.4, 160);
+const MASCOT_GROUP_HEIGHT = Math.min(width * 0.45, 180);
 
 import BrigoAnalytical from '../../../assets/onboarding-ui/mascot/brigo_analytical.png';
 
@@ -58,94 +63,96 @@ export function Screen4_Notifications({ colors, petName, onDone }: Screen4Notifi
 
     return (
         <View style={styles.container}>
-            <View style={styles.topSection}>
-                {/* Mascot + Shadow Group */}
-                <View style={styles.mascotGroup}>
-                    <MotiView
-                        animate={{
-                            scale: [0.8, 1.05, 0.8],
-                            opacity: [0.03, 0.08, 0.03]
-                        }}
-                        transition={{ loop: true, type: 'timing', duration: 3200 } as any}
-                        style={[styles.shadow, { backgroundColor: '#000' }]}
-                    />
-                    <MotiView
-                        from={{ opacity: 0, scale: 0.5, translateY: 20 }}
-                        animate={{ opacity: 1, scale: 1, translateY: 0 }}
-                        transition={{ type: 'spring', damping: 15, delay: 300 } as any}
-                        style={styles.petContainer}
-                    >
+            <ResponsiveContainer>
+                <View style={styles.topSection}>
+                    {/* Mascot + Shadow Group */}
+                    <View style={styles.mascotGroup}>
                         <MotiView
-                            animate={{ translateY: [-8, 8, -8] }}
-                            transition={{ loop: true, type: 'timing', duration: 3000 } as any}
+                            animate={{
+                                scale: [0.8, 1.05, 0.8],
+                                opacity: [0.03, 0.08, 0.03]
+                            }}
+                            transition={{ loop: true, type: 'timing', duration: 3200 } as any}
+                            style={[styles.shadow, { backgroundColor: '#000' }]}
+                        />
+                        <MotiView
+                            from={{ opacity: 0, scale: 0.5, translateY: 20 }}
+                            animate={{ opacity: 1, scale: 1, translateY: 0 }}
+                            transition={{ type: 'spring', damping: 15, delay: 300 } as any}
+                            style={styles.petContainer}
                         >
-                            <Image
-                                source={BrigoAnalytical}
-                                style={styles.petImage}
-                                resizeMode="contain"
-                            />
+                            <MotiView
+                                animate={{ translateY: [-8, 8, -8] }}
+                                transition={{ loop: true, type: 'timing', duration: 3000 } as any}
+                            >
+                                <Image
+                                    source={BrigoAnalytical}
+                                    style={styles.petImage}
+                                    resizeMode="contain"
+                                />
+                            </MotiView>
                         </MotiView>
+                    </View>
+
+                    <MotiView
+                        from={{ opacity: 0, scale: 0.9, translateY: 10 }}
+                        animate={{ opacity: 1, scale: 1, translateY: 0 }}
+                        transition={{ type: 'spring', damping: 28, delay: 600 } as any}
+                        style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
+                    >
+                        <TypewriterText
+                            text={`Can I send you gentle reminders? I'll help you stay on track!`}
+                            style={[styles.headline, { color: colors.text }]}
+                            speed={40}
+                            delay={1000}
+                            onComplete={handleHeadlineComplete}
+                        />
+                        <View style={styles.bubbleTail}>
+                            <Svg width="20" height="12" viewBox="0 0 20 12">
+                                <Path
+                                    d="M10 12C10 12 7.5 4 0 0L20 0C12.5 4 10 12 10 12Z"
+                                    fill={colors.surfaceElevated}
+                                />
+                            </Svg>
+                        </View>
                     </MotiView>
                 </View>
 
                 <MotiView
-                    from={{ opacity: 0, scale: 0.9, translateY: 10 }}
-                    animate={{ opacity: 1, scale: 1, translateY: 0 }}
-                    transition={{ type: 'spring', damping: 28, delay: 600 } as any}
-                    style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
+                    from={{ opacity: 0, translateY: 20 }}
+                    animate={{ opacity: headlineComplete ? 1 : 0, translateY: headlineComplete ? 0 : 20 }}
+                    transition={{ type: 'timing', duration: 600, delay: 200 } as any}
+                    style={styles.actionSection}
                 >
-                    <TypewriterText
-                        text={`Can I send you gentle reminders? I'll help you stay on track!`}
-                        style={[styles.headline, { color: colors.text }]}
-                        speed={40}
-                        delay={1000}
-                        onComplete={handleHeadlineComplete}
-                    />
-                    <View style={styles.bubbleTail}>
-                        <Svg width="20" height="12" viewBox="0 0 20 12">
-                            <Path
-                                d="M10 12C10 12 7.5 4 0 0L20 0C12.5 4 10 12 10 12Z"
-                                fill={colors.surfaceElevated}
-                            />
-                        </Svg>
+                    <TouchableOpacity
+                        onPress={handleEnable}
+                        disabled={isRequesting}
+                        activeOpacity={0.8}
+                        style={[styles.enableButton, { backgroundColor: colors.primary }]}
+                    >
+                        <Text style={styles.enableButtonText}>
+                            {isRequesting ? 'Enabling...' : 'Turn on notifications'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={onDone}
+                        disabled={isRequesting}
+                        activeOpacity={0.7}
+                        style={styles.skipButton}
+                    >
+                        <Text style={[styles.skipButtonText, { color: colors.textSecondary }]}>
+                            Maybe later
+                        </Text>
+                    </TouchableOpacity>
+
+                    <View style={[styles.infoCard, { backgroundColor: colors.primary + '05', borderColor: colors.primary + '20' }]}>
+                        <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                            I'll only send helpful study reminders & streak alerts. No spam, promise!
+                        </Text>
                     </View>
                 </MotiView>
-            </View>
-
-            <MotiView
-                from={{ opacity: 0, translateY: 20 }}
-                animate={{ opacity: headlineComplete ? 1 : 0, translateY: headlineComplete ? 0 : 20 }}
-                transition={{ type: 'timing', duration: 600, delay: 200 } as any}
-                style={styles.actionSection}
-            >
-                <TouchableOpacity
-                    onPress={handleEnable}
-                    disabled={isRequesting}
-                    activeOpacity={0.8}
-                    style={[styles.enableButton, { backgroundColor: colors.primary }]}
-                >
-                    <Text style={styles.enableButtonText}>
-                        {isRequesting ? 'Enabling...' : 'Turn on notifications'}
-                    </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    onPress={onDone}
-                    disabled={isRequesting}
-                    activeOpacity={0.7}
-                    style={styles.skipButton}
-                >
-                    <Text style={[styles.skipButtonText, { color: colors.textSecondary }]}>
-                        Maybe later
-                    </Text>
-                </TouchableOpacity>
-
-                <View style={[styles.infoCard, { backgroundColor: colors.primary + '05', borderColor: colors.primary + '20' }]}>
-                    <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                        I'll only send helpful study reminders & streak alerts. No spam, promise!
-                    </Text>
-                </View>
-            </MotiView>
+            </ResponsiveContainer>
         </View>
     );
 }
@@ -163,12 +170,12 @@ const styles = StyleSheet.create({
     mascotGroup: {
         alignItems: 'center',
         justifyContent: 'center',
-        width: width,
-        height: width * 0.45,
+        width: '100%',
+        height: MASCOT_GROUP_HEIGHT,
     },
     petContainer: {
-        width: width * 0.4,
-        height: width * 0.4,
+        width: MASCOT_SIZE,
+        height: MASCOT_SIZE,
         zIndex: 1,
     },
     petImage: {

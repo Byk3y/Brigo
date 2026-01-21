@@ -102,7 +102,11 @@ export const createUserSlice: StateCreator<
     const result = await userService.applyStreakFreeze(authUser.id, timezone);
     if (result.success) {
       set({ showStreakRestoreModal: false });
-      await loadUserProfile(); // Fully refresh profile to update streak and freezes count
+      // Fully refresh profile and pet state to reflect restored streak and awarded points
+      await Promise.all([
+        loadUserProfile(),
+        (get() as any).loadPetState?.()
+      ]);
     }
     return result;
   },

@@ -36,6 +36,7 @@ import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { BrigoLogo } from '@/components/BrigoLogo';
 import { track } from '@/lib/services/analyticsService';
 import { useCelebration } from '@/lib/contexts/CelebrationContext';
+import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -223,26 +224,32 @@ export default function PetSheetScreen() {
 
                 {/* Bottom Section - Swipeable (includes pet name, XP, missions, and stats) */}
                 <View style={styles.bottomSection} {...contentPanResponder.panHandlers}>
-                  <PetInfo
-                    name={petState.name}
-                    points={petState.points}
-                    onNameChange={handleNameChange}
-                  />
+                  <ResponsiveContainer>
+                    <PetInfo
+                      name={petState.name}
+                      points={petState.points}
+                      onNameChange={handleNameChange}
+                    />
+                  </ResponsiveContainer>
 
-                  <MissionsList
-                    missions={allTasks}
-                    taskProgress={taskProgress}
-                    activeColor={
-                      previewStage === 1 ? '#FBBF24' :
-                        previewStage === 2 ? '#FB923C' :
-                          '#EC4899' // Vibrant pink for Stage 3
-                    }
-                  />
+                  <ResponsiveContainer>
+                    <MissionsList
+                      missions={allTasks}
+                      taskProgress={taskProgress}
+                      activeColor={
+                        previewStage === 1 ? '#FBBF24' :
+                          previewStage === 2 ? '#FB923C' :
+                            '#EC4899' // Vibrant pink for Stage 3
+                      }
+                    />
+                  </ResponsiveContainer>
 
-                  <StreakBadges
-                    streak={user.streak}
-                    showSafetyNet={isStreakLost || hasJustRestored}
-                  />
+                  <ResponsiveContainer>
+                    <StreakBadges
+                      streak={user.streak}
+                      showSafetyNet={isStreakLost || hasJustRestored}
+                    />
+                  </ResponsiveContainer>
 
                   {/* Powered by Brigo footer */}
                   <View style={styles.poweredByContainer}>

@@ -126,6 +126,62 @@ export const petService = {
       throw appError;
     }
   },
+
+  /**
+   * Reconcile pet points with task completion history
+   * Detects and fixes cases where points are lost or out of sync
+   */
+  reconcilePetPoints: async (userId: string): Promise<{ points: number; stage: number } | null> => {
+    try {
+      // 1. Get sum of all awarded points from history
+      const { data: history, error: historyError } = await supabase
+        .from('pet_task_completions')
+        .select('points_awarded')
+        .eq('user_id', userId);
+
+      if (historyError) throw historyError;
+
+      const historyTotal = (history || []).reduce((sum, item) => sum + (item.points_awarded || 0), 0);
+
+      // 2. Get current state
+      const { data: current, error: currentError } = await supabase
+        .from('pet_states')
+        .select('current_points, current_stage')
+        .eq('user_id', userId)
+        .single();
+
+      if (currentError && currentError.code !== 'PGRST116') throw currentError;
+
+      const currentPoints = (current as any)?.current_points || 0;
+
+      // 3. If history has more points, update the state (Self-healing)
+      if (historyTotal > currentPoints) {
+        console.info(`[PetService] Reconciling points for ${userId}: ${currentPoints} -> ${historyTotal}`);
+        const newStage = Math.floor(historyTotal / 100) + 1;
+
+        const { error: updateError } = await supabase
+          .from('pet_states')
+          .upsert({
+            user_id: userId,
+            current_points: historyTotal,
+            current_stage: newStage,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+
+        if (updateError) throw updateError;
+        return { points: historyTotal, stage: newStage };
+      }
+
+      return null;
+    } catch (error) {
+      await handleError(error, {
+        operation: 'reconcile_pet_points',
+        component: 'pet-service',
+        metadata: { userId },
+      });
+      return null;
+    }
+  },
 };
 
 

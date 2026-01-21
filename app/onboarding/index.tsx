@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from '@react-navigation/native';
 import { useStore } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
+import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 
 // Components
 import { ProgressBar } from '@/components/onboarding/components/ProgressBar';
@@ -376,19 +377,21 @@ export default function OnboardingScreen() {
       {/* Navigation footer - hide for screens with their own navigation/buttons */}
       {!shouldHideFooter(currentScreen) && (
         <View style={styles.footer}>
-          <OnboardingButton
-            text={continueButtonText}
-            onPress={handleContinue}
-            variant={isLastScreenValue ? 'commitment' : 'primary'}
-            loading={isNavigating}
-            disabled={
-              isNavigating ||
-              (currentScreen === SCREEN_INDICES.SCREEN_5_PET_NAMING && !petName.trim()) ||
-              (currentScreen === SCREEN_INDICES.SCREEN_6_EDUCATION && !educationLevel) ||
-              (currentScreen === SCREEN_INDICES.SCREEN_7_LEARNING_STYLE && !learningStyle) ||
-              (currentScreen === SCREEN_INDICES.SCREEN_8_TIME_GOAL && !dailyCommitmentMinutes)
-            }
-          />
+          <ResponsiveContainer>
+            <OnboardingButton
+              text={continueButtonText}
+              onPress={handleContinue}
+              variant={isLastScreenValue ? 'commitment' : 'primary'}
+              loading={isNavigating}
+              disabled={
+                isNavigating ||
+                (currentScreen === SCREEN_INDICES.SCREEN_5_PET_NAMING && !petName.trim()) ||
+                (currentScreen === SCREEN_INDICES.SCREEN_6_EDUCATION && !educationLevel) ||
+                (currentScreen === SCREEN_INDICES.SCREEN_7_LEARNING_STYLE && !learningStyle) ||
+                (currentScreen === SCREEN_INDICES.SCREEN_8_TIME_GOAL && !dailyCommitmentMinutes)
+              }
+            />
+          </ResponsiveContainer>
         </View>
       )}
 

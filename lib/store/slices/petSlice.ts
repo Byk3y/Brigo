@@ -143,6 +143,20 @@ export const createPetSlice: StateCreator<
           cachedPetSyncedAt: Date.now(),
           cachedPetUserId: authUser.id,
         });
+
+        // Background reconciliation: check for missing points once per session/load
+        // This silently fixes point discrepancies without requiring a sync button.
+        petService.reconcilePetPoints(authUser.id).then((reconciled) => {
+          if (reconciled) {
+            set((state) => ({
+              petState: {
+                ...state.petState,
+                points: reconciled.points,
+                stage: reconciled.stage,
+              }
+            }));
+          }
+        }).catch(err => console.warn('[PetSlice] Failed to reconcile points:', err));
       } else {
         // No pet state exists, create default one
         const defaultPetState = {

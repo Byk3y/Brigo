@@ -6,8 +6,13 @@ import { getThemeColors } from '@/lib/ThemeContext';
 import { TypewriterText } from '../components/TypewriterText';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
+import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 
 const { width, height } = Dimensions.get('window');
+
+// Cap dimensions for tablet optimization
+const MASCOT_SIZE = Math.min(width * 0.45, 180);
+const MASCOT_GROUP_HEIGHT = Math.min(width * 0.5, 200);
 
 interface Screen2Props {
   colors: ReturnType<typeof getThemeColors>;
@@ -38,129 +43,131 @@ export function Screen2({ colors }: Screen2Props) {
 
   return (
     <View style={styles.screenContainer}>
-      {/* Top Section: Character + Speech Bubble */}
-      <View style={styles.topSection}>
-        {/* Mascot + Shadow Group */}
-        <View style={styles.mascotGroup}>
-          <MotiView
-            animate={{
-              scale: [0.8, 1.1, 0.8],
-              opacity: [0.03, 0.08, 0.03]
-            }}
-            transition={{ loop: true, type: 'timing', duration: 3200 } as any}
-            style={[styles.shadow, { backgroundColor: '#000' }]}
-          />
-          <MotiView
-            from={{ opacity: 0, translateY: 30 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: 'timing', duration: 500, delay: 300 } as any}
-            style={styles.characterContainer}
-          >
+      <ResponsiveContainer>
+        {/* Top Section: Character + Speech Bubble */}
+        <View style={styles.topSection}>
+          {/* Mascot + Shadow Group */}
+          <View style={styles.mascotGroup}>
             <MotiView
-              animate={{ translateY: [-8, 8, -8] }}
-              transition={{ loop: true, type: 'timing', duration: 3000 } as any}
+              animate={{
+                scale: [0.8, 1.1, 0.8],
+                opacity: [0.03, 0.08, 0.03]
+              }}
+              transition={{ loop: true, type: 'timing', duration: 3200 } as any}
+              style={[styles.shadow, { backgroundColor: '#000' }]}
+            />
+            <MotiView
+              from={{ opacity: 0, translateY: 30 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: 'timing', duration: 500, delay: 300 } as any}
+              style={styles.characterContainer}
             >
-              <Image
-                source={BrigoAnalytical}
-                style={styles.characterImage}
-                resizeMode="contain"
-              />
+              <MotiView
+                animate={{ translateY: [-8, 8, -8] }}
+                transition={{ loop: true, type: 'timing', duration: 3000 } as any}
+              >
+                <Image
+                  source={BrigoAnalytical}
+                  style={styles.characterImage}
+                  resizeMode="contain"
+                />
+              </MotiView>
             </MotiView>
+          </View>
+
+          {/* Speech Bubble */}
+          <MotiView
+            from={{ opacity: 0, scale: 0.9, translateY: 20 }}
+            animate={{ opacity: 1, scale: 1, translateY: 0 }}
+            transition={{ type: 'spring', damping: 28, delay: 800 } as any}
+            style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
+          >
+            <TypewriterText
+              text="This is why your brain forgets."
+              style={[styles.headline, { color: colors.text }]}
+              speed={40}
+              delay={1200}
+              onComplete={() => setHeadlineComplete(true)}
+            />
+            <View style={styles.bubbleTail}>
+              <Svg width="20" height="12" viewBox="0 0 20 12">
+                <Path
+                  d="M10 12C10 12 7.5 4 0 0L20 0C12.5 4 10 12 10 12Z"
+                  fill={colors.surfaceElevated}
+                />
+              </Svg>
+            </View>
           </MotiView>
         </View>
 
-        {/* Speech Bubble */}
+        {/* Center Section: Clinical Comparison */}
         <MotiView
-          from={{ opacity: 0, scale: 0.9, translateY: 20 }}
-          animate={{ opacity: 1, scale: 1, translateY: 0 }}
-          transition={{ type: 'spring', damping: 28, delay: 800 } as any}
-          style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
+          from={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: headlineComplete ? 1 : 0, scale: headlineComplete ? 1 : 0.95 }}
+          transition={{ type: 'timing', duration: 600 } as any}
+          style={[styles.comparisonContainer, { backgroundColor: colors.surfaceElevated, borderColor: colors.primary + '15' }]}
         >
-          <TypewriterText
-            text="This is why your brain forgets."
-            style={[styles.headline, { color: colors.text }]}
-            speed={40}
-            delay={1200}
-            onComplete={() => setHeadlineComplete(true)}
-          />
-          <View style={styles.bubbleTail}>
-            <Svg width="20" height="12" viewBox="0 0 20 12">
-              <Path
-                d="M10 12C10 12 7.5 4 0 0L20 0C12.5 4 10 12 10 12Z"
-                fill={colors.surfaceElevated}
-              />
-            </Svg>
+          <Text style={[styles.comparisonTitle, { color: colors.textSecondary }]}>WHAT YOU REMEMBER AFTER 2 DAYS</Text>
+
+          <View style={styles.comparisonRow}>
+            <View style={styles.barLabelContainer}>
+              <Text style={[styles.barLabel, { color: colors.textSecondary }]}>Just reading</Text>
+              <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
+                <MotiView
+                  from={{ width: '0%' }}
+                  animate={{ width: headlineComplete ? '20%' : '0%' }}
+                  transition={{ type: 'timing', duration: 1200, delay: 1000 } as any}
+                  style={[styles.barFill, { backgroundColor: colors.textMuted }]}
+                />
+              </View>
+            </View>
+            <Text style={[styles.percentageText, { color: colors.textMuted }]}>20%</Text>
+          </View>
+
+          <View style={styles.comparisonRow}>
+            <View style={styles.barLabelContainer}>
+              <Text style={[styles.barLabel, { color: colors.primary, fontWeight: '800' }]}>With Brigo</Text>
+              <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
+                <MotiView
+                  from={{ width: '0%' }}
+                  animate={{ width: headlineComplete ? '90%' : '0%' }}
+                  transition={{ type: 'spring', damping: 12, stiffness: 80, delay: 1200 } as any}
+                  style={[styles.barFill, { backgroundColor: colors.primary }]}
+                />
+              </View>
+            </View>
+            <Text style={[styles.percentageText, { color: colors.primary, fontWeight: '800' }]}>90%</Text>
           </View>
         </MotiView>
-      </View>
 
-      {/* Center Section: Clinical Comparison */}
-      <MotiView
-        from={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: headlineComplete ? 1 : 0, scale: headlineComplete ? 1 : 0.95 }}
-        transition={{ type: 'timing', duration: 600 } as any}
-        style={[styles.comparisonContainer, { backgroundColor: colors.surfaceElevated, borderColor: colors.primary + '15' }]}
-      >
-        <Text style={[styles.comparisonTitle, { color: colors.textSecondary }]}>WHAT YOU REMEMBER AFTER 2 DAYS</Text>
-
-        <View style={styles.comparisonRow}>
-          <View style={styles.barLabelContainer}>
-            <Text style={[styles.barLabel, { color: colors.textSecondary }]}>Just reading</Text>
-            <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
-              <MotiView
-                from={{ width: '0%' }}
-                animate={{ width: headlineComplete ? '20%' : '0%' }}
-                transition={{ type: 'timing', duration: 1200, delay: 1000 } as any}
-                style={[styles.barFill, { backgroundColor: colors.textMuted }]}
-              />
-            </View>
+        {/* Bottom Section: Science Insight Card */}
+        <MotiView
+          from={{ opacity: 0, translateY: 30 }}
+          animate={{ opacity: headlineComplete ? 1 : 0, translateY: headlineComplete ? 0 : 30 }}
+          transition={{ type: 'timing', duration: 500, delay: 2000 } as any}
+          style={[
+            styles.insightCard,
+            {
+              backgroundColor: colors.surfaceElevated,
+              borderColor: colors.primary + '10',
+            },
+          ]}
+        >
+          <View style={[styles.iconCircle, { backgroundColor: colors.primary + '20' }]}>
+            <Ionicons name="flash" size={18} color={colors.primary} />
           </View>
-          <Text style={[styles.percentageText, { color: colors.textMuted }]}>20%</Text>
-        </View>
-
-        <View style={styles.comparisonRow}>
-          <View style={styles.barLabelContainer}>
-            <Text style={[styles.barLabel, { color: colors.primary, fontWeight: '800' }]}>With Brigo</Text>
-            <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
-              <MotiView
-                from={{ width: '0%' }}
-                animate={{ width: headlineComplete ? '90%' : '0%' }}
-                transition={{ type: 'spring', damping: 12, stiffness: 80, delay: 1200 } as any}
-                style={[styles.barFill, { backgroundColor: colors.primary }]}
-              />
-            </View>
+          <View style={styles.insightContent}>
+            <Text style={[styles.insightLabel, { color: colors.primary }]}>THE SCIENCE</Text>
+            <TypewriterText
+              text="There's a way to flip this. A method that makes your brain hold onto information instead of letting it slip away. That's what Brigo does."
+              style={[styles.body, { color: colors.textSecondary }]}
+              speed={25}
+              startTrigger={headlineComplete}
+              delay={2200}
+            />
           </View>
-          <Text style={[styles.percentageText, { color: colors.primary, fontWeight: '800' }]}>90%</Text>
-        </View>
-      </MotiView>
-
-      {/* Bottom Section: Science Insight Card */}
-      <MotiView
-        from={{ opacity: 0, translateY: 30 }}
-        animate={{ opacity: headlineComplete ? 1 : 0, translateY: headlineComplete ? 0 : 30 }}
-        transition={{ type: 'timing', duration: 500, delay: 2000 } as any}
-        style={[
-          styles.insightCard,
-          {
-            backgroundColor: colors.surfaceElevated,
-            borderColor: colors.primary + '10',
-          },
-        ]}
-      >
-        <View style={[styles.iconCircle, { backgroundColor: colors.primary + '20' }]}>
-          <Ionicons name="flash" size={18} color={colors.primary} />
-        </View>
-        <View style={styles.insightContent}>
-          <Text style={[styles.insightLabel, { color: colors.primary }]}>THE SCIENCE</Text>
-          <TypewriterText
-            text="There's a way to flip this. A method that makes your brain hold onto information instead of letting it slip away. That's what Brigo does."
-            style={[styles.body, { color: colors.textSecondary }]}
-            speed={25}
-            startTrigger={headlineComplete}
-            delay={2200}
-          />
-        </View>
-      </MotiView>
+        </MotiView>
+      </ResponsiveContainer>
     </View>
   );
 }
@@ -181,13 +188,13 @@ const styles = StyleSheet.create({
   mascotGroup: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: width * 0.5,
-    width: width,
+    height: MASCOT_GROUP_HEIGHT,
+    width: '100%',
     marginTop: -20,
   },
   characterContainer: {
-    width: width * 0.45,
-    height: width * 0.45,
+    width: MASCOT_SIZE,
+    height: MASCOT_SIZE,
     zIndex: 1,
   },
   characterImage: {

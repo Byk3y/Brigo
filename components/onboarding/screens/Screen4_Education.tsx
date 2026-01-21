@@ -5,8 +5,13 @@ import { getThemeColors } from '@/lib/ThemeContext';
 import { useStore } from '@/lib/store';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 
 const { width } = Dimensions.get('window');
+
+// Cap dimensions for tablet optimization
+const PET_SIZE = Math.min(width * 0.22, 90);
+const PET_SECTION_HEIGHT = Math.min(width * 0.28, 110);
 
 // Use Stage 1 pet for consistency
 const PetStage1 = require('../../../assets/pets/stage-1/full-view.png');
@@ -31,89 +36,91 @@ export function Screen4_Education({ colors }: Screen4_EducationProps) {
 
     return (
         <View style={styles.container}>
-            {/* Pet Image */}
-            <View style={styles.petSection}>
-                <MotiView
-                    from={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: 'spring', damping: 15 } as any}
-                >
+            <ResponsiveContainer>
+                {/* Pet Image */}
+                <View style={styles.petSection}>
                     <MotiView
-                        animate={{ translateY: [-4, 4, -4] }}
-                        transition={{ loop: true, type: 'timing', duration: 3000 } as any}
+                        from={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ type: 'spring', damping: 15 } as any}
                     >
-                        <Image source={PetStage1} style={styles.petImage} resizeMode="contain" />
-                    </MotiView>
-                </MotiView>
-            </View>
-
-            {/* Headline */}
-            <View style={styles.headlineSection}>
-                <Text style={[styles.headline, { color: colors.text }]}>
-                    What describes you best?
-                </Text>
-                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                    This helps personalize your experience
-                </Text>
-            </View>
-
-            {/* Options List */}
-            <View style={styles.optionsSection}>
-                {EDUCATION_OPTIONS.map((option, index) => {
-                    const isSelected = educationLevel === option.id;
-                    return (
                         <MotiView
-                            key={option.id}
-                            from={{ opacity: 0, translateY: 10 }}
-                            animate={{ opacity: 1, translateY: 0 }}
-                            transition={{ delay: index * 100 } as any}
+                            animate={{ translateY: [-4, 4, -4] }}
+                            transition={{ loop: true, type: 'timing', duration: 3000 } as any}
                         >
-                            <TouchableOpacity
-                                onPress={() => handleSelect(option.id)}
-                                activeOpacity={0.7}
-                                style={[
-                                    styles.optionItem,
-                                    {
-                                        backgroundColor: isSelected ? colors.primary : colors.surfaceElevated,
-                                        borderColor: isSelected ? colors.primary : colors.border + '40',
-                                    },
-                                ]}
-                            >
-                                <View style={styles.optionContent}>
-                                    <Ionicons
-                                        name={option.icon as any}
-                                        size={22}
-                                        color={isSelected ? 'white' : colors.primary}
-                                        style={styles.optionIcon}
-                                    />
-                                    <View style={styles.optionTextContainer}>
-                                        <Text style={[
-                                            styles.optionLabel,
-                                            { color: isSelected ? 'white' : colors.text }
-                                        ]}>
-                                            {option.label}
-                                        </Text>
-                                        <Text style={[
-                                            styles.optionDescription,
-                                            { color: isSelected ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
-                                        ]}>
-                                            {option.description}
-                                        </Text>
-                                    </View>
-                                </View>
-                                <View style={[
-                                    styles.radioOuter,
-                                    { borderColor: isSelected ? 'white' : colors.border }
-                                ]}>
-                                    {isSelected && (
-                                        <View style={[styles.radioInner, { backgroundColor: 'white' }]} />
-                                    )}
-                                </View>
-                            </TouchableOpacity>
+                            <Image source={PetStage1} style={styles.petImage} resizeMode="contain" />
                         </MotiView>
-                    );
-                })}
-            </View>
+                    </MotiView>
+                </View>
+
+                {/* Headline */}
+                <View style={styles.headlineSection}>
+                    <Text style={[styles.headline, { color: colors.text }]}>
+                        What describes you best?
+                    </Text>
+                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                        This helps personalize your experience
+                    </Text>
+                </View>
+
+                {/* Options List */}
+                <View style={styles.optionsSection}>
+                    {EDUCATION_OPTIONS.map((option, index) => {
+                        const isSelected = educationLevel === option.id;
+                        return (
+                            <MotiView
+                                key={option.id}
+                                from={{ opacity: 0, translateY: 10 }}
+                                animate={{ opacity: 1, translateY: 0 }}
+                                transition={{ delay: index * 100 } as any}
+                            >
+                                <TouchableOpacity
+                                    onPress={() => handleSelect(option.id)}
+                                    activeOpacity={0.7}
+                                    style={[
+                                        styles.optionItem,
+                                        {
+                                            backgroundColor: isSelected ? colors.primary : colors.surfaceElevated,
+                                            borderColor: isSelected ? colors.primary : colors.border + '40',
+                                        },
+                                    ]}
+                                >
+                                    <View style={styles.optionContent}>
+                                        <Ionicons
+                                            name={option.icon as any}
+                                            size={22}
+                                            color={isSelected ? 'white' : colors.primary}
+                                            style={styles.optionIcon}
+                                        />
+                                        <View style={styles.optionTextContainer}>
+                                            <Text style={[
+                                                styles.optionLabel,
+                                                { color: isSelected ? 'white' : colors.text }
+                                            ]}>
+                                                {option.label}
+                                            </Text>
+                                            <Text style={[
+                                                styles.optionDescription,
+                                                { color: isSelected ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
+                                            ]}>
+                                                {option.description}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <View style={[
+                                        styles.radioOuter,
+                                        { borderColor: isSelected ? 'white' : colors.border }
+                                    ]}>
+                                        {isSelected && (
+                                            <View style={[styles.radioInner, { backgroundColor: 'white' }]} />
+                                        )}
+                                    </View>
+                                </TouchableOpacity>
+                            </MotiView>
+                        );
+                    })}
+                </View>
+            </ResponsiveContainer>
         </View>
     );
 }
@@ -125,12 +132,12 @@ const styles = StyleSheet.create({
     },
     petSection: {
         alignItems: 'center',
-        height: width * 0.28,
+        height: PET_SECTION_HEIGHT,
         justifyContent: 'center',
     },
     petImage: {
-        width: width * 0.22,
-        height: width * 0.22,
+        width: PET_SIZE,
+        height: PET_SIZE,
     },
     headlineSection: {
         alignItems: 'center',

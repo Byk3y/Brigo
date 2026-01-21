@@ -11,15 +11,18 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
-    StyleSheet,
     Linking,
     Share,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ResponsiveContainer from '@/lib/components/ResponsiveContainer';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { supabase } from '@/lib/supabase';
+
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 /**
  * Clean extracted content for display
@@ -209,19 +212,26 @@ export default function SourceViewerScreen() {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             {/* Header with title */}
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
+            <View style={[styles.header, {
+                borderBottomColor: colors.border,
+                paddingHorizontal: isPad ? 32 : 16,
+                paddingVertical: isPad ? 20 : 12,
+            }]}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                    <Ionicons name="arrow-back" size={isPad ? 28 : 24} color={colors.text} />
                 </TouchableOpacity>
 
-                <Text numberOfLines={1} style={[styles.headerTitle, { color: colors.text }]}>
+                <Text numberOfLines={1} style={[styles.headerTitle, {
+                    color: colors.text,
+                    fontSize: isPad ? 22 : 17
+                }]}>
                     {material.title}
                 </Text>
 
                 <View style={styles.headerActions}>
                     {material.external_url && (
                         <TouchableOpacity onPress={handleOpenExternal} style={styles.headerActionButton}>
-                            <Ionicons name="open-outline" size={22} color={colors.text} />
+                            <Ionicons name="open-outline" size={isPad ? 26 : 22} color={colors.text} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -230,13 +240,19 @@ export default function SourceViewerScreen() {
             {/* Content */}
             <ScrollView
                 style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 0 }]}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Plain text content - like NotebookLM */}
-                <Text style={[styles.content, { color: colors.text }]}>
-                    {material.content}
-                </Text>
+                <ResponsiveContainer maxWidth={isPad ? 800 : 500} withPadding={true}>
+                    {/* Plain text content - like NotebookLM */}
+                    <Text style={[styles.content, {
+                        color: colors.text,
+                        fontSize: isPad ? 20 : 16,
+                        lineHeight: isPad ? 32 : 26
+                    }]}>
+                        {material.content}
+                    </Text>
+                </ResponsiveContainer>
             </ScrollView>
         </SafeAreaView>
     );

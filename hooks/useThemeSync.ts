@@ -8,15 +8,18 @@ import { useColorScheme as useNativeWindColorScheme } from 'nativewind';
 import { useTheme } from '@/lib/ThemeContext';
 
 export function useThemeSync() {
-  const { effectiveColorScheme } = useTheme();
+  const { themeMode } = useTheme();
   const { setColorScheme, colorScheme } = useNativeWindColorScheme();
-  
+
   useEffect(() => {
-    // Sync NativeWind with our theme context (for components using dark: classes)
-    if (colorScheme !== effectiveColorScheme) {
-      setColorScheme(effectiveColorScheme);
+    // Sync NativeWind with our theme context
+    if (themeMode === 'system') {
+      // @ts-ignore - NativeWind types might not explicitly include 'system' but it is supported
+      setColorScheme('system');
+    } else if (colorScheme !== themeMode) {
+      setColorScheme(themeMode);
     }
-  }, [effectiveColorScheme, colorScheme, setColorScheme]);
+  }, [themeMode, colorScheme, setColorScheme]);
 }
 
 

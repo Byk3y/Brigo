@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { restorePurchases } from '@/lib/purchases';
 import { usePaywall } from '@/lib/hooks/usePaywall';
 import { BrigoLogo } from '@/components/BrigoLogo';
-
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 export default function SubscriptionScreen() {
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
@@ -149,23 +149,27 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: isPad ? 48 : 16,
+        paddingVertical: isPad ? 24 : 12,
+        width: '100%',
     },
     backButton: {
-        padding: 8,
+        padding: isPad ? 8 : 4,
     },
     headerTitle: {
-        fontSize: 18,
+        fontSize: isPad ? 28 : 18,
         fontFamily: 'Nunito-Bold',
     },
     content: {
-        padding: 24,
+        padding: isPad ? 40 : 24,
+        maxWidth: isPad ? 720 : '100%',
+        alignSelf: 'center',
+        width: '100%',
     },
     premiumCard: {
-        borderRadius: 24,
-        padding: 24,
-        marginBottom: 24,
+        borderRadius: isPad ? 32 : 24,
+        padding: isPad ? 32 : 24,
+        marginBottom: isPad ? 40 : 24,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.15,
@@ -185,13 +189,13 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     badgeText: {
-        fontSize: 11,
+        fontSize: isPad ? 14 : 11,
         fontFamily: 'Nunito-Bold',
         color: '#FFFFFF',
         letterSpacing: 1,
     },
     statusText: {
-        fontSize: 12,
+        fontSize: isPad ? 16 : 12,
         fontFamily: 'Nunito-Bold',
         color: '#FFFFFF',
         opacity: 0.9,
@@ -199,19 +203,19 @@ const styles = StyleSheet.create({
     planTitleRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 8,
     },
     planTitlePro: {
-        fontSize: 26,
+        fontSize: isPad ? 36 : 26,
         fontFamily: 'Nunito-Bold',
         color: '#FFFFFF',
     },
     planTagline: {
-        fontSize: 15,
+        fontSize: isPad ? 18 : 15,
         fontFamily: 'Nunito-Medium',
         color: '#FFFFFF',
         opacity: 0.85,
-        marginBottom: 26,
+        marginBottom: isPad ? 32 : 26,
     },
     featuresList: {
         gap: 12,
@@ -219,19 +223,19 @@ const styles = StyleSheet.create({
     featureItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: isPad ? 16 : 12,
     },
     featureText: {
-        fontSize: 15,
+        fontSize: isPad ? 18 : 15,
         fontFamily: 'Nunito-Medium',
         color: '#FFFFFF',
     },
     upgradeButton: {
-        height: 64,
-        borderRadius: 20,
+        height: isPad ? 72 : 64,
+        borderRadius: isPad ? 24 : 20,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: isPad ? 24 : 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
@@ -241,10 +245,10 @@ const styles = StyleSheet.create({
     buttonInner: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: isPad ? 12 : 8,
     },
     upgradeButtonText: {
-        fontSize: 16,
+        fontSize: isPad ? 20 : 16,
         fontFamily: 'Nunito-Bold',
         letterSpacing: 0.5,
     },
@@ -252,17 +256,17 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 18,
-        borderRadius: 20,
+        padding: isPad ? 24 : 18,
+        borderRadius: isPad ? 24 : 20,
         borderWidth: 1,
     },
     manageButtonLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: isPad ? 16 : 12,
     },
     manageButtonText: {
-        fontSize: 16,
+        fontSize: isPad ? 20 : 16,
         fontFamily: 'Nunito-Bold',
     },
     restoreButton: {
@@ -271,7 +275,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     restoreButtonText: {
-        fontSize: 14,
+        fontSize: isPad ? 16 : 14,
         fontFamily: 'Nunito-Bold',
         letterSpacing: 0.8,
     },
@@ -281,9 +285,9 @@ const styles = StyleSheet.create({
     },
     footerText: {
         textAlign: 'center',
-        fontSize: 12,
+        fontSize: isPad ? 15 : 12,
         fontFamily: 'Nunito-Regular',
-        lineHeight: 18,
+        lineHeight: isPad ? 22 : 18,
         opacity: 0.6,
     }
 });

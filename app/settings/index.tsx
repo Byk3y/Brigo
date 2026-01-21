@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { APP_URLS, APP_CONFIG } from '@/lib/constants';
 import { restorePurchases } from '@/lib/purchases';
-
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 export default function SettingsScreen() {
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
@@ -218,31 +218,35 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: isPad ? 48 : 16,
+        paddingVertical: isPad ? 24 : 12,
+        width: '100%',
     },
     closeButton: {
-        padding: 4,
+        padding: isPad ? 8 : 4,
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: isPad ? 28 : 20,
         fontFamily: 'Nunito-Bold',
     },
     scrollContent: {
-        padding: 20,
+        padding: isPad ? 40 : 20,
+        maxWidth: isPad ? 720 : '100%',
+        alignSelf: 'center',
+        width: '100%',
     },
     sectionTitle: {
-        fontSize: 12,
+        fontSize: isPad ? 16 : 12,
         fontFamily: 'Nunito-Bold',
         letterSpacing: 1.2,
-        marginBottom: 10,
-        marginLeft: 4,
+        marginBottom: isPad ? 16 : 10,
+        marginLeft: isPad ? 8 : 4,
     },
     card: {
-        borderRadius: 20,
+        borderRadius: isPad ? 32 : 20,
         borderWidth: 1,
         overflow: 'hidden',
-        marginBottom: 24,
+        marginBottom: isPad ? 40 : 24,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
@@ -253,57 +257,57 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
+        padding: isPad ? 24 : 16,
         borderBottomWidth: 1,
     },
     navItemLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: isPad ? 20 : 12,
     },
     iconWrapper: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
+        width: isPad ? 48 : 36,
+        height: isPad ? 48 : 36,
+        borderRadius: isPad ? 14 : 10,
         justifyContent: 'center',
         alignItems: 'center',
     },
     navLabel: {
-        fontSize: 16,
+        fontSize: isPad ? 20 : 16,
         fontFamily: 'Nunito-Bold',
     },
     navSubtext: {
-        fontSize: 12,
+        fontSize: isPad ? 15 : 12,
         fontFamily: 'Nunito-Medium',
-        marginTop: -2,
+        marginTop: isPad ? 2 : -2,
     },
     restoreRow: {
-        padding: 16,
+        padding: isPad ? 32 : 16,
         alignItems: 'center',
     },
     restoreText: {
-        fontSize: 14,
+        fontSize: isPad ? 18 : 14,
         fontFamily: 'Nunito-Bold',
         letterSpacing: 0.5,
     },
     signOutRow: {
-        padding: 16,
+        padding: isPad ? 32 : 16,
         alignItems: 'center',
     },
     signOutText: {
         color: '#FF3B30',
-        fontSize: 16,
+        fontSize: isPad ? 20 : 16,
         fontFamily: 'Nunito-Bold',
     },
     footer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 12,
-        marginTop: 8,
+        gap: isPad ? 20 : 12,
+        marginTop: isPad ? 40 : 8,
     },
     footerText: {
-        fontSize: 13,
+        fontSize: isPad ? 18 : 13,
         fontFamily: 'Nunito-Medium',
     },
     footerDivider: {
@@ -314,9 +318,9 @@ const styles = StyleSheet.create({
     },
     versionText: {
         textAlign: 'center',
-        fontSize: 12,
+        fontSize: isPad ? 16 : 12,
         fontFamily: 'Nunito-Regular',
-        marginTop: 20,
+        marginTop: isPad ? 40 : 20,
         opacity: 0.6,
     }
 });

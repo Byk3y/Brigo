@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Modal, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Modal, Pressable, Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
@@ -10,6 +10,7 @@ import { generateGradientFromString, getInitials, getAvatarUrl, CURATED_LORELEI_
 import { SvgUri } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 export default function ProfileScreen() {
     const { isDarkMode } = useTheme();
@@ -320,42 +321,46 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    scrollContent: {
+        paddingHorizontal: isPad ? 40 : 20,
+        paddingTop: isPad ? 40 : 20,
+        maxWidth: isPad ? 800 : '100%',
+        alignSelf: 'center',
+        width: '100%',
+    },
     topHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
+        paddingHorizontal: isPad ? 48 : 20,
+        paddingVertical: isPad ? 24 : 12,
+        width: '100%',
     },
     iconButton: {
-        padding: 4,
+        padding: isPad ? 8 : 4,
     },
     topName: {
-        fontSize: 20,
+        fontSize: isPad ? 28 : 20,
         fontFamily: 'Nunito-Bold',
-    },
-    scrollContent: {
-        paddingHorizontal: 20,
-        paddingTop: 20,
     },
     avatarContainer: {
         alignItems: 'center',
-        marginBottom: 32,
+        marginBottom: isPad ? 48 : 32,
     },
     avatarWrapper: {
-        width: 120,
-        height: 120,
+        width: isPad ? 200 : 120,
+        height: isPad ? 200 : 120,
         position: 'relative',
-        marginBottom: 16,
+        marginBottom: isPad ? 24 : 16,
     },
     avatarContainerStyle: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: '100%',
+        height: '100%',
+        borderRadius: isPad ? 100 : 60,
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
-        borderWidth: 2,
+        borderWidth: isPad ? 4 : 2,
         borderColor: '#9333ea',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -365,11 +370,11 @@ const styles = StyleSheet.create({
     },
     badgeContainer: {
         position: 'absolute',
-        bottom: 0,
-        right: 0,
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        bottom: isPad ? 8 : 0,
+        right: isPad ? 8 : 0,
+        width: isPad ? 48 : 36,
+        height: isPad ? 48 : 36,
+        borderRadius: isPad ? 24 : 18,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
@@ -378,32 +383,29 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
-    badgeEmoji: {
-        fontSize: 20,
-    },
     joinedText: {
-        fontSize: 14,
+        fontSize: isPad ? 18 : 14,
         fontFamily: 'Nunito-Medium',
     },
     statsRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-around',
-        paddingVertical: 20,
+        paddingVertical: isPad ? 32 : 20,
         borderTopWidth: 1,
         borderBottomWidth: 1,
-        marginBottom: 24,
+        marginBottom: isPad ? 32 : 24,
     },
     statItem: {
         alignItems: 'center',
         flex: 1,
     },
     statEmoji: {
-        fontSize: 20,
-        marginBottom: 4,
+        fontSize: isPad ? 32 : 20,
+        marginBottom: isPad ? 8 : 4,
     },
     fireIconWrapper: {
-        marginBottom: 4,
+        marginBottom: isPad ? 8 : 4,
         shadowColor: '#FF5F06',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.4,
@@ -411,22 +413,22 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     statValue: {
-        fontSize: 22,
+        fontSize: isPad ? 32 : 22,
         fontFamily: 'Nunito-Bold',
     },
     statLabel: {
-        fontSize: 12,
+        fontSize: isPad ? 16 : 12,
         fontFamily: 'Nunito-Medium',
     },
     statDivider: {
         width: 1,
-        height: 40,
+        height: isPad ? 60 : 40,
     },
     card: {
-        borderRadius: 20,
+        borderRadius: isPad ? 32 : 20,
         borderWidth: 1,
-        padding: 20,
-        marginBottom: 16,
+        padding: isPad ? 32 : 20,
+        marginBottom: isPad ? 24 : 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
@@ -434,116 +436,109 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     cardHeader: {
-        marginBottom: 16,
+        marginBottom: isPad ? 24 : 16,
     },
     cardTitle: {
-        fontSize: 12,
+        fontSize: isPad ? 16 : 12,
         fontFamily: 'Nunito-Bold',
         letterSpacing: 1.2,
     },
     petHeaderTitle: {
-        fontSize: 18,
+        fontSize: isPad ? 26 : 18,
         fontFamily: 'Nunito-Bold',
         letterSpacing: 0.5,
     },
     petHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: isPad ? 12 : 8,
     },
     petContent: {
-        gap: 12,
+        gap: isPad ? 20 : 12,
     },
     petInfo: {
-        gap: 4,
+        gap: isPad ? 8 : 4,
     },
     petName: {
-        fontSize: 18,
+        fontSize: isPad ? 24 : 18,
         fontFamily: 'Nunito-Bold',
     },
     petPoints: {
-        fontSize: 14,
+        fontSize: isPad ? 18 : 14,
         fontFamily: 'Nunito-Medium',
     },
     progressBarBg: {
-        height: 12,
-        borderRadius: 6,
+        height: isPad ? 16 : 12,
+        borderRadius: isPad ? 8 : 6,
         width: '100%',
         overflow: 'hidden',
     },
     progressBarFill: {
         height: '100%',
-        borderRadius: 6,
+        borderRadius: isPad ? 8 : 6,
     },
     overviewList: {
-        gap: 12,
+        gap: isPad ? 20 : 12,
     },
     overviewItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-    },
-    overviewEmoji: {
-        fontSize: 18,
-        width: 24,
-        textAlign: 'center',
+        gap: isPad ? 16 : 12,
     },
     overviewText: {
-        fontSize: 16,
-        fontFamily: 'Nunito-Medium',
-    },
-    soonText: {
-        fontSize: 15,
+        fontSize: isPad ? 20 : 16,
         fontFamily: 'Nunito-Medium',
     },
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
+        justifyContent: 'center', // Centered for iPad
+        alignItems: 'center',
     },
     modalContent: {
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        maxHeight: '80%',
+        borderRadius: 32,
+        maxHeight: '85%',
+        width: isPad ? 600 : '100%', // Fixed width for iPad
         paddingBottom: 40,
         position: 'relative',
+        overflow: 'hidden',
     },
     modalHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 24,
-        paddingTop: 24,
-        paddingBottom: 20,
+        paddingTop: 32,
+        paddingBottom: 24,
     },
     modalTitle: {
-        fontSize: 18,
+        fontSize: isPad ? 24 : 18,
         fontFamily: 'Nunito-Bold',
     },
     tabContainer: {
         flexDirection: 'row',
         paddingHorizontal: 24,
-        marginBottom: 16,
-        gap: 24,
+        marginBottom: 24,
+        gap: 32,
     },
     tabButton: {
         paddingVertical: 8,
         borderBottomWidth: 2,
     },
     tabText: {
-        fontSize: 15,
+        fontSize: isPad ? 18 : 15,
     },
     gridContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: isPad ? 24 : 12,
         paddingHorizontal: 20,
         justifyContent: 'center',
     },
     gridItem: {
-        width: width / 3 - 22,
-        height: width / 3 - 22,
-        borderRadius: (width / 3 - 22) / 2,
+        width: isPad ? 160 : width / 3 - 22,
+        height: isPad ? 160 : width / 3 - 22,
+        borderRadius: isPad ? 80 : (width / 3 - 22) / 2,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 3,

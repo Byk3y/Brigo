@@ -17,6 +17,7 @@ import {
   TouchableWithoutFeedback,
   TextInput,
   Keyboard,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 type MaterialType = 'pdf' | 'audio' | 'image' | 'website' | 'youtube' | 'copied-text';
 
@@ -62,13 +64,13 @@ const InternalAnimatedWord = ({ isDarkMode }: { isDarkMode: boolean }) => {
   const word = CYCLING_WORDS[index];
 
   return (
-    <View style={{ height: 36, overflow: 'hidden', justifyContent: 'center' }}>
+    <View style={{ height: isPad ? 48 : 36, overflow: 'hidden', justifyContent: 'center' }}>
       <Animated.Text
         key={word}
         entering={FadeInUp.duration(600).springify()}
         exiting={FadeOutDown.duration(600).springify()}
         style={{
-          fontSize: 27,
+          fontSize: isPad ? 36 : 27,
           fontWeight: '700',
           color: isDarkMode ? '#00FFD1' : '#2E48FF',
           fontFamily: 'Outfit-Bold',
@@ -318,33 +320,34 @@ export default function MaterialTypeSelector({
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
               <View style={styles.contentWrapper}>
                 {/* Title */}
-                <View style={[styles.header, { paddingBottom: 28 }]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                <View style={[styles.header, { paddingBottom: isPad ? 40 : 28 }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: isPad ? 12 : 8, marginBottom: 2 }}>
                     <Text style={[styles.title, {
                       color: colors.text,
                       marginBottom: 0,
                       fontFamily: 'Outfit-Bold',
-                      fontSize: 27,
+                      fontSize: isPad ? 36 : 27,
                       letterSpacing: -0.5,
                     }]}>Crush your next</Text>
                     <InternalAnimatedWord isDarkMode={isDarkMode} />
                   </View>
                   <Text style={{
-                    fontSize: 17,
+                    fontSize: isPad ? 22 : 17,
                     color: colors.textSecondary,
                     fontFamily: 'Outfit-Regular',
                     letterSpacing: 0,
-                    opacity: 0.8
+                    opacity: 0.8,
+                    textAlign: 'center'
                   }}>
                     starting with your resources
                   </Text>
                 </View>
 
                 {/* Search Input */}
-                <View style={styles.searchContainer}>
+                <View style={[styles.searchContainer, isPad && { marginBottom: 40 }]}>
                   <AnimatedGradientBorder
-                    borderRadius={12}
-                    style={{ flex: 1, height: 48 }}
+                    borderRadius={16}
+                    style={{ flex: 1, height: isPad ? 64 : 48 }}
                   >
                     <TextInput
                       style={[
@@ -354,6 +357,9 @@ export default function MaterialTypeSelector({
                           color: colors.text,
                           borderWidth: 0,
                           height: '100%', // Ensure it fills the border container
+                          fontSize: isPad ? 20 : 16,
+                          paddingHorizontal: isPad ? 24 : 16,
+                          borderRadius: 16,
                         }
                       ]}
                       placeholder="Search a topic or paste URL"
@@ -369,13 +375,17 @@ export default function MaterialTypeSelector({
                     style={[
                       styles.sendButton,
                       !searchQuery.trim() && styles.sendButtonDisabled,
-                      { backgroundColor: 'transparent' }
+                      {
+                        backgroundColor: 'transparent',
+                        width: isPad ? 64 : 48,
+                        height: isPad ? 64 : 48
+                      }
                     ]}
                     disabled={!searchQuery.trim()}
                   >
                     <AnimatedGradientBorder
-                      borderRadius={24}
-                      style={{ width: 48, height: 48 }}
+                      borderRadius={isPad ? 32 : 24}
+                      style={{ width: isPad ? 64 : 48, height: isPad ? 64 : 48 }}
                     >
                       <View
                         style={{
@@ -386,21 +396,21 @@ export default function MaterialTypeSelector({
                           justifyContent: 'center',
                         }}
                       >
-                        <MaterialIcons name="arrow-forward" size={18} color={isDarkMode ? colors.background : '#FFFFFF'} />
+                        <MaterialIcons name="arrow-forward" size={isPad ? 24 : 18} color={isDarkMode ? colors.background : '#FFFFFF'} />
                       </View>
                     </AnimatedGradientBorder>
                   </TouchableOpacity>
                 </View>
 
                 {/* Separator */}
-                <View style={styles.separatorContainer}>
+                <View style={[styles.separatorContainer, isPad && { marginBottom: 32 }]}>
                   <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-                  <Text style={[styles.separatorText, { color: colors.textSecondary }]}>Or upload your files</Text>
+                  <Text style={[styles.separatorText, { color: colors.textSecondary, fontSize: isPad ? 18 : 14 }]}>Or upload your files</Text>
                   <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
                 </View>
 
                 {/* Material Type Options */}
-                <View style={styles.optionsContainer}>
+                <View style={[styles.optionsContainer, isPad && { gap: 12 }]}>
                   {materialOptions.map((option) => (
                     <TouchableOpacity
                       key={option.type}
@@ -409,6 +419,8 @@ export default function MaterialTypeSelector({
                         {
                           backgroundColor: colors.surface,
                           borderColor: colors.border,
+                          paddingVertical: isPad ? 20 : 12,
+                          paddingHorizontal: isPad ? 24 : 16,
                         }
                       ]}
                       onPress={() => handleSelectType(option.type)}
@@ -417,21 +429,26 @@ export default function MaterialTypeSelector({
                       {option.iconSet === 'Ionicons' ? (
                         <Ionicons
                           name={option.iconName as any}
-                          size={20}
+                          size={isPad ? 28 : 20}
                           color={colors.icon}
-                          style={styles.buttonIcon}
+                          style={[styles.buttonIcon, isPad && { marginRight: 20 }]}
                         />
                       ) : (
                         <MaterialIcons
                           name={option.iconName as any}
-                          size={20}
+                          size={isPad ? 28 : 20}
                           color={colors.icon}
-                          style={styles.buttonIcon}
+                          style={[styles.buttonIcon, isPad && { marginRight: 20 }]}
                         />
                       )}
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.buttonLabel, { color: colors.text }]}>{option.label}</Text>
-                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 0, fontFamily: 'Nunito-Regular' }}>
+                        <Text style={[styles.buttonLabel, { color: colors.text, fontSize: isPad ? 20 : 16 }]}>{option.label}</Text>
+                        <Text style={{
+                          fontSize: isPad ? 15 : 12,
+                          color: colors.textSecondary,
+                          marginTop: isPad ? 4 : 0,
+                          fontFamily: 'Nunito-Regular'
+                        }}>
                           {option.description}
                         </Text>
                       </View>
@@ -479,6 +496,9 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
+    maxWidth: isPad ? 720 : '100%',
+    alignSelf: 'center',
+    width: '100%',
   },
   handleContainer: {
     alignItems: 'center',

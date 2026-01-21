@@ -7,6 +7,8 @@ import { useFeedback } from '@/lib/feedback';
 import { AnimatedGradientBorder } from '@/components/AnimatedGradientBorder';
 import { AttachStep } from 'react-native-spotlight-tour';
 
+const isPad = Platform.OS === 'ios' && Platform.isPad;
+
 interface HomeActionButtonsProps {
     onCameraPress: () => void;
     onAddPress: () => void;
@@ -29,13 +31,13 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
         <View
             style={{
                 position: 'absolute',
-                bottom: bottom,
-                left: 24,
-                right: 24,
+                bottom: isPad ? 60 : bottom, // Lifted more for iPad
+                left: isPad ? 48 : 24,
+                right: isPad ? 48 : 24,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 16,
+                gap: isPad ? 32 : 16,
                 zIndex: 10,
             }}
         >
@@ -49,9 +51,9 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
                     }}
                     activeOpacity={0.8}
                     style={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: 28,
+                        width: isPad ? 72 : 56,
+                        height: isPad ? 72 : 56,
+                        borderRadius: isPad ? 36 : 28,
                         overflow: 'hidden',
                         // Light mode shadow
                         ...(!useLiquidGlass && {
@@ -63,7 +65,7 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
                         }),
                     }}
                 >
-                    <AnimatedGradientBorder borderRadius={28} style={{ flex: 1 }}>
+                    <AnimatedGradientBorder borderRadius={isPad ? 36 : 28} style={{ flex: 1 }}>
                         {useLiquidGlass ? (
                             <BlurView
                                 intensity={40}
@@ -77,7 +79,7 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
                             >
                                 <MaterialIcons
                                     name="camera-alt"
-                                    size={24}
+                                    size={isPad ? 32 : 24}
                                     color="#FFFFFF"
                                 />
                             </BlurView>
@@ -89,12 +91,12 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
                                     justifyContent: 'center',
                                     backgroundColor: '#FFFFFF',
                                     // Border handled by AnimatedGradientBorder
-                                    borderRadius: 28,
+                                    borderRadius: isPad ? 36 : 28,
                                 }}
                             >
                                 <MaterialIcons
                                     name="camera-alt"
-                                    size={24}
+                                    size={isPad ? 32 : 24}
                                     color="#1a1a1a"
                                 />
                             </View>
@@ -113,7 +115,7 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
                     }}
                     activeOpacity={0.8}
                     style={{
-                        borderRadius: 32, // Match the visual border radius for the spotlight
+                        borderRadius: isPad ? 40 : 32, // Match the visual border radius for the spotlight
                         overflow: 'hidden',
                         // Light mode shadow
                         ...(!useLiquidGlass && {
@@ -131,23 +133,23 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
                                 intensity={40}
                                 tint="light"
                                 style={{
-                                    paddingHorizontal: 32,
-                                    paddingVertical: 16,
+                                    paddingHorizontal: isPad ? 48 : 32,
+                                    paddingVertical: isPad ? 20 : 16,
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    gap: 8,
+                                    gap: isPad ? 12 : 8,
                                     backgroundColor: 'rgba(255, 255, 255, 0.15)',
                                 }}
                             >
                                 <MaterialIcons
                                     name="add"
-                                    size={20}
+                                    size={isPad ? 28 : 20}
                                     color="#FFFFFF"
                                 />
                                 <Text
                                     style={{
                                         fontFamily: 'Nunito-SemiBold',
-                                        fontSize: 16,
+                                        fontSize: isPad ? 20 : 16,
                                         color: '#FFFFFF',
                                     }}
                                 >
@@ -157,11 +159,11 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
                         ) : (
                             <View
                                 style={{
-                                    paddingHorizontal: 32,
-                                    paddingVertical: 16,
+                                    paddingHorizontal: isPad ? 48 : 32,
+                                    paddingVertical: isPad ? 20 : 16,
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    gap: 8,
+                                    gap: isPad ? 12 : 8,
                                     backgroundColor: '#FFFFFF',
                                     // Border handled by AnimatedGradientBorder
                                     borderRadius: 999,
@@ -169,13 +171,13 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
                             >
                                 <MaterialIcons
                                     name="add"
-                                    size={20}
+                                    size={isPad ? 28 : 20}
                                     color="#1a1a1a"
                                 />
                                 <Text
                                     style={{
                                         fontFamily: 'Nunito-SemiBold',
-                                        fontSize: 16,
+                                        fontSize: isPad ? 20 : 16,
                                         color: '#1a1a1a',
                                     }}
                                 >

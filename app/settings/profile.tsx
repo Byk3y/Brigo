@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { generateGradientFromString, getInitials, getAvatarUrl, AVATAR_STYLES, CURATED_LORELEI_SEEDS, CURATED_ADVENTURER_SEEDS } from '@/lib/utils/avatarGradient';
 import { SvgUri } from 'react-native-svg';
-
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 export default function EditProfileScreen() {
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
@@ -216,44 +216,48 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: isPad ? 48 : 16,
+        paddingVertical: isPad ? 24 : 12,
+        width: '100%',
     },
     backButton: {
-        padding: 4,
+        padding: isPad ? 8 : 4,
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: isPad ? 28 : 20,
         fontFamily: 'Nunito-Bold',
     },
     scrollContent: {
-        paddingHorizontal: 24,
-        paddingTop: 20,
+        paddingHorizontal: isPad ? 40 : 24,
+        paddingTop: isPad ? 40 : 20,
         paddingBottom: 40,
+        maxWidth: isPad ? 800 : '100%',
+        alignSelf: 'center',
+        width: '100%',
     },
     avatarSection: {
         alignItems: 'center',
         marginBottom: 32,
     },
     avatarWrapper: {
-        width: 140,
-        height: 140,
-        marginBottom: 8,
+        width: isPad ? 200 : 140,
+        height: isPad ? 200 : 140,
+        marginBottom: isPad ? 16 : 8,
     },
     avatarContainer: {
-        width: 140,
-        height: 140,
-        borderRadius: 70,
+        width: isPad ? 200 : 140,
+        height: isPad ? 200 : 140,
+        borderRadius: isPad ? 100 : 70,
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
-        borderWidth: 3,
+        borderWidth: isPad ? 4 : 3,
         borderColor: '#9333ea',
     },
     avatarHint: {
-        fontSize: 14,
+        fontSize: isPad ? 18 : 14,
         fontFamily: 'Nunito-Bold',
-        marginTop: 12,
+        marginTop: isPad ? 16 : 12,
     },
     selectionSection: {
         marginBottom: 32,
@@ -266,25 +270,25 @@ const styles = StyleSheet.create({
     },
     tabContainer: {
         flexDirection: 'row',
-        gap: 16,
+        gap: isPad ? 24 : 16,
     },
     tabButton: {
         paddingVertical: 4,
         borderBottomWidth: 2,
     },
     tabText: {
-        fontSize: 14,
+        fontSize: isPad ? 18 : 14,
     },
     avatarGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
-        justifyContent: 'flex-start',
+        gap: isPad ? 16 : 12,
+        justifyContent: 'center',
     },
     gridItem: {
-        width: 76,
-        height: 76,
-        borderRadius: 38,
+        width: isPad ? 86 : 76,
+        height: isPad ? 86 : 76,
+        borderRadius: isPad ? 43 : 38,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
@@ -309,29 +313,29 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     label: {
-        fontSize: 14,
+        fontSize: isPad ? 18 : 14,
         fontFamily: 'Nunito-Bold',
         marginLeft: 4,
     },
     input: {
-        height: 56,
-        borderRadius: 16,
+        height: isPad ? 64 : 56,
+        borderRadius: isPad ? 20 : 16,
         borderWidth: 1,
-        paddingHorizontal: 16,
-        fontSize: 16,
+        paddingHorizontal: isPad ? 24 : 16,
+        fontSize: isPad ? 18 : 16,
     },
     fieldHint: {
-        fontSize: 12,
+        fontSize: isPad ? 15 : 12,
         fontFamily: 'Nunito-Regular',
         marginLeft: 4,
-        marginTop: 2,
+        marginTop: 4,
     },
     saveButton: {
-        height: 56,
-        borderRadius: 16,
+        height: isPad ? 72 : 56,
+        borderRadius: isPad ? 20 : 16,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 8,
+        marginTop: isPad ? 16 : 8,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
@@ -340,7 +344,7 @@ const styles = StyleSheet.create({
     },
     saveButtonText: {
         color: '#FFFFFF',
-        fontSize: 16,
+        fontSize: isPad ? 20 : 16,
         fontFamily: 'Nunito-Bold',
         letterSpacing: 1,
     },

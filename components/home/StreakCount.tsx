@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { useStore } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { getLocalDateString } from '@/lib/utils/time';
 import { AttachStep } from 'react-native-spotlight-tour';
+
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 export const StreakCount: React.FC = () => {
     const { user, dailyTasks } = useStore();
@@ -51,21 +53,21 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'flex-end',
-        paddingRight: 6,
+        paddingRight: isPad ? 12 : 6,
         paddingBottom: 2,
-        marginBottom: 4, // Nudge the entire unit up
+        marginBottom: isPad ? 6 : 4, // Nudge the entire unit up
     },
     lottie: {
-        width: 54, // Increased from 44
-        height: 54,
-        marginBottom: -4, // Pull lower to baseline
+        width: isPad ? 82 : 54, // Increased from 54 for iPad
+        height: isPad ? 82 : 54,
+        marginBottom: isPad ? -6 : -4, // Proportional to mobile
     },
     text: {
-        fontSize: 24, // Increased from 20
+        fontSize: isPad ? 36 : 24, // Increased from 24 for iPad
         fontFamily: 'Nunito-Bold',
-        marginLeft: -12, // Pull tighter to the larger flame
+        marginLeft: isPad ? -18 : -12, // Proportional to mobile
         color: '#FF5F06',
-        paddingBottom: 5, // Lowered from 8 to bring it closer to the floor
+        paddingBottom: isPad ? 8 : 5, // Proportional to mobile
     },
 });
 

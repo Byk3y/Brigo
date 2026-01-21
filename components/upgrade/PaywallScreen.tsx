@@ -16,6 +16,7 @@ import {
     ScrollView,
     StatusBar,
     Linking,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +32,7 @@ import { track } from '@/lib/services/analyticsService';
 import { APP_URLS } from '@/lib/constants';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 interface PaywallScreenProps {
     onClose: () => void;
@@ -201,12 +203,12 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
             />
 
             <SafeAreaView style={styles.safeArea}>
-                <View style={styles.topActions}>
-                    <TouchableOpacity onPress={onClose} style={styles.iconCircle}>
-                        <Ionicons name="close" size={22} color={isDarkMode ? '#FFF' : '#000'} />
+                <View style={[styles.topActions, isPad && { paddingHorizontal: 48, paddingTop: 24 }]}>
+                    <TouchableOpacity onPress={onClose} style={[styles.iconCircle, isPad && { width: 48, height: 48, borderRadius: 24 }]}>
+                        <Ionicons name="close" size={isPad ? 28 : 22} color={isDarkMode ? '#FFF' : '#000'} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={handleRestore}>
-                        <Text style={[styles.restoreText, { color: isDarkMode ? '#A1A1AA' : '#64748B' }]}>
+                        <Text style={[styles.restoreText, { color: isDarkMode ? '#A1A1AA' : '#64748B', fontSize: isPad ? 18 : 14 }]}>
                             {isRestoring ? 'Restoring...' : 'Restore'}
                         </Text>
                     </TouchableOpacity>
@@ -228,19 +230,19 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                         </Text>
                     </View>
 
-                    <View style={[styles.toggleContainer, { backgroundColor: isDarkMode ? '#1F2937' : '#F3F4F6', height: 48 }]}>
+                    <View style={[styles.toggleContainer, { backgroundColor: isDarkMode ? '#1F2937' : '#F3F4F6', height: isPad ? 64 : 48, borderRadius: isPad ? 32 : 24 }]}>
                         <TouchableOpacity
-                            style={[styles.toggleHalf, billingCycle === 'weekly' && styles.toggleActive]}
+                            style={[styles.toggleHalf, billingCycle === 'weekly' && styles.toggleActive, isPad && { borderRadius: 32 }]}
                             onPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setBillingCycle('weekly');
                                 track('paywall_plan_changed', { plan: 'weekly' });
                             }}
                         >
-                            <Text style={[styles.toggleText, billingCycle === 'weekly' && styles.toggleTextActive]}>Weekly</Text>
+                            <Text style={[styles.toggleText, billingCycle === 'weekly' && styles.toggleTextActive, isPad && { fontSize: 18 }]}>Weekly</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.toggleHalf, billingCycle === 'semester' && styles.toggleActive]}
+                            style={[styles.toggleHalf, billingCycle === 'semester' && styles.toggleActive, isPad && { borderRadius: 32 }]}
                             onPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setBillingCycle('semester');
@@ -248,9 +250,9 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                             }}
                         >
                             <View style={styles.toggleLabelRow}>
-                                <Text style={[styles.toggleText, billingCycle === 'semester' && styles.toggleTextActive]}>Semester</Text>
-                                <View style={styles.savingsBadgeMini}>
-                                    <Text style={styles.savingsBadgeTextMini}>72% OFF</Text>
+                                <Text style={[styles.toggleText, billingCycle === 'semester' && styles.toggleTextActive, isPad && { fontSize: 18 }]}>Semester</Text>
+                                <View style={[styles.savingsBadgeMini, isPad && { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }]}>
+                                    <Text style={[styles.savingsBadgeTextMini, isPad && { fontSize: 12 }]}>72% OFF</Text>
                                 </View>
                             </View>
                         </TouchableOpacity>
@@ -265,12 +267,18 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                                 transition={{ type: 'timing', duration: 400, delay: 300 + (index * 100) } as any}
                                 style={styles.featureRow}
                             >
-                                <View style={[styles.featureIconBox, { backgroundColor: isDarkMode ? '#27272A' : '#FAFAFA', shadowOpacity: isDarkMode ? 0 : 0.05 }]}>
-                                    <Ionicons name={item.icon as any} size={24} color={item.color} />
+                                <View style={[styles.featureIconBox, {
+                                    backgroundColor: isDarkMode ? '#27272A' : '#FAFAFA',
+                                    width: isPad ? 60 : 44,
+                                    height: isPad ? 60 : 44,
+                                    borderRadius: isPad ? 30 : 22,
+                                    shadowOpacity: isDarkMode ? 0 : 0.05
+                                }]}>
+                                    <Ionicons name={item.icon as any} size={isPad ? 32 : 24} color={item.color} />
                                 </View>
                                 <View style={styles.featureContent}>
-                                    <Text style={[styles.featureTitle, { color: isDarkMode ? '#FFF' : '#111827' }]}>{item.title}</Text>
-                                    <Text style={[styles.featureDesc, { color: isDarkMode ? '#A1A1AA' : '#6B7280' }]}>{item.description}</Text>
+                                    <Text style={[styles.featureTitle, { color: isDarkMode ? '#FFF' : '#111827', fontSize: isPad ? 22 : 16 }]}>{item.title}</Text>
+                                    <Text style={[styles.featureDesc, { color: isDarkMode ? '#A1A1AA' : '#6B7280', fontSize: isPad ? 17 : 13, lineHeight: isPad ? 24 : 18 }]}>{item.description}</Text>
                                 </View>
                             </MotiView>
                         ))}
@@ -287,7 +295,7 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                         </View>
                     )}
                     <TouchableOpacity
-                        style={[styles.actionButton, { backgroundColor: isDarkMode ? '#FFF' : '#000' }]}
+                        style={[styles.actionButton, { backgroundColor: isDarkMode ? '#FFF' : '#000', height: isPad ? 80 : 64, borderRadius: isPad ? 40 : 32 }]}
                         onPress={handlePurchase}
                         disabled={isPurchasing}
                         activeOpacity={0.9}
@@ -296,10 +304,10 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                             <ActivityIndicator color={isDarkMode ? '#000' : '#FFF'} />
                         ) : (
                             <View style={styles.buttonInnerCentric}>
-                                <Text style={[styles.buttonLabel, { color: isDarkMode ? '#000' : '#FFF' }]}>
+                                <Text style={[styles.buttonLabel, { color: isDarkMode ? '#000' : '#FFF', fontSize: isPad ? 22 : 18 }]}>
                                     {billingCycle === 'weekly' ? `Start 7-day trial for ${trialPriceString}` : 'Start Your Semester'}
                                 </Text>
-                                <Text style={[styles.buttonPriceInline, { color: '#F97316' }]}>
+                                <Text style={[styles.buttonPriceInline, { color: '#F97316', fontSize: isPad ? 20 : 16 }]}>
                                     {billingCycle === 'weekly' ? `then ${totalPriceString}/wk` : totalPriceString}
                                 </Text>
                             </View>
@@ -312,13 +320,13 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                         }
                     </Text>
 
-                    <View style={styles.legalLinks}>
+                    <View style={[styles.legalLinks, isPad && { marginTop: 20, gap: 24 }]}>
                         <TouchableOpacity onPress={() => Linking.openURL(APP_URLS.TERMS)}>
-                            <Text style={[styles.legalLinkText, { color: isDarkMode ? '#A1A1AA' : '#64748B' }]}>Terms of Use</Text>
+                            <Text style={[styles.legalLinkText, { color: isDarkMode ? '#A1A1AA' : '#64748B', fontSize: isPad ? 15 : 11 }]}>Terms of Use</Text>
                         </TouchableOpacity>
-                        <View style={[styles.legalSeparator, { backgroundColor: isDarkMode ? '#3F3F46' : '#E5E7EB' }]} />
+                        <View style={[styles.legalSeparator, { backgroundColor: isDarkMode ? '#3F3F46' : '#E5E7EB', height: isPad ? 18 : 12 }]} />
                         <TouchableOpacity onPress={() => Linking.openURL(APP_URLS.PRIVACY)}>
-                            <Text style={[styles.legalLinkText, { color: isDarkMode ? '#A1A1AA' : '#64748B' }]}>Privacy Policy</Text>
+                            <Text style={[styles.legalLinkText, { color: isDarkMode ? '#A1A1AA' : '#64748B', fontSize: isPad ? 15 : 11 }]}>Privacy Policy</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -357,24 +365,27 @@ const styles = StyleSheet.create({
         fontFamily: 'Outfit-Medium',
     },
     scrollContent: {
-        paddingHorizontal: 24,
-        paddingTop: 20,
+        paddingHorizontal: isPad ? 48 : 24,
+        paddingTop: isPad ? 40 : 20,
         paddingBottom: 20,
+        maxWidth: isPad ? 800 : '100%',
+        alignSelf: 'center',
+        width: '100%',
     },
     headerSection: {
         alignItems: 'center',
         marginBottom: 35,
     },
     headline: {
-        fontSize: SCREEN_WIDTH > 400 ? 34 : 30,
+        fontSize: isPad ? 44 : (SCREEN_WIDTH > 400 ? 34 : 30),
         fontFamily: 'Outfit-Bold',
         textAlign: 'center',
-        lineHeight: 40,
+        lineHeight: isPad ? 56 : 40,
         marginBottom: 10,
         paddingHorizontal: 20,
     },
     subHeadline: {
-        fontSize: 16,
+        fontSize: isPad ? 20 : 16,
         fontFamily: 'Outfit-Regular',
         textAlign: 'center',
         opacity: 0.7,
@@ -458,7 +469,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     valueText: {
-        fontSize: 13,
+        fontSize: isPad ? 17 : 13,
         fontFamily: 'Outfit-Bold',
     },
     featuresList: {
@@ -497,9 +508,12 @@ const styles = StyleSheet.create({
         lineHeight: 18,
     },
     footer: {
-        paddingHorizontal: 24,
-        paddingBottom: 20,
+        paddingHorizontal: isPad ? 60 : 24,
+        paddingBottom: isPad ? 40 : 20,
         paddingTop: 10,
+        maxWidth: isPad ? 800 : '100%',
+        alignSelf: 'center',
+        width: '100%',
     },
     actionButton: {
         height: 64, // Slightly taller
@@ -528,9 +542,9 @@ const styles = StyleSheet.create({
         fontFamily: 'Outfit-Bold',
     },
     legalNote: {
-        fontSize: 12,
+        fontSize: isPad ? 15 : 12,
         fontFamily: 'Outfit-Regular',
-        marginTop: 14,
+        marginTop: 18,
         textAlign: 'center',
         opacity: 0.5,
     },

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useStore } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
@@ -7,6 +7,8 @@ import { getAvatarUrl } from '@/lib/utils/avatarGradient';
 import { Image } from 'expo-image';
 import { BrigoLogo } from '../BrigoLogo';
 import { StreakCount } from './StreakCount';
+
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 export const HomeHeader: React.FC = () => {
     const router = useRouter();
@@ -30,20 +32,20 @@ export const HomeHeader: React.FC = () => {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingHorizontal: 24,
-            paddingVertical: 20, // Increased padding slightly for the larger logo
+            paddingHorizontal: isPad ? 48 : 24,
+            paddingVertical: isPad ? 32 : 20, // Increased padding for iPad
             backgroundColor: colors.background
         }}>
-            <BrigoLogo size={38} textColor={colors.text} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <BrigoLogo size={isPad ? 52 : 38} textColor={colors.text} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: isPad ? 16 : 12 }}>
                 <StreakCount />
                 <TouchableOpacity
                     onPress={handleProfilePress}
                     activeOpacity={0.8}
                     style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 24,
+                        width: isPad ? 72 : 48,
+                        height: isPad ? 72 : 48,
+                        borderRadius: isPad ? 36 : 24,
                         overflow: 'hidden',
                         shadowColor: '#000',
                         shadowOffset: { width: 0, height: 2 },

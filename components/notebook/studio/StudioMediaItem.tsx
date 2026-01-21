@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { TikTokLoader } from '@/components/TikTokLoader';
@@ -37,6 +37,8 @@ export const StudioMediaItem: React.FC<StudioMediaItemProps> = ({
         : useDynamicMessage(loadingText || ['Generating...']);
 
 
+    const isPad = Platform.OS === 'ios' && Platform.isPad;
+
     // Get icon background color based on icon type
     const getIconBgColor = () => {
         if (icon === 'help-circle-outline') return isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5'; // Quiz - green
@@ -50,40 +52,42 @@ export const StudioMediaItem: React.FC<StudioMediaItemProps> = ({
             onPress={onPress}
             disabled={!onPress}
             style={{
-                paddingVertical: 16,
-                paddingHorizontal: 16,
-                marginBottom: 10,
+                paddingVertical: isPad ? 20 : 16,
+                paddingHorizontal: isPad ? 20 : 16,
+                marginBottom: isPad ? 0 : 10,
                 flexDirection: 'row',
                 alignItems: 'center',
                 backgroundColor: isGenerating ? 'transparent' : colors.mediaCard,
-                borderRadius: 14,
+                borderRadius: isPad ? 18 : 14,
                 borderWidth: isGenerating ? 0 : 1,
                 borderColor: colors.mediaCardBorder,
-                minHeight: 72,
+                minHeight: isPad ? 84 : 72,
+                flex: 1, // Allow filling container in grid
             }}
             activeOpacity={0.7}
         >
             {/* Icon with background */}
             <View style={{
-                marginRight: 14,
-                width: 42,
-                height: 42,
-                borderRadius: 10,
+                marginRight: isPad ? 18 : 14,
+                width: isPad ? 48 : 42,
+                height: isPad ? 48 : 42,
+                borderRadius: isPad ? 12 : 10,
                 backgroundColor: getIconBgColor(),
                 alignItems: 'center',
                 justifyContent: 'center',
             }}>
-                <Ionicons name={icon} size={22} color={iconColor} />
+                <Ionicons name={icon} size={isPad ? 26 : 22} color={iconColor} />
             </View>
 
             {/* Content */}
             <View style={{ flex: 1 }}>
                 <Text
                     style={{
-                        fontSize: 15,
+                        fontSize: isPad ? 17 : 15,
                         fontWeight: '600',
                         color: colors.text,
                         letterSpacing: -0.2,
+                        fontFamily: 'Nunito-SemiBold',
                     }}
                     numberOfLines={1}
                     ellipsizeMode="tail"
@@ -91,18 +95,19 @@ export const StudioMediaItem: React.FC<StudioMediaItemProps> = ({
                     {title}
                 </Text>
                 {isGenerating ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                        <TikTokLoader size={10} color={loadingColor} containerWidth={50} />
-                        <Text style={{ fontSize: 13, marginLeft: 8, color: loadingColor }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: isPad ? 6 : 4 }}>
+                        <TikTokLoader size={isPad ? 12 : 10} color={loadingColor} containerWidth={isPad ? 60 : 50} />
+                        <Text style={{ fontSize: isPad ? 15 : 13, marginLeft: 8, color: loadingColor, fontFamily: 'Nunito-Medium' }}>
                             {displayLoadingText}
                         </Text>
                     </View>
                 ) : (
                     <Text style={{
-                        fontSize: 13,
+                        fontSize: isPad ? 15 : 13,
                         color: colors.textSecondary,
-                        marginTop: 4,
+                        marginTop: isPad ? 6 : 4,
                         letterSpacing: -0.1,
+                        fontFamily: 'Nunito-Regular',
                     }}>
                         {subtitle}
                     </Text>

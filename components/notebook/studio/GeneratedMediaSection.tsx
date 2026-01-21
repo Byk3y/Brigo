@@ -233,53 +233,73 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
         </View>
       ) : (
         <>
-          {/* Generating States at the TOP */}
-          {generatingType === 'flashcards' && (
-            <StudioMediaItem
-              icon="albums-outline"
-              iconColor="#737373"
-              title="Flashcards"
-              isGenerating={true}
-              loadingColor="#2563eb"
-              loadingText={LOADING_MESSAGES.flashcards}
-            />
-          )}
+          {/* Grid Container for Media Items on iPad */}
+          <View style={{
+            flexDirection: isPad ? 'row' : 'column',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            gap: isPad ? 20 : 0
+          }}>
+            {/* Generating States at the TOP */}
+            {generatingType === 'flashcards' && (
+              <View style={{ width: isPad ? '48.5%' : '100%', marginBottom: isPad ? 0 : 10 }}>
+                <StudioMediaItem
+                  icon="albums-outline"
+                  iconColor="#737373"
+                  title="Flashcards"
+                  isGenerating={true}
+                  loadingColor="#2563eb"
+                  loadingText={LOADING_MESSAGES.flashcards}
+                />
+              </View>
+            )}
 
-          {generatingType === 'quiz' && (
-            <StudioMediaItem
-              icon="help-circle-outline"
-              iconColor="#737373"
-              title="Quiz"
-              isGenerating={true}
-              loadingColor="#2563eb"
-              loadingText={LOADING_MESSAGES.quiz}
-            />
-          )}
+            {generatingType === 'quiz' && (
+              <View style={{ width: isPad ? '48.5%' : '100%', marginBottom: isPad ? 0 : 10 }}>
+                <StudioMediaItem
+                  icon="help-circle-outline"
+                  iconColor="#737373"
+                  title="Quiz"
+                  isGenerating={true}
+                  loadingColor="#2563eb"
+                  loadingText={LOADING_MESSAGES.quiz}
+                />
+              </View>
+            )}
 
-          {generatingType === 'audio' && (
-            <StudioMediaItem
-              icon="stats-chart"
-              iconColor="#737373"
-              title="Podcast"
-              isGenerating={true}
-              loadingColor="#4f46e5"
-              loadingText={LOADING_MESSAGES.audio}
-            />
-          )}
+            {generatingType === 'audio' && (
+              <View style={{ width: isPad ? '48.5%' : '100%', marginBottom: isPad ? 0 : 10 }}>
+                <StudioMediaItem
+                  icon="stats-chart"
+                  iconColor="#737373"
+                  title="Podcast"
+                  isGenerating={true}
+                  loadingColor="#4f46e5"
+                  loadingText={LOADING_MESSAGES.audio}
+                />
+              </View>
+            )}
 
-          {generatingType === 'prediction' && !hasProcessingPrediction && (
-            <StudioMediaItem
-              icon="bulb-outline"
-              iconColor="#737373"
-              title="Predict Questions"
-              isGenerating={true}
-              loadingColor="#9333ea"
-              loadingText={LOADING_MESSAGES.prediction}
-            />
-          )}
+            {generatingType === 'prediction' && !hasProcessingPrediction && (
+              <View style={{ width: isPad ? '48.5%' : '100%', marginBottom: isPad ? 0 : 10 }}>
+                <StudioMediaItem
+                  icon="bulb-outline"
+                  iconColor="#737373"
+                  title="Predict Questions"
+                  isGenerating={true}
+                  loadingColor="#9333ea"
+                  loadingText={LOADING_MESSAGES.prediction}
+                />
+              </View>
+            )}
 
-          {/* Sorted Media Items (newest first) */}
-          {sortedMediaItems.map(renderMediaItem)}
+            {/* Sorted Media Items (newest first) */}
+            {sortedMediaItems.map(item => (
+              <View key={item.data.id} style={{ width: isPad ? '48.5%' : '100%', marginBottom: isPad ? 0 : 10 }}>
+                {renderMediaItem(item)}
+              </View>
+            ))}
+          </View>
 
           {/* Background loading indicator if needed */}
           {loading && sortedMediaItems.length > 0 && (

@@ -100,10 +100,10 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
     return Array.isArray(cachedNotebook?.chat_messages);
   }).current();
 
-  // Initialize opacity and ready state based on whether we have cached data
-  // If cached, start visible (opacity 1). If not, start hidden (opacity 0) for fade-in.
-  const [isReadyToShow, setIsReadyToShow] = useState(hasCachedDataOnMount);
-  const contentOpacity = useRef(new Animated.Value(hasCachedDataOnMount ? 1 : 0)).current;
+  // Initialize as NOT ready and invisible, even if we have cached data
+  // We want to perform a silent scroll-to-bottom BEFORE revealing to prevent the "jump" glitch
+  const [isReadyToShow, setIsReadyToShow] = useState(false);
+  const contentOpacity = useRef(new Animated.Value(0)).current;
 
   const { sendMessage, isStreaming, remainingMessages, limitReached } = useNotebookChat(notebook.id);
 
@@ -166,8 +166,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
   const userEducationLevel = useStore(state => state.educationLevel);
 
   // Track if we've done the initial scroll to avoid annoying "quick scroll" animation on entry
-  // Initialize based on cached data - if cached, we're already "scrolled"
-  const hasInitiallyScrolled = useRef(hasCachedDataOnMount);
+  const hasInitiallyScrolled = useRef(false);
   // Track if initial messages have been loaded from the server
   const isInitialLoadComplete = useRef(hasCachedDataOnMount);
   // Track the message count at the time of initial load to distinguish from new messages
@@ -178,9 +177,9 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
       : null
   );
   // Track if content has had at least one layout pass
-  const hasContentLayouted = useRef(hasCachedDataOnMount);
+  const hasContentLayouted = useRef(false);
   // Track ready state in a ref to avoid stale closure in async callbacks
-  const isReadyToShowRef = useRef(hasCachedDataOnMount);
+  const isReadyToShowRef = useRef(false);
 
   // Helper function to perform the reveal sequence
   const performReveal = () => {
@@ -216,14 +215,9 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
     // State and refs are already correctly initialized based on it
 
     if (hasCachedDataOnMount) {
-      // FAST PATH: Cache exists - everything is already set up for immediate display
-      // Just need to scroll to end after layout settles
+      // FAST PATH: Cache exists - perform reveal sequence while hidden
       console.log(`[ChatTab] Using cached messages for notebook ${notebook.id}`);
-
-      setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: false });
-      }, 50);
-
+      performReveal();
       return; // Skip network fetch
     }
 

@@ -32,17 +32,17 @@ import { NotebookWalkthroughTooltip } from '@/lib/walkthrough/WalkthroughTooltip
 // Inner component to trigger the tour
 const NotebookTourTrigger = () => {
   const { start } = useSpotlightTour();
-  const { hasSeenNotebookWalkthrough, setNotebookWalkthroughSeen } = useStore();
+  const { hasSeenNotebookWalkthrough, setNotebookWalkthroughSeen, _hasHydrated } = useStore();
 
   useEffect(() => {
-    if (!hasSeenNotebookWalkthrough) {
+    if (_hasHydrated && !hasSeenNotebookWalkthrough) {
       const timer = setTimeout(() => {
         start();
         setNotebookWalkthroughSeen();
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [hasSeenNotebookWalkthrough]);
+  }, [hasSeenNotebookWalkthrough, _hasHydrated]);
 
   return null;
 };
@@ -208,7 +208,7 @@ export default function NotebookDetailScreen() {
 
         {/* Tab Content */}
         <View style={{ flex: 1 }}>
-          {activeTab === 'sources' && (
+          <View style={{ flex: 1, display: activeTab === 'sources' ? 'flex' : 'none' }}>
             <SourcesTab
               notebook={notebook}
               onAddPress={() => setShowMaterialSelector(true)}
@@ -216,14 +216,16 @@ export default function NotebookDetailScreen() {
               onRetryMaterial={handleRetryMaterial}
               isAddingMaterial={isAddingMaterial}
             />
-          )}
-          {activeTab === 'chat' && <ChatTab notebook={notebook} onTakeQuiz={handleTakeQuiz} />}
-          {activeTab === 'studio' && (
+          </View>
+          <View style={{ flex: 1, display: activeTab === 'chat' ? 'flex' : 'none' }}>
+            <ChatTab notebook={notebook} onTakeQuiz={handleTakeQuiz} />
+          </View>
+          <View style={{ flex: 1, display: activeTab === 'studio' ? 'flex' : 'none' }}>
             <StudioTab
               notebook={notebook}
               onGenerateQuiz={triggerQuizGeneration ? () => { } : undefined}
             />
-          )}
+          </View>
         </View>
 
         {/* Tab Bar */}

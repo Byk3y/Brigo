@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 
@@ -27,6 +27,8 @@ export const GenerateOption = React.forwardRef<View, GenerateOptionProps>(({
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
 
+    const isPad = Platform.OS === 'ios' && Platform.isPad;
+
     // Get the appropriate background color based on type
     const getBackgroundColor = () => {
         switch (type) {
@@ -50,35 +52,35 @@ export const GenerateOption = React.forwardRef<View, GenerateOptionProps>(({
             disabled={disabled}
             style={{
                 backgroundColor: getBackgroundColor(),
-                borderRadius: 999,
-                paddingVertical: 13,
-                paddingHorizontal: 16,
+                borderRadius: isPad ? 24 : 999,
+                paddingVertical: isPad ? 20 : 13,
+                paddingHorizontal: isPad ? 20 : 16,
                 flexDirection: 'row',
                 alignItems: 'center',
-                marginBottom: 10,
+                marginBottom: isPad ? 0 : 10, // Margin will be handled by container gap on iPad
                 width: '100%',
                 opacity: disabled && !isGenerating ? 0.6 : 1,
             }}
             activeOpacity={0.7}
         >
-            <View style={{ marginRight: 16, marginLeft: 4 }}>
-                <Ionicons name={icon} size={24} color={color} />
+            <View style={{ marginRight: isPad ? 20 : 16, marginLeft: isPad ? 0 : 4 }}>
+                <Ionicons name={icon} size={isPad ? 32 : 24} color={color} />
             </View>
-            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: colors.text }}>
+            <Text style={{ flex: 1, fontSize: isPad ? 18 : 16, fontWeight: '600', color: colors.text, fontFamily: 'Nunito-SemiBold' }}>
                 {label}
             </Text>
             {isGenerating ? (
                 <ActivityIndicator size="small" color={color} />
             ) : (
                 <View style={{
-                    width: 36,
-                    height: 36,
+                    width: isPad ? 40 : 36,
+                    height: isPad ? 40 : 36,
                     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                    borderRadius: 18,
+                    borderRadius: isPad ? 20 : 18,
                     alignItems: 'center',
                     justifyContent: 'center'
                 }}>
-                    <Ionicons name="pencil" size={16} color={colors.iconMuted} />
+                    <Ionicons name="pencil" size={isPad ? 20 : 16} color={colors.iconMuted} />
                 </View>
             )}
         </TouchableOpacity>

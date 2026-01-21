@@ -27,50 +27,64 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center', // Center the container for iPad
-        paddingHorizontal: 16,
+        justifyContent: 'space-between',
+        paddingHorizontal: isPad ? 24 : 16,
         paddingVertical: isPad ? 16 : 12,
         backgroundColor: colors.background,
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
+        minHeight: isPad ? 72 : 56,
       }}
     >
+      <TouchableOpacity
+        onPress={onBack}
+        style={{
+          width: isPad ? 56 : 40,
+          height: isPad ? 56 : 40,
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10,
+        }}
+      >
+        <Ionicons name="arrow-back" size={isPad ? 28 : 24} color={colors.icon} />
+      </TouchableOpacity>
+
       <View style={{
-        flexDirection: 'row',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         alignItems: 'center',
-        justifyContent: 'space-between',
-        width: '100%',
-        maxWidth: isPad ? 800 : '100%',
+        justifyContent: 'center',
+        paddingHorizontal: isPad ? 80 : 60,
       }}>
-        <TouchableOpacity
-          onPress={onBack}
-          style={{ width: isPad ? 48 : 40, height: isPad ? 48 : 40, alignItems: 'center', justifyContent: 'center' }}
+        <Text
+          style={{
+            fontSize: isPad ? 20 : 17,
+            fontFamily: 'Nunito-Bold',
+            color: colors.text,
+            textAlign: 'center',
+          }}
+          numberOfLines={1}
+          ellipsizeMode="tail"
         >
-          <Ionicons name="arrow-back" size={isPad ? 28 : 24} color={colors.icon} />
-        </TouchableOpacity>
-
-        <View style={{ flex: 1, marginHorizontal: 8 }}>
-          <Text
-            style={{
-              fontSize: isPad ? 20 : 17,
-              fontFamily: 'Nunito-Bold',
-              color: colors.text,
-              textAlign: isPad ? 'center' : 'left',
-            }}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {title}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={onMenuPress}
-          style={{ width: isPad ? 48 : 40, height: isPad ? 48 : 40, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Ionicons name="ellipsis-vertical" size={isPad ? 28 : 24} color={colors.icon} />
-        </TouchableOpacity>
+          {title}
+        </Text>
       </View>
+
+      <TouchableOpacity
+        onPress={onMenuPress}
+        style={{
+          width: isPad ? 56 : 40,
+          height: isPad ? 56 : 40,
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10,
+        }}
+      >
+        <Ionicons name="ellipsis-vertical" size={isPad ? 28 : 24} color={colors.icon} />
+      </TouchableOpacity>
     </View>
   );
 };

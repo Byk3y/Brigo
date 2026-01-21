@@ -513,7 +513,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
               )}
 
               {chatMessages.map((msg, index) => (
-                <View style={{ flexDirection: 'row', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 16 }}>
+                <View key={msg.id || index} style={{ flexDirection: 'row', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 16 }}>
                   <View style={{ maxWidth: '85%' }}>
                     <View
                       style={{

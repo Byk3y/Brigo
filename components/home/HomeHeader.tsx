@@ -18,8 +18,7 @@ export const HomeHeader: React.FC = () => {
 
     // Use persistent avatar from store or generate one
     const avatarUrl = useMemo(() => {
-        if (user?.avatar) return user.avatar;
-        const identifier = authUser?.id || authUser?.email || 'default';
+        const identifier = user?.avatar || authUser?.id || authUser?.email || 'default';
         return getAvatarUrl(identifier);
     }, [user?.avatar, authUser?.id, authUser?.email]);
 

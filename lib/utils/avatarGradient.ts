@@ -94,14 +94,51 @@ export const getInitials = (firstName: string, lastName: string, fallback: strin
   return '??';
 };
 
+import { createAvatar } from '@dicebear/core';
+import { adventurer, lorelei } from '@dicebear/collection';
+
 /**
- * Generate a DiceBear avatar URL
- * @param seed - Seed for the avatar (user ID or email)
- * @param style - Avatar style (lorelei, adventurer, bottts, personas, avataaars)
- * @returns Avatar URL string
+ * Generate a DiceBear avatar (Local generation for speed and reliability)
+ * @param identifier - Either a seed, a dicebear://style/seed string, or a legacy URL
+ * @param styleOverride - Optional style override if identifier is just a seed
+ * @returns Data URI for the avatar
  */
-export const getAvatarUrl = (seed: string, style: string = 'adventurer'): string => {
-  return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
+export const getAvatarUrl = (identifier: string | null | undefined, styleOverride: string = 'adventurer'): string => {
+  try {
+    if (!identifier) return `https://api.dicebear.com/9.x/${styleOverride}/svg?seed=default`;
+
+    let seed = identifier;
+    let style = styleOverride;
+
+    // Handle internal format: dicebear://style/seed
+    if (identifier.startsWith('dicebear://')) {
+      const parts = identifier.replace('dicebear://', '').split('/');
+      if (parts.length === 2) {
+        style = parts[0];
+        seed = parts[1];
+      }
+    }
+    // Handle legacy URLs: just return them as-is
+    else if (identifier.startsWith('http')) {
+      return identifier;
+    }
+
+    const styleMap: Record<string, any> = {
+      adventurer,
+      lorelei
+    };
+
+    const chosenStyle = styleMap[style] || adventurer;
+    const avatar = createAvatar(chosenStyle, {
+      seed: seed,
+    });
+
+    return avatar.toDataUri();
+  } catch (error) {
+    console.error('Error generating local avatar:', error);
+    // Ultimate fallback to API if local generation fails
+    return `https://api.dicebear.com/9.x/${styleOverride}/svg?seed=${encodeURIComponent(identifier as string)}`;
+  }
 };
 
 /**

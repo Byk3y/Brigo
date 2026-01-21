@@ -7,7 +7,7 @@ import { useStore } from '@/lib/store';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { generateGradientFromString, getInitials, getAvatarUrl, AVATAR_STYLES, CURATED_LORELEI_SEEDS, CURATED_ADVENTURER_SEEDS } from '@/lib/utils/avatarGradient';
-import { SvgUri } from 'react-native-svg';
+import { Image } from 'expo-image';
 const isPad = Platform.OS === 'ios' && Platform.isPad;
 export default function EditProfileScreen() {
     const { isDarkMode } = useTheme();
@@ -17,8 +17,16 @@ export default function EditProfileScreen() {
 
     const [firstName, setFirstName] = useState(user.first_name || '');
     const [lastName, setLastName] = useState(user.last_name || '');
-    const [avatarStyle, setAvatarStyle] = useState<'lorelei' | 'adventurer'>(user.avatar?.includes('/lorelei/') ? 'lorelei' : 'adventurer');
-    const [avatarSeed, setAvatarSeed] = useState(user.avatar ? (user.avatar.split('seed=')[1]?.split('&')[0] || user.id) : authUser?.id || 'default');
+    const [avatarStyle, setAvatarStyle] = useState<'lorelei' | 'adventurer'>(
+        (user.avatar?.includes('/lorelei/') || user.avatar?.includes('dicebear://lorelei/')) ? 'lorelei' : 'adventurer'
+    );
+    const [avatarSeed, setAvatarSeed] = useState(() => {
+        if (!user.avatar) return authUser?.id || 'default';
+        if (user.avatar.startsWith('dicebear://')) {
+            return user.avatar.split('/')[3] || user.id;
+        }
+        return user.avatar.split('seed=')[1]?.split('&')[0] || user.id;
+    });
     const [isSaving, setIsSaving] = useState(false);
 
     const avatarUrl = useMemo(() => {
@@ -35,14 +43,15 @@ export default function EditProfileScreen() {
         try {
             if (authUser) {
                 const { userService } = await import('@/lib/services/userService');
+                const storageFormat = `dicebear://${avatarStyle}/${avatarSeed}`;
                 const success = await userService.updateProfile(authUser.id, {
                     first_name: firstName,
                     last_name: lastName,
-                    avatar: avatarUrl
+                    avatar: storageFormat
                 });
 
                 if (success) {
-                    setUser({ first_name: firstName, last_name: lastName, avatar: avatarUrl });
+                    setUser({ first_name: firstName, last_name: lastName, avatar: storageFormat });
                     router.back();
                 } else {
                     Alert.alert('Error', 'Failed to save changes');
@@ -78,10 +87,11 @@ export default function EditProfileScreen() {
                     <View style={styles.avatarSection}>
                         <View style={styles.avatarWrapper}>
                             <View style={[styles.avatarContainer, { backgroundColor: isDarkMode ? '#1c1c1e' : '#f2f2f7' }]}>
-                                <SvgUri
-                                    uri={avatarUrl}
-                                    width="100%"
-                                    height="100%"
+                                <Image
+                                    source={avatarUrl}
+                                    style={{ width: '100%', height: '100%' }}
+                                    contentFit="contain"
+                                    cachePolicy="memory-disk"
                                 />
                             </View>
                         </View>
@@ -129,10 +139,11 @@ export default function EditProfileScreen() {
                                         }
                                     ]}
                                 >
-                                    <SvgUri
-                                        uri={getAvatarUrl(seed, avatarStyle)}
-                                        width={60}
-                                        height={60}
+                                    <Image
+                                        source={getAvatarUrl(seed, avatarStyle)}
+                                        style={{ width: 60, height: 60 }}
+                                        contentFit="contain"
+                                        cachePolicy="memory-disk"
                                     />
                                     {avatarSeed === seed && avatarUrl.includes(`/${avatarStyle}/`) && (
                                         <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]}>

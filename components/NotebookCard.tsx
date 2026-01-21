@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { TouchableOpacity, View, Text, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, View, Text, ActivityIndicator, Platform } from 'react-native';
 import { MotiViewCompat as MotiView } from '@/components/MotiViewCompat';
 import type { Notebook } from '@/lib/store';
 import { getTopicEmoji } from '@/lib/emoji-matcher';
@@ -29,6 +29,7 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
     const { play } = useFeedback();
+    const isPad = Platform.OS === 'ios' && Platform.isPad;
 
     // Simplified theme-aware notebook card background colors
     const getNotebookColor = () => {
@@ -159,6 +160,10 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
             from={{ opacity: 0, translateX: -20 }}
             animate={{ opacity: 1, translateX: 0 }}
             transition={{ type: 'timing', duration: 300 }}
+            style={{
+                width: isPad ? '48.5%' : '100%',
+                marginBottom: isPad ? 20 : 12,
+            }}
         >
             <TouchableOpacity
                 onPress={() => {
@@ -168,28 +173,28 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
                 activeOpacity={0.7}
                 style={{
                     backgroundColor: getNotebookColor(),
-                    borderRadius: 16,
-                    padding: 16,
-                    marginBottom: 12,
+                    borderRadius: isPad ? 24 : 16,
+                    padding: isPad ? 20 : 16,
                     flexDirection: 'row',
                     alignItems: 'center',
+                    width: '100%',
                 }}
             >
                 {/* Emoji on the left */}
-                <View style={{ marginRight: 14 }}>
-                    <Text style={{ fontSize: 28 }}>{notebook.emoji || getTopicEmoji(notebook.title)}</Text>
+                <View style={{ marginRight: isPad ? 20 : 14 }}>
+                    <Text style={{ fontSize: isPad ? 36 : 28 }}>{notebook.emoji || getTopicEmoji(notebook.title)}</Text>
                 </View>
 
                 {/* Content */}
                 <View style={{ flex: 1 }}>
                     <Text
-                        style={{ fontSize: 16, fontFamily: 'Nunito-SemiBold', color: colors.text, marginBottom: 2 }}
+                        style={{ fontSize: isPad ? 18 : 16, fontFamily: 'Nunito-SemiBold', color: colors.text, marginBottom: isPad ? 4 : 2 }}
                         numberOfLines={1}
                         ellipsizeMode="tail"
                     >
                         {notebook.title}
                     </Text>
-                    <Text style={{ fontSize: 13, color: colors.textSecondary, fontFamily: 'Nunito-Regular' }}>
+                    <Text style={{ fontSize: isPad ? 14 : 13, color: colors.textSecondary, fontFamily: 'Nunito-Regular' }}>
                         {materialCount} source{materialCount !== 1 ? 's' : ''} • {getTimeAgoText()}
                     </Text>
 

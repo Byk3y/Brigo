@@ -17,16 +17,20 @@ export const AddNotebookCard: React.FC<AddNotebookCardProps> = ({ onPress }) => 
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
-      style={{ marginBottom: 16 }}
+      style={{
+        marginBottom: isPad ? 20 : 16,
+        width: isPad ? '48.5%' : '100%'
+      }}
     >
-      <AnimatedGradientBorder>
+      <AnimatedGradientBorder borderRadius={isPad ? 24 : 16}>
         <View
           style={{
             backgroundColor: colors.surface,
-            paddingVertical: isPad ? 24 : 16,
+            paddingVertical: isPad ? 28 : 16,
             paddingHorizontal: isPad ? 32 : 20,
             alignItems: 'center',
             justifyContent: 'center',
+            borderRadius: isPad ? 24 : 16,
           }}
         >
           <Text

@@ -7,7 +7,7 @@ import { useStore } from '@/lib/store';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { generateGradientFromString, getInitials, getAvatarUrl, CURATED_LORELEI_SEEDS, CURATED_ADVENTURER_SEEDS, AVATAR_STYLES } from '@/lib/utils/avatarGradient';
-import { SvgUri } from 'react-native-svg';
+import { Image } from 'expo-image';
 
 const { width } = Dimensions.get('window');
 const isPad = Platform.OS === 'ios' && Platform.isPad;
@@ -45,8 +45,7 @@ export default function ProfileScreen() {
         [user.first_name, user.last_name, authUser?.email]);
 
     const avatarUrl = useMemo(() => {
-        if (user.avatar) return user.avatar;
-        const identifier = authUser?.id || authUser?.email || 'default';
+        const identifier = user.avatar || authUser?.id || authUser?.email || 'default';
         return getAvatarUrl(identifier);
     }, [user.avatar, authUser?.id, authUser?.email]);
 
@@ -63,26 +62,26 @@ export default function ProfileScreen() {
     // Detect current style when modal opens
     useEffect(() => {
         if (isPickerVisible && user.avatar) {
-            if (user.avatar.includes('/adventurer/')) {
+            if (user.avatar.includes('/adventurer/') || user.avatar.includes('dicebear://adventurer/')) {
                 setModalStyle('adventurer');
-            } else {
+            } else if (user.avatar.includes('/lorelei/') || user.avatar.includes('dicebear://lorelei/')) {
                 setModalStyle('lorelei');
             }
         }
     }, [isPickerVisible, user.avatar]);
 
     const handleAvatarSelect = async (seed: string) => {
-        const newAvatarUrl = getAvatarUrl(seed, modalStyle);
+        const storageFormat = `dicebear://${modalStyle}/${seed}`;
         setIsSaving(true);
         try {
             if (authUser) {
                 const { userService } = await import('@/lib/services/userService');
                 const success = await userService.updateProfile(authUser.id, {
-                    avatar: newAvatarUrl
+                    avatar: storageFormat
                 });
 
                 if (success) {
-                    setUser({ avatar: newAvatarUrl });
+                    setUser({ avatar: storageFormat });
                     setIsPickerVisible(false);
                 } else {
                     Alert.alert('Error', 'Failed to update avatar');
@@ -122,10 +121,11 @@ export default function ProfileScreen() {
                         style={styles.avatarWrapper}
                     >
                         <View style={[styles.avatarContainerStyle, { backgroundColor: isDarkMode ? '#1c1c1e' : '#f2f2f7' }]}>
-                            <SvgUri
-                                uri={avatarUrl}
-                                width="100%"
-                                height="100%"
+                            <Image
+                                source={avatarUrl}
+                                style={{ width: '100%', height: '100%' }}
+                                contentFit="contain"
+                                cachePolicy="memory-disk"
                             />
                         </View>
                         <View style={[
@@ -290,10 +290,11 @@ export default function ProfileScreen() {
                                             }
                                         ]}
                                     >
-                                        <SvgUri
-                                            uri={currentUrl}
-                                            width={80}
-                                            height={80}
+                                        <Image
+                                            source={currentUrl}
+                                            style={{ width: 80, height: 80 }}
+                                            contentFit="contain"
+                                            cachePolicy="memory-disk"
                                         />
                                         {isSelected && (
                                             <View style={[styles.checkBadge, { backgroundColor: colors.primary }]}>

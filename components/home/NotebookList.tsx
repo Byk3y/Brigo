@@ -103,10 +103,6 @@ export function NotebookList({
 
         {/* Notebook Cards */}
         <View style={isPad ? { flexDirection: 'row', flexWrap: 'wrap', gap: 20 } : null}>
-          {/* Add Notebook Card (Always on iPad, or if empty on mobile) */}
-          {((notebooks.length === 0 && !isRefreshing) || isPad) && (
-            <AddNotebookCard onPress={onCreateNotebook} />
-          )}
           {notebooks.map((notebook) => (
             <NotebookCard
               key={notebook.id}
@@ -114,6 +110,10 @@ export function NotebookList({
               onPress={() => onNotebookPress(notebook.id)}
             />
           ))}
+          {/* Add Notebook Card (Always on iPad at the end, or if empty on mobile) */}
+          {((notebooks.length === 0 && !isRefreshing) || isPad) && (
+            <AddNotebookCard onPress={onCreateNotebook} />
+          )}
         </View>
       </ResponsiveContainer>
     </ScrollView>

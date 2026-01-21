@@ -4,8 +4,10 @@
  */
 
 import React from 'react';
-import { Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet, Platform } from 'react-native';
 import type { QuestionCardProps } from '@/lib/quiz/types';
+
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 export function QuestionCard({ question, wasSkipped, colors }: QuestionCardProps) {
   return (
@@ -22,10 +24,10 @@ export function QuestionCard({ question, wasSkipped, colors }: QuestionCardProps
 
 const styles = StyleSheet.create({
   questionText: {
-    fontSize: 24,
+    fontSize: isPad ? 32 : 24,
     fontFamily: 'Nunito-Bold',
-    marginBottom: 24,
-    lineHeight: 34,
+    marginBottom: isPad ? 32 : 24,
+    lineHeight: isPad ? 42 : 34,
   },
   skipMessage: {
     fontSize: 14,

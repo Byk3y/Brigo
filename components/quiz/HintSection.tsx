@@ -4,10 +4,12 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { HintSectionProps } from '@/lib/quiz/types';
 import { HINT_COLORS } from '@/lib/quiz/constants';
+
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 export function HintSection({
   hint,
@@ -94,8 +96,8 @@ const styles = StyleSheet.create({
   },
   hintButton: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: isPad ? 20 : 16,
+    paddingVertical: isPad ? 10 : 8,
     borderRadius: 999,
     borderWidth: 1,
   },
@@ -105,7 +107,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   hintButtonText: {
-    fontSize: 14,
+    fontSize: isPad ? 16 : 14,
     fontFamily: 'Nunito-SemiBold',
   },
   hintContent: {
@@ -125,8 +127,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito-SemiBold',
   },
   hintText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: isPad ? 18 : 14,
+    lineHeight: isPad ? 26 : 20,
     fontFamily: 'Nunito-Regular',
   },
 });

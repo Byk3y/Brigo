@@ -4,9 +4,11 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import type { QuizNavigationProps } from '@/lib/quiz/types';
 import { BUTTON_COLORS } from '@/lib/quiz/constants';
+
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 export function QuizNavigation({
   currentIndex,
@@ -55,9 +57,9 @@ export function QuizNavigation({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 32,
+    paddingHorizontal: isPad ? 48 : 24,
+    paddingTop: isPad ? 24 : 16,
+    paddingBottom: isPad ? 48 : 32,
     marginBottom: 8,
   },
   singleButtonContainer: {
@@ -69,27 +71,27 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   primaryButton: {
-    width: 140,
+    width: isPad ? 220 : 140,
     borderRadius: 999,
-    paddingVertical: 10,
+    paddingVertical: isPad ? 16 : 10,
     alignItems: 'center',
   },
   primaryButtonText: {
     textAlign: 'center',
     fontFamily: 'Nunito-SemiBold',
-    fontSize: 14,
+    fontSize: isPad ? 18 : 14,
   },
   secondaryButton: {
-    width: 140,
+    width: isPad ? 220 : 140,
     borderWidth: 2,
     borderRadius: 999,
-    paddingVertical: 10,
+    paddingVertical: isPad ? 16 : 10,
     alignItems: 'center',
   },
   secondaryButtonText: {
     textAlign: 'center',
     fontFamily: 'Nunito-SemiBold',
-    fontSize: 14,
+    fontSize: isPad ? 18 : 14,
   },
 });
 

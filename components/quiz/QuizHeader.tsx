@@ -4,11 +4,13 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { QuizHeaderProps } from '@/lib/quiz/types';
 import { PROGRESS_COLORS, GRADIENT_COLORS } from '@/lib/quiz/constants';
+
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 export function QuizHeader({
   title,
@@ -84,8 +86,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingHorizontal: isPad ? 48 : 24,
+    paddingVertical: isPad ? 24 : 16,
   },
   titleContainer: {
     flex: 1,
@@ -93,7 +95,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   title: {
-    fontSize: 16,
+    fontSize: isPad ? 20 : 16,
     fontFamily: 'Nunito-SemiBold',
     textAlign: 'center',
   },
@@ -106,19 +108,19 @@ const styles = StyleSheet.create({
     width: 28,
   },
   progressContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: isPad ? 48 : 24,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   questionCount: {
-    fontSize: 14,
+    fontSize: isPad ? 16 : 14,
     fontFamily: 'Nunito-Medium',
   },
   progressBar: {
     flex: 1,
-    height: 16,
-    borderRadius: 8,
+    height: isPad ? 20 : 16,
+    borderRadius: isPad ? 10 : 8,
     overflow: 'hidden',
   },
   progressFill: {

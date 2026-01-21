@@ -11,6 +11,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { QuizResultsProps } from '@/lib/quiz/types';
 import { RESULTS_COLORS, BUTTON_COLORS } from '@/lib/quiz/constants';
 import { useCelebration } from '@/lib/contexts/CelebrationContext';
+import { Platform } from 'react-native';
+import ResponsiveContainer from '@/lib/components/ResponsiveContainer';
+
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 export function QuizResults({
   scorePercent,
@@ -87,80 +91,84 @@ export function QuizResults({
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          {/* Main Score Display */}
-          <View style={styles.scoreContainer}>
-            <LinearGradient
-              colors={isDarkMode ? ['#3B82F6', '#2563EB'] : ['#60A5FA', '#3B82F6']}
-              style={styles.scoreCircle}
-            >
-              <Text style={styles.scoreText}>{displayPercent}%</Text>
-              <Text style={styles.scoreSubtext}>ACCURACY</Text>
-            </LinearGradient>
+          <ResponsiveContainer maxWidth={isPad ? 800 : 500} withPadding={true}>
+            <View style={{ alignItems: 'center' }}>
+              {/* Main Score Display */}
+              <View style={styles.scoreContainer}>
+                <LinearGradient
+                  colors={isDarkMode ? ['#3B82F6', '#2563EB'] : ['#60A5FA', '#3B82F6']}
+                  style={styles.scoreCircle}
+                >
+                  <Text style={styles.scoreText}>{displayPercent}%</Text>
+                  <Text style={styles.scoreSubtext}>ACCURACY</Text>
+                </LinearGradient>
 
-            {/* Background Glow */}
-            <View style={[styles.glow, { backgroundColor: isDarkMode ? '#3B82F6' : '#93C5FD', opacity: isDarkMode ? 0.2 : 0.3 }]} />
-          </View>
-
-          {/* Performance Message */}
-          <Text style={[styles.performanceEmoji]}>{performance.emoji}</Text>
-          <Text style={[styles.title, { color: colors.text }]}>{performance.title}</Text>
-          <Text style={[styles.description, { color: colors.textSecondary }]}>
-            {performance.sub}
-          </Text>
-
-          {/* Detailed Stats Grid */}
-          <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.statHeader}>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Correct</Text>
+                {/* Background Glow */}
+                <View style={[styles.glow, { backgroundColor: isDarkMode ? '#3B82F6' : '#93C5FD', opacity: isDarkMode ? 0.2 : 0.3 }]} />
               </View>
-              <Text style={[styles.statValue, { color: colors.text }]}>{displayScore} / {totalQuestions}</Text>
-            </View>
 
-            <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.statHeader}>
-                <Ionicons name="close-circle" size={16} color="#EF4444" />
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Wrong</Text>
+              {/* Performance Message */}
+              <Text style={[styles.performanceEmoji]}>{performance.emoji}</Text>
+              <Text style={[styles.title, { color: colors.text }]}>{performance.title}</Text>
+              <Text style={[styles.description, { color: colors.textSecondary }]}>
+                {performance.sub}
+              </Text>
+
+              {/* Detailed Stats Grid */}
+              <View style={styles.statsGrid}>
+                <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={styles.statHeader}>
+                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Correct</Text>
+                  </View>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{displayScore} / {totalQuestions}</Text>
+                </View>
+
+                <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={styles.statHeader}>
+                    <Ionicons name="close-circle" size={16} color="#EF4444" />
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Wrong</Text>
+                  </View>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{wrongCount}</Text>
+                </View>
+
+                <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={styles.statHeader}>
+                    <Ionicons name="play-skip-forward-circle" size={16} color={colors.textMuted} />
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Skipped</Text>
+                  </View>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{skippedCount}</Text>
+                </View>
               </View>
-              <Text style={[styles.statValue, { color: colors.text }]}>{wrongCount}</Text>
-            </View>
 
-            <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.statHeader}>
-                <Ionicons name="play-skip-forward-circle" size={16} color={colors.textMuted} />
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Skipped</Text>
+              {/* Actions */}
+              <View style={styles.footer}>
+                <TouchableOpacity
+                  onPress={() => {
+                    onPlaySound?.('start');
+                    onHaptic?.('selection');
+                    onRetake();
+                  }}
+                  style={[styles.retakeButton, { borderColor: colors.border }]}
+                >
+                  <Ionicons name="refresh" size={20} color={colors.text} />
+                  <Text style={[styles.buttonText, { color: colors.text }]}>Retake</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    onPlaySound?.('tap');
+                    onHaptic?.('selection');
+                    onReview();
+                  }}
+                  style={[styles.reviewButton, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={styles.reviewButtonText}>Review Answers</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
-              <Text style={[styles.statValue, { color: colors.text }]}>{skippedCount}</Text>
             </View>
-          </View>
-
-          {/* Actions */}
-          <View style={styles.footer}>
-            <TouchableOpacity
-              onPress={() => {
-                onPlaySound?.('start');
-                onHaptic?.('selection');
-                onRetake();
-              }}
-              style={[styles.retakeButton, { borderColor: colors.border }]}
-            >
-              <Ionicons name="refresh" size={20} color={colors.text} />
-              <Text style={[styles.buttonText, { color: colors.text }]}>Retake</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                onPlaySound?.('tap');
-                onHaptic?.('selection');
-                onReview();
-              }}
-              style={[styles.reviewButton, { backgroundColor: colors.primary }]}
-            >
-              <Text style={styles.reviewButtonText}>Review Answers</Text>
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
+          </ResponsiveContainer>
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
@@ -175,14 +183,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: isPad ? 32 : 20,
+    paddingVertical: isPad ? 24 : 12,
   },
   closeButton: {
     padding: 8,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: isPad ? 24 : 18,
     fontFamily: 'Nunito-Bold',
   },
   headerSpacer: {
@@ -198,17 +206,17 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
   },
   scoreContainer: {
-    width: 180,
-    height: 180,
+    width: isPad ? 240 : 180,
+    height: isPad ? 240 : 180,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 40,
     position: 'relative',
   },
   scoreCircle: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: isPad ? 220 : 160,
+    height: isPad ? 220 : 160,
+    borderRadius: isPad ? 110 : 80,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
@@ -226,7 +234,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   scoreText: {
-    fontSize: 48,
+    fontSize: isPad ? 64 : 48,
     fontFamily: 'Nunito-Bold',
     color: '#FFFFFF',
   },
@@ -242,16 +250,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   title: {
-    fontSize: 32,
+    fontSize: isPad ? 42 : 32,
     fontFamily: 'Nunito-Bold',
     marginBottom: 8,
     textAlign: 'center',
   },
   description: {
-    fontSize: 16,
+    fontSize: isPad ? 20 : 16,
     fontFamily: 'Nunito-Medium',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: isPad ? 28 : 24,
     marginBottom: 40,
     paddingHorizontal: 20,
   },

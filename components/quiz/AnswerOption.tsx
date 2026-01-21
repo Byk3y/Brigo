@@ -4,10 +4,12 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { AnswerOptionProps, AnswerOption as OptionType } from '@/lib/quiz/types';
 import { OPTION_COLORS } from '@/lib/quiz/constants';
+
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 export function AnswerOption({
   optionKey,
@@ -88,8 +90,8 @@ export function AnswerOption({
                   ? OPTION_COLORS.explanationCorrectBgDark
                   : OPTION_COLORS.explanationCorrectBgLight
                 : isDarkMode
-                ? OPTION_COLORS.explanationIncorrectBgDark
-                : OPTION_COLORS.explanationIncorrectBgLight,
+                  ? OPTION_COLORS.explanationIncorrectBgDark
+                  : OPTION_COLORS.explanationIncorrectBgLight,
               borderColor: showCorrect ? OPTION_COLORS.explanationCorrectBorder : OPTION_COLORS.explanationIncorrectBorder,
             },
           ]}
@@ -109,8 +111,8 @@ export function AnswerOption({
                       ? OPTION_COLORS.explanationCorrectBgLight
                       : '#0f172a'
                     : isDarkMode
-                    ? OPTION_COLORS.explanationIncorrectBgLight
-                    : OPTION_COLORS.incorrectTextLight,
+                      ? OPTION_COLORS.explanationIncorrectBgLight
+                      : OPTION_COLORS.incorrectTextLight,
                 },
               ]}
             >
@@ -126,8 +128,8 @@ export function AnswerOption({
                     ? OPTION_COLORS.explanationCorrectTextDark
                     : OPTION_COLORS.explanationCorrectTextLight
                   : isDarkMode
-                  ? OPTION_COLORS.explanationIncorrectTextDark
-                  : OPTION_COLORS.explanationIncorrectTextLight,
+                    ? OPTION_COLORS.explanationIncorrectTextDark
+                    : OPTION_COLORS.explanationIncorrectTextLight,
               },
             ]}
           >
@@ -141,8 +143,8 @@ export function AnswerOption({
 
 const styles = StyleSheet.create({
   option: {
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: isPad ? 16 : 12,
+    padding: isPad ? 20 : 16,
     borderWidth: 2,
   },
   optionContent: {
@@ -150,19 +152,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   badge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: isPad ? 40 : 32,
+    height: isPad ? 40 : 32,
+    borderRadius: isPad ? 20 : 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: isPad ? 16 : 12,
   },
   badgeText: {
     fontFamily: 'Nunito-SemiBold',
+    fontSize: isPad ? 18 : 14,
   },
   optionText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: isPad ? 20 : 16,
     fontFamily: 'Nunito-Regular',
   },
   explanation: {

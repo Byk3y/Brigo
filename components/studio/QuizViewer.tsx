@@ -4,8 +4,9 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ResponsiveContainer from '@/lib/components/ResponsiveContainer';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { useFeedback } from '@/lib/feedback';
 import { useStore } from '@/lib/store';
@@ -18,6 +19,8 @@ import { QuizNavigation } from '@/components/quiz/QuizNavigation';
 import { QuizResults } from '@/components/quiz/QuizResults';
 import { calculateMetrics } from '@/lib/quiz/utils';
 import type { QuizViewerProps } from '@/lib/quiz/types';
+
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 export const QuizViewer: React.FC<QuizViewerProps> = ({ quiz, onClose, onComplete }) => {
   const { isDarkMode } = useTheme();
@@ -58,7 +61,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({ quiz, onClose, onComplet
   } = quizState;
 
   const currentQuestion = quiz.questions[currentQuestionIndex];
-  
+
   // Safety check: ensure current question exists
   if (!currentQuestion) {
     console.error('[QuizViewer] Invalid question index or empty quiz');
@@ -135,33 +138,38 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({ quiz, onClose, onComplet
 
       <ScrollView
         ref={scrollRef}
-        style={{ flex: 1, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingBottom: 40,
+          paddingTop: 12
+        }}
       >
-        <QuestionCard question={currentQuestion.question} wasSkipped={wasSkipped} colors={colors} />
+        <ResponsiveContainer maxWidth={isPad ? 800 : 500} withPadding={true}>
+          <QuestionCard question={currentQuestion.question} wasSkipped={wasSkipped} colors={colors} />
 
-        <AnswerOptions
-          question={currentQuestion}
-          selectedAnswer={selectedAnswer}
-          isSubmitted={isSubmitted}
-          isReviewMode={isReviewMode}
-          answers={answers}
-          onSelectAnswer={handleSelectAnswer}
-          onOptionLayout={handleOptionLayout}
-          colors={colors}
-          isDarkMode={isDarkMode}
-        />
+          <AnswerOptions
+            question={currentQuestion}
+            selectedAnswer={selectedAnswer}
+            isSubmitted={isSubmitted}
+            isReviewMode={isReviewMode}
+            answers={answers}
+            onSelectAnswer={handleSelectAnswer}
+            onOptionLayout={handleOptionLayout}
+            colors={colors}
+            isDarkMode={isDarkMode}
+          />
 
-        <HintSection
-          hint={currentQuestion.hint}
-          hintAvailable={hintAvailable}
-          hintRevealed={hintRevealed}
-          petName={petName}
-          onRevealHint={handleRevealHint}
-          isReviewMode={isReviewMode}
-          colors={colors}
-          isDarkMode={isDarkMode}
-        />
+          <HintSection
+            hint={currentQuestion.hint}
+            hintAvailable={hintAvailable}
+            hintRevealed={hintRevealed}
+            petName={petName}
+            onRevealHint={handleRevealHint}
+            isReviewMode={isReviewMode}
+            colors={colors}
+            isDarkMode={isDarkMode}
+          />
+        </ResponsiveContainer>
       </ScrollView>
 
       <QuizNavigation

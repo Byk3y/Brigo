@@ -79,6 +79,7 @@ const TypingIndicator = ({ color }: { color: string }) => {
 };
 
 export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
+  const isPad = Platform.OS === 'ios' && Platform.isPad;
   const [inputText, setInputText] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -94,46 +95,37 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
   const scrollRef = useRef<ScrollView>(null);
 
   // Check for cached data at initialization time to prevent flicker
-  // This runs once when component mounts
   const hasCachedDataOnMount = useRef(() => {
     const cachedNotebook = useStore.getState().notebooks.find(n => n.id === notebook.id);
     return Array.isArray(cachedNotebook?.chat_messages);
   }).current();
 
-  // Initialize as NOT ready and invisible, even if we have cached data
-  // We want to perform a silent scroll-to-bottom BEFORE revealing to prevent the "jump" glitch
   const [isReadyToShow, setIsReadyToShow] = useState(false);
   const contentOpacity = useRef(new Animated.Value(0)).current;
 
   const { sendMessage, isStreaming, remainingMessages, limitReached } = useNotebookChat(notebook.id);
 
-  // Get subscription status to show remaining messages for expired users
   const isExpired = useStore(state => state.isExpired);
   const tier = useStore(state => state.tier);
   const isPremium = tier === 'premium' && !isExpired;
 
-  // Reactively select chat messages from the store
   const chatMessages = useStore(state =>
     state.notebooks.find(n => n.id === notebook.id)?.chat_messages || EMPTY_ARRAY
   );
   const petName = useStore(state => state.petState.name);
 
-  // Auto-update selection when new materials are added in background
+  // Auto-update selection when new materials are added
   const prevMaterialCount = useRef(materialCount);
   useEffect(() => {
     if (materialCount > prevMaterialCount.current) {
-      // If we previously had all materials selected, or if this is an addition,
-      // auto-select the new ones to keep the experience seamless
       const allIds = notebook.materials?.map(m => m.id) || [];
       const newIds = allIds.filter(id => !selectedMaterialIds.includes(id));
 
       if (newIds.length > 0) {
         setSelectedMaterialIds(prev => {
-          // If we had everything selected before, select everything now too
           if (prev.length === prevMaterialCount.current) {
             return allIds;
           }
-          // Otherwise just append the new ones
           return [...prev, ...newIds];
         });
       }
@@ -141,21 +133,15 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
     prevMaterialCount.current = materialCount;
   }, [materialCount, notebook.materials, selectedMaterialIds]);
 
-  // Theme
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
 
-  // Helper to separate the Mastery Gap from the narrative overview
   const getStrategicSynthesis = (overview: string) => {
     if (!overview) return { briefing: '', masteryGap: '' };
-
-    // Usually the Mastery Gap is the last sentence based on our prompt
     const sentences = overview.split(/[.!?]\s+/);
     if (sentences.length <= 1) return { briefing: overview, masteryGap: '' };
-
     const briefing = sentences.slice(0, -1).join('. ') + sentences[sentences.length - 2].slice(-1);
     const masteryGap = sentences[sentences.length - 1];
-
     return { briefing, masteryGap };
   };
 
@@ -164,40 +150,23 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
   );
 
   const userEducationLevel = useStore(state => state.educationLevel);
-
-  // Track if we've done the initial scroll to avoid annoying "quick scroll" animation on entry
   const hasInitiallyScrolled = useRef(false);
-  // Track if initial messages have been loaded from the server
   const isInitialLoadComplete = useRef(hasCachedDataOnMount);
-  // Track the message count at the time of initial load to distinguish from new messages
-  // If we have cached data, initialize with the cached message count
   const initialMessageCount = useRef<number | null>(
     hasCachedDataOnMount
       ? (useStore.getState().notebooks.find(n => n.id === notebook.id)?.chat_messages?.length ?? 0)
       : null
   );
-  // Track if content has had at least one layout pass
   const hasContentLayouted = useRef(false);
-  // Track ready state in a ref to avoid stale closure in async callbacks
   const isReadyToShowRef = useRef(false);
 
-  // Helper function to perform the reveal sequence
   const performReveal = () => {
-    if (isReadyToShowRef.current) return; // Guard against double-reveal
-
-    // 1. Silent non-animated jump
+    if (isReadyToShowRef.current) return;
     scrollRef.current?.scrollToEnd({ animated: false });
-
-    // 2. Perform a second silent jump slightly later to catch any layout shifts
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: false });
-
-      // 3. Capture the current message count as "initial" before revealing
-      // Read directly from store to avoid stale closure
       const currentMessages = useStore.getState().notebooks.find(n => n.id === notebook.id)?.chat_messages || [];
       initialMessageCount.current = currentMessages.length;
-
-      // 4. Mark as scrolled and reveal
       hasInitiallyScrolled.current = true;
       isReadyToShowRef.current = true;
       setIsReadyToShow(true);
@@ -209,31 +178,15 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
     }, 60);
   };
 
-  // Load chat messages on mount - with smart cache check
   useEffect(() => {
-    // hasCachedDataOnMount was already computed at initialization
-    // State and refs are already correctly initialized based on it
-
     if (hasCachedDataOnMount) {
-      // FAST PATH: Cache exists - perform reveal sequence while hidden
-      console.log(`[ChatTab] Using cached messages for notebook ${notebook.id}`);
       performReveal();
-      return; // Skip network fetch
+      return;
     }
-
-    // NORMAL PATH: No cache - do fresh load with fade animation
-    // This handles: first visit to notebook in this session
-    console.log(`[ChatTab] No cached messages for notebook ${notebook.id}, fetching from server`);
-
-    // Load messages and track completion
     const loadMessages = async () => {
       await useStore.getState().loadChatMessages(notebook.id);
-      // Mark initial load as complete after fetch
       isInitialLoadComplete.current = true;
-
-      // If content already laid out and not revealed yet, trigger reveal now
       if (hasContentLayouted.current && !isReadyToShowRef.current) {
-        // Small delay to let React re-render with new messages
         setTimeout(() => {
           performReveal();
         }, 50);
@@ -242,13 +195,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
     loadMessages();
   }, [notebook.id]);
 
-  // Handle new messages (streaming or received) AFTER initial load
   useEffect(() => {
-    // Only animate for NEW incoming messages (not initial fetch)
-    // We check that:
-    // 1. View is ready and initial scroll happened
-    // 2. Initial load is complete
-    // 3. We have more messages than when we first loaded (truly new messages)
     if (
       isReadyToShow &&
       hasInitiallyScrolled.current &&
@@ -263,25 +210,13 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
     }
   }, [chatMessages.length, isStreaming, isReadyToShow]);
 
-  // Initial "jump" to bottom on first layout
   const handleContentSizeChange = () => {
-    // Mark that content has been laid out at least once
     hasContentLayouted.current = true;
-
-    // Only proceed if we haven't unlocked the view yet
-    if (!isReadyToShowRef.current) {
-      // Both conditions must be met:
-      // 1. Initial load complete (messages fetched)
-      // 2. Content has been laid out
-      if (isInitialLoadComplete.current) {
-        performReveal();
-      }
-      // If load not complete, the loadMessages callback will handle reveal
-      // after it completes (since hasContentLayouted will be true)
+    if (!isReadyToShowRef.current && isInitialLoadComplete.current) {
+      performReveal();
     }
   };
 
-  // Gentle pulse animation for emoji (breathing effect)
   useEffect(() => {
     const animation = Animated.loop(
       Animated.sequence([
@@ -301,25 +236,18 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
     return () => animation.stop();
   }, [pulseAnim]);
 
-  // Scroll to bottom when keyboard opens to keep last message visible
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
-      // Small timeout to allow KeyboardAvoidingView to adjust first
       setTimeout(() => {
         scrollRef.current?.scrollToEnd({ animated: true });
       }, 100);
     });
-
-    return () => {
-      showSubscription.remove();
-    };
+    return () => showSubscription.remove();
   }, []);
 
   const handleTakeQuiz = () => {
     if (notebook.status === 'extracting') return;
-    if (onTakeQuiz) {
-      onTakeQuiz();
-    }
+    if (onTakeQuiz) onTakeQuiz();
   };
 
   const handleSend = () => {
@@ -330,26 +258,17 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
     sendMessage(msg, selectedMaterialIds);
   };
 
-  // Strip markdown formatting for clipboard copy
   const stripMarkdown = (text: string): string => {
     return text
-      // Remove bold: **text** or __text__
       .replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/__(.+?)__/g, '$1')
-      // Remove italic: *text* or _text_
       .replace(/\*(.+?)\*/g, '$1')
       .replace(/_(.+?)_/g, '$1')
-      // Remove strikethrough: ~~text~~
       .replace(/~~(.+?)~~/g, '$1')
-      // Remove inline code: `text`
       .replace(/`(.+?)`/g, '$1')
-      // Remove headers: # Header
       .replace(/^#{1,6}\s+/gm, '')
-      // Remove bullet points: - or *
       .replace(/^[\-\*]\s+/gm, '• ')
-      // Remove numbered lists: 1.
       .replace(/^\d+\.\s+/gm, '')
-      // Clean up extra whitespace
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   };
@@ -375,38 +294,38 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
     }
   };
 
-
-  // Check if background processing is active
-  // Show progress indicator if extracting
   const isExtracting = notebook.status === 'extracting';
   const isBackgroundProcessing = (notebook.meta as any)?.background_processing === true;
   const hasExistingContent = !!briefing;
 
-  // Render loading state with skeleton ONLY if we don't have existing content to show
   if (isExtracting && !hasExistingContent) {
     return (
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={{ paddingHorizontal: 24, paddingVertical: 24 }}>
-          {/* Material Icon & Title */}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 24 }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            marginBottom: isPad ? 32 : 24,
+            maxWidth: isPad ? 800 : '100%',
+            alignSelf: 'center',
+            width: '100%',
+          }}>
             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-              <Text style={{ fontSize: 48, marginRight: 12 }}>{notebook.emoji || getTopicEmoji(notebook.title)}</Text>
+              <Text style={{ fontSize: isPad ? 64 : 48, marginRight: isPad ? 20 : 12 }}>{notebook.emoji || getTopicEmoji(notebook.title)}</Text>
             </Animated.View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 24, color: colors.text, marginBottom: 4, fontFamily: 'Nunito-Bold' }}>
+              <Text style={{ fontSize: isPad ? 32 : 24, color: colors.text, marginBottom: isPad ? 8 : 4, fontFamily: 'Nunito-Bold' }}>
                 {notebook.title}
               </Text>
-              <Text style={{ fontSize: 14, color: colors.textSecondary, fontFamily: 'Nunito-Regular' }}>
+              <Text style={{ fontSize: isPad ? 18 : 14, color: colors.textSecondary, fontFamily: 'Nunito-Regular' }}>
                 {materialCount} source{materialCount !== 1 ? 's' : ''}
               </Text>
             </View>
           </View>
 
-          {/* Background Processing Progress or Skeleton */}
           {isBackgroundProcessing ? (
             <View style={{ marginBottom: 24 }}>
               <BackgroundProcessingIndicator notebookId={notebook.id} />
-
               <View style={{ marginTop: 24, padding: 16, backgroundColor: colors.surfaceAlt, borderRadius: 16 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                   <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
@@ -464,211 +383,199 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingVertical: 24 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: isPad ? 48 : 24,
+          paddingVertical: isPad ? 40 : 24,
+        }}
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={handleContentSizeChange}
       >
-        {/* Material Icon & Title - Always visible for better perceived performance */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 24 }}>
-          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-            <Text style={{ fontSize: 48, marginRight: 12 }}>{notebook.emoji || getTopicEmoji(notebook.title)}</Text>
-          </Animated.View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 24, color: colors.text, marginBottom: 4, fontFamily: 'Nunito-Bold' }}>
-              {notebook.title}
-            </Text>
-            <Text style={{ fontSize: 14, color: colors.textSecondary, fontFamily: 'Nunito-Regular' }}>
-              {materialCount} source{materialCount !== 1 ? 's' : ''}
-            </Text>
-          </View>
-        </View>
-
-        {!isReadyToShow && (
-          <View style={{ marginTop: 8 }}>
-            <PreviewSkeleton lines={14} />
-          </View>
-        )}
-
-        <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
-
-          {/* Mastery Calibration Badge */}
-          {userEducationLevel && (
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)',
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderRadius: 999,
-              alignSelf: 'flex-start',
-              marginBottom: 24,
-              marginTop: -16,
-              borderWidth: 1,
-              borderColor: isDarkMode ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)',
-            }}>
-              <Ionicons name="school" size={14} color="#6366f1" />
-              <Text style={{ marginLeft: 6, fontSize: 11, color: '#6366f1', fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                Calibrated: {userEducationLevel} Mastery
+        <View style={{ maxWidth: isPad ? 800 : '100%', alignSelf: 'center', width: '100%', flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: isPad ? 32 : 24 }}>
+            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+              <Text style={{ fontSize: isPad ? 64 : 48, marginRight: isPad ? 20 : 12 }}>{notebook.emoji || getTopicEmoji(notebook.title)}</Text>
+            </Animated.View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: isPad ? 32 : 24, color: colors.text, marginBottom: isPad ? 8 : 4, fontFamily: 'Nunito-Bold' }}>
+                {notebook.title}
               </Text>
+              <Text style={{ fontSize: isPad ? 18 : 14, color: colors.textSecondary, fontFamily: 'Nunito-Regular' }}>
+                {materialCount} source{materialCount !== 1 ? 's' : ''}
+              </Text>
+            </View>
+          </View>
+
+          {!isReadyToShow && (
+            <View style={{ marginTop: 8 }}>
+              <PreviewSkeleton lines={14} />
             </View>
           )}
 
-          {/* Strategic Briefing Card */}
-          {briefing ? (
-            <View style={{ marginBottom: 24 }}>
+          <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
+            {userEducationLevel && (
               <View style={{
-                backgroundColor: colors.surface,
-                borderRadius: 20,
-                padding: 20,
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)',
+                paddingHorizontal: isPad ? 14 : 10,
+                paddingVertical: isPad ? 6 : 4,
+                borderRadius: 999,
+                alignSelf: 'flex-start',
+                marginBottom: isPad ? 32 : 24,
+                marginTop: isPad ? -24 : -16,
                 borderWidth: 1,
-                borderColor: colors.border,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.05,
-                shadowRadius: 12,
-                elevation: 2,
+                borderColor: isDarkMode ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)',
               }}>
-                <Text style={{ fontSize: 13, color: '#6366f1', marginBottom: 12, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 1 }}>
-                  Overview
-                </Text>
-                <MarkdownText
-                  style={{
-                    fontSize: 16,
-                    color: colors.text,
-                    lineHeight: 26,
-                    fontFamily: 'Nunito-Regular'
-                  }}
-                  highlightColor="#6366f1"
-                >
-                  {briefing}
-                </MarkdownText>
-
-                {/* Mastery Gap Insight - The "Aha!" Moment */}
-                {masteryGap ? (
-                  <MotiView
-                    from={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: 'spring', damping: 15, delay: 500 } as any}
-                    style={{
-                      backgroundColor: isDarkMode ? 'rgba(249, 115, 22, 0.1)' : 'rgba(249, 115, 22, 0.05)',
-                      borderRadius: 12,
-                      padding: 16,
-                      marginTop: 20,
-                      borderWidth: 1,
-                      borderColor: isDarkMode ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.3)',
-                      borderLeftWidth: 4,
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                      <Ionicons name="flashlight" size={16} color="#F97316" />
-                      <Text style={{ marginLeft: 8, fontSize: 12, color: '#F97316', fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
-                        Key Insight
-                      </Text>
-                    </View>
-                    <MarkdownText
-                      style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 22, fontFamily: 'Nunito-Medium' }}
-                      highlightColor="#F97316"
-                    >
-                      {masteryGap}
-                    </MarkdownText>
-                  </MotiView>
-                ) : null}
-              </View>
-            </View>
-          ) : null}
-
-          {/* Chat Messages Area */}
-          <View style={{ flex: 1 }}>
-            {chatMessages.length === 0 && !(notebook.meta?.preview?.overview || notebook.meta?.preview?.tl_dr) && (
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
-                <View style={{ width: 80, height: 80, backgroundColor: colors.surfaceAlt, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                  <Ionicons name="chatbubble-outline" size={32} color="#6366f1" />
-                </View>
-                <Text style={{ fontSize: 18, color: colors.text, marginBottom: 8, fontFamily: 'Nunito-SemiBold' }}>
-                  Ask questions about your material
-                </Text>
-                <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', maxWidth: 280, fontFamily: 'Nunito-Regular' }}>
-                  Chat with your {materialCount} source{materialCount !== 1 ? 's' : ''} to get
-                  answers and insights.
+                <Ionicons name="school" size={isPad ? 18 : 14} color="#6366f1" />
+                <Text style={{ marginLeft: 6, fontSize: isPad ? 14 : 11, color: '#6366f1', fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Calibrated: {userEducationLevel} Mastery
                 </Text>
               </View>
             )}
 
-            {chatMessages.map((msg, index) => (
-              <View
-                key={msg.id || index}
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                  marginBottom: 16,
-                }}
-              >
-                <View style={{ maxWidth: '85%' }}>
-                  <View
+            {briefing ? (
+              <View style={{ marginBottom: 24 }}>
+                <View style={{
+                  backgroundColor: colors.surface,
+                  borderRadius: isPad ? 28 : 20,
+                  padding: isPad ? 32 : 20,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 12,
+                  elevation: 2,
+                }}>
+                  <Text style={{ fontSize: isPad ? 15 : 13, color: '#6366f1', marginBottom: isPad ? 16 : 12, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 1 }}>
+                    Overview
+                  </Text>
+                  <MarkdownText
                     style={{
-                      backgroundColor: msg.role === 'user' ? '#3B82F6' : colors.surfaceAlt,
-                      borderRadius: 18,
-                      borderTopRightRadius: msg.role === 'user' ? 4 : 18,
-                      borderTopLeftRadius: msg.role === 'assistant' ? 4 : 18,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
+                      fontSize: isPad ? 18 : 16,
+                      color: colors.text,
+                      lineHeight: isPad ? 30 : 26,
+                      fontFamily: 'Nunito-Regular'
                     }}
+                    highlightColor="#6366f1"
                   >
-                    {msg.role === 'user' ? (
-                      <Text style={{ color: '#FFFFFF', fontSize: 16, fontFamily: 'Nunito-Medium' }}>
-                        {msg.content}
-                      </Text>
-                    ) : (
-                      msg.content === '' ? (
-                        <TypingIndicator color={colors.textSecondary} />
-                      ) : (
-                        <MarkdownText
-                          selectable={false}
-                          style={{
-                            fontSize: 16,
-                            color: colors.text,
-                            lineHeight: 24,
-                            fontFamily: 'Nunito-Regular',
-                          }}
-                        >
-                          {msg.content}
-                        </MarkdownText>
-                      )
-                    )}
-                  </View>
-                  {/* Copy button for assistant messages */}
-                  {msg.role === 'assistant' && msg.content !== '' && (
-                    <TouchableOpacity
-                      onPress={() => handleCopy(msg.content)}
-                      activeOpacity={0.7}
+                    {briefing}
+                  </MarkdownText>
+
+                  {masteryGap ? (
+                    <MotiView
+                      from={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ type: 'spring', damping: 15, delay: 500 } as any}
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        marginTop: 6,
-                        paddingVertical: 4,
-                        paddingHorizontal: 8,
-                        alignSelf: 'flex-start',
+                        backgroundColor: isDarkMode ? 'rgba(249, 115, 22, 0.1)' : 'rgba(249, 115, 22, 0.05)',
+                        borderRadius: 12,
+                        padding: 16,
+                        marginTop: 20,
+                        borderWidth: 1,
+                        borderColor: isDarkMode ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.3)',
+                        borderLeftWidth: 4,
                       }}
                     >
-                      <Ionicons name="copy-outline" size={16} color={colors.textSecondary} />
-                      <Text style={{ fontSize: 12, color: colors.textSecondary, marginLeft: 4, fontFamily: 'Nunito-Regular' }}>
-                        Copy
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: isPad ? 8 : 4 }}>
+                        <Ionicons name="flashlight" size={isPad ? 20 : 16} color="#F97316" />
+                        <Text style={{ marginLeft: 8, fontSize: isPad ? 14 : 12, color: '#F97316', fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
+                          Key Insight
+                        </Text>
+                      </View>
+                      <MarkdownText
+                        style={{ fontSize: isPad ? 16 : 14, color: colors.textSecondary, lineHeight: isPad ? 24 : 22, fontFamily: 'Nunito-Medium' }}
+                        highlightColor="#F97316"
+                      >
+                        {masteryGap}
+                      </MarkdownText>
+                    </MotiView>
+                  ) : null}
                 </View>
               </View>
-            ))}
+            ) : null}
 
-            {/* Bottom Spacer to prevent message hugging the input bar */}
-            <View style={{ height: 20 }} />
-          </View>
-        </Animated.View>
+            <View style={{ flex: 1 }}>
+              {chatMessages.length === 0 && !(notebook.meta?.preview?.overview || notebook.meta?.preview?.tl_dr) && (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
+                  <View style={{ width: 80, height: 80, backgroundColor: colors.surfaceAlt, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                    <Ionicons name="chatbubble-outline" size={32} color="#6366f1" />
+                  </View>
+                  <Text style={{ fontSize: 18, color: colors.text, marginBottom: 8, fontFamily: 'Nunito-SemiBold' }}>
+                    Ask questions about your material
+                  </Text>
+                  <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', maxWidth: 280, fontFamily: 'Nunito-Regular' }}>
+                    Chat with your {materialCount} source{materialCount !== 1 ? 's' : ''} to get
+                    answers and insights.
+                  </Text>
+                </View>
+              )}
+
+              {chatMessages.map((msg, index) => (
+                <View style={{ flexDirection: 'row', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 16 }}>
+                  <View style={{ maxWidth: '85%' }}>
+                    <View
+                      style={{
+                        backgroundColor: msg.role === 'user' ? '#3B82F6' : colors.surfaceAlt,
+                        borderRadius: isPad ? 24 : 18,
+                        borderTopRightRadius: msg.role === 'user' ? 4 : (isPad ? 24 : 18),
+                        borderTopLeftRadius: msg.role === 'assistant' ? 4 : (isPad ? 24 : 18),
+                        paddingHorizontal: isPad ? 20 : 16,
+                        paddingVertical: isPad ? 16 : 12,
+                      }}
+                    >
+                      {msg.role === 'user' ? (
+                        <Text style={{ color: '#FFFFFF', fontSize: isPad ? 18 : 16, fontFamily: 'Nunito-Medium' }}>
+                          {msg.content}
+                        </Text>
+                      ) : (
+                        msg.content === '' ? (
+                          <TypingIndicator color={colors.textSecondary} />
+                        ) : (
+                          <MarkdownText
+                            selectable={false}
+                            style={{
+                              fontSize: isPad ? 18 : 16,
+                              color: colors.text,
+                              lineHeight: isPad ? 28 : 24,
+                              fontFamily: 'Nunito-Regular',
+                            }}
+                          >
+                            {msg.content}
+                          </MarkdownText>
+                        )
+                      )}
+                    </View>
+                    {msg.role === 'assistant' && msg.content !== '' && (
+                      <TouchableOpacity
+                        onPress={() => handleCopy(msg.content)}
+                        activeOpacity={0.7}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          marginTop: 6,
+                          paddingVertical: 4,
+                          paddingHorizontal: 8,
+                          alignSelf: 'flex-start',
+                        }}
+                      >
+                        <Ionicons name="copy-outline" size={16} color={colors.textSecondary} />
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginLeft: 4, fontFamily: 'Nunito-Regular' }}>
+                          Copy
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              ))}
+              <View style={{ height: 20 }} />
+            </View>
+          </Animated.View>
+        </View>
       </ScrollView>
 
-      {/* Bottom Interface logic (Pills + Input) */}
       <View style={{ backgroundColor: colors.background, paddingTop: 8 }}>
-        {/* Floating Suggested Chat Pills */}
         {chatMessages.length === 0 && (
           <View style={{ marginBottom: 8 }}>
             <ScrollView
@@ -676,7 +583,6 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 8 }}
             >
-              {/* AI Suggested Questions */}
               {notebook.meta?.preview?.suggested_questions?.map((question: string, index: number) => (
                 <TouchableOpacity
                   key={index}
@@ -686,9 +592,9 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
                   }}
                   style={{
                     backgroundColor: isDarkMode ? '#2d2d30' : '#ffffff',
-                    borderRadius: 20,
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
+                    borderRadius: isPad ? 28 : 20,
+                    paddingHorizontal: isPad ? 20 : 16,
+                    paddingVertical: isPad ? 14 : 10,
                     flexDirection: 'row',
                     alignItems: 'center',
                     borderWidth: 1,
@@ -700,21 +606,20 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
                     elevation: 3,
                   }}
                 >
-                  <Ionicons name="chatbubble-outline" size={14} color={colors.primary} />
-                  <Text style={{ fontSize: 13, color: colors.text, marginLeft: 6, fontFamily: 'Nunito-Medium' }}>
+                  <Ionicons name="chatbubble-outline" size={isPad ? 18 : 14} color={colors.primary} />
+                  <Text style={{ fontSize: isPad ? 15 : 13, color: colors.text, marginLeft: 6, fontFamily: 'Nunito-Medium' }}>
                     {question}
                   </Text>
                 </TouchableOpacity>
               ))}
 
-              {/* Take Quiz Pill */}
               <TouchableOpacity
                 onPress={handleTakeQuiz}
                 style={{
                   backgroundColor: isDarkMode ? '#2d2d30' : '#ffffff',
-                  borderRadius: 20,
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
+                  borderRadius: isPad ? 28 : 20,
+                  paddingHorizontal: isPad ? 20 : 16,
+                  paddingVertical: isPad ? 14 : 10,
                   flexDirection: 'row',
                   alignItems: 'center',
                   borderWidth: 1,
@@ -726,8 +631,8 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
                   elevation: 3,
                 }}
               >
-                <Ionicons name="help-circle-outline" size={16} color={colors.primary} />
-                <Text style={{ fontSize: 13, color: colors.text, marginLeft: 6, fontFamily: 'Nunito-Medium' }}>
+                <Ionicons name="help-circle-outline" size={isPad ? 20 : 16} color={colors.primary} />
+                <Text style={{ fontSize: isPad ? 15 : 13, color: colors.text, marginLeft: 6, fontFamily: 'Nunito-Medium' }}>
                   Take quiz
                 </Text>
               </TouchableOpacity>
@@ -735,151 +640,152 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
           </View>
         )}
 
-        {!isInputFocused && inputText.length === 0 && (
-          <View style={{ alignItems: 'center', marginBottom: 8 }}>
-            {/* Show remaining messages for expired users */}
-            {!isPremium && remainingMessages !== null && (
-              <TouchableOpacity
-                onPress={() => router.push('/upgrade')}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+        <View style={{ maxWidth: isPad ? 800 : '100%', alignSelf: 'center', width: '100%' }}>
+          {!isInputFocused && inputText.length === 0 && (
+            <View style={{ alignItems: 'center', marginBottom: 8 }}>
+              {!isPremium && remainingMessages !== null && (
+                <TouchableOpacity
+                  onPress={() => router.push('/upgrade')}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                >
+                  <Text
+                    style={{
+                      fontSize: isPad ? 14 : 12,
+                      color: remainingMessages <= 2 ? '#f59e0b' : colors.primary,
+                      fontFamily: 'Nunito-SemiBold',
+                    }}
+                  >
+                    {remainingMessages === 0
+                      ? '0 messages left today'
+                      : `${remainingMessages} message${remainingMessages !== 1 ? 's' : ''} left today`}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: isPad ? 14 : 12,
+                      color: colors.primary,
+                      fontFamily: 'Nunito-Medium',
+                    }}
+                  >
+                    • Upgrade for unlimited →
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <Text
+                style={{
+                  fontSize: isPad ? 12 : 10,
+                  color: colors.textMuted,
+                  textAlign: 'center',
+                  marginTop: !isPremium && remainingMessages !== null ? 4 : 0,
+                  fontFamily: 'Nunito-Regular',
+                  opacity: 0.8,
+                }}
               >
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: remainingMessages <= 2 ? '#f59e0b' : colors.primary,
-                    fontFamily: 'Nunito-SemiBold',
-                  }}
-                >
-                  {remainingMessages === 0
-                    ? '0 messages left today'
-                    : `${remainingMessages} message${remainingMessages !== 1 ? 's' : ''} left today`}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.primary,
-                    fontFamily: 'Nunito-Medium',
-                  }}
-                >
-                  • Upgrade for unlimited →
-                </Text>
-              </TouchableOpacity>
-            )}
-            <Text
+                Brigo can be inaccurate, so double-check.
+              </Text>
+            </View>
+          )}
+
+          <TouchableWithoutFeedback onPress={() => inputRef.current?.focus()}>
+            <View
               style={{
-                fontSize: 10,
-                color: colors.textMuted,
-                textAlign: 'center',
-                marginTop: !isPremium && remainingMessages !== null ? 4 : 0,
-                fontFamily: 'Nunito-Regular',
-                opacity: 0.8,
+                borderWidth: 1.5,
+                borderColor: isInputFocused ? colors.primary : (isDarkMode ? '#505052' : '#d1d1d6'),
+                borderTopLeftRadius: isPad ? 32 : 24,
+                borderTopRightRadius: isPad ? 32 : 24,
+                backgroundColor: isDarkMode ? '#1e1e20' : '#ffffff',
+                minHeight: isInputFocused || inputText.length > 0 ? (isPad ? 100 : 80) : (isPad ? 80 : 60),
+                paddingHorizontal: isPad ? 20 : 14,
+                paddingVertical: isInputFocused || inputText.length > 0 ? (isPad ? 16 : 12) : (isPad ? 14 : 10),
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 10,
+                elevation: 2,
+                flexDirection: 'row',
+                alignItems: isInputFocused || inputText.length > 0 ? 'flex-start' : 'center',
+                borderBottomWidth: 0,
               }}
             >
-              Brigo can be inaccurate, so double-check.
-            </Text>
-          </View>
-        )}
+              <View style={{ flex: 1, flexDirection: isInputFocused || inputText.length > 0 ? 'column' : 'row', alignItems: isInputFocused || inputText.length > 0 ? 'stretch' : 'center' }}>
+                <TextInput
+                  ref={inputRef}
+                  placeholder={`Ask ${petName}...`}
+                  placeholderTextColor={colors.textSecondary}
+                  style={{
+                    flex: 1,
+                    color: colors.text,
+                    fontSize: isPad ? 18 : 16,
+                    fontFamily: 'Nunito-Medium',
+                    textAlignVertical: 'top',
+                    paddingTop: Platform.OS === 'ios' ? (isInputFocused || inputText.length > 0 ? 4 : 0) : 0,
+                    paddingBottom: isInputFocused || inputText.length > 0 ? (isPad ? 50 : 40) : 0,
+                  }}
+                  value={inputText}
+                  onChangeText={setInputText}
+                  onFocus={() => setIsInputFocused(true)}
+                  onBlur={() => setIsInputFocused(false)}
+                  multiline
+                />
 
-        <TouchableWithoutFeedback onPress={() => inputRef.current?.focus()}>
-          <View
-            style={{
-              borderWidth: 1.5,
-              borderColor: isInputFocused ? colors.primary : (isDarkMode ? '#505052' : '#d1d1d6'),
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              backgroundColor: isDarkMode ? '#1e1e20' : '#ffffff',
-              minHeight: isInputFocused || inputText.length > 0 ? 80 : 60,
-              paddingHorizontal: 14,
-              paddingVertical: isInputFocused || inputText.length > 0 ? 12 : 10,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 10,
-              elevation: 2,
-              flexDirection: 'row',
-              alignItems: isInputFocused || inputText.length > 0 ? 'flex-start' : 'center',
-              borderBottomWidth: 0,
-            }}
-          >
-            <View style={{ flex: 1, flexDirection: isInputFocused || inputText.length > 0 ? 'column' : 'row', alignItems: isInputFocused || inputText.length > 0 ? 'stretch' : 'center' }}>
-              <TextInput
-                ref={inputRef}
-                placeholder={`Ask ${petName}...`}
-                placeholderTextColor={colors.textSecondary}
-                style={{
-                  flex: 1,
-                  color: colors.text,
-                  fontSize: 16,
-                  fontFamily: 'Nunito-Medium',
-                  textAlignVertical: 'top',
-                  paddingTop: Platform.OS === 'ios' ? (isInputFocused || inputText.length > 0 ? 4 : 0) : 0,
-                  paddingBottom: isInputFocused || inputText.length > 0 ? 40 : 0,
-                }}
-                value={inputText}
-                onChangeText={setInputText}
-                onFocus={() => setIsInputFocused(true)}
-                onBlur={() => setIsInputFocused(false)}
-                multiline
-              />
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  gap: 8,
-                  position: (isInputFocused || inputText.length > 0) ? 'absolute' : 'relative',
-                  bottom: (isInputFocused || inputText.length > 0) ? 0 : undefined,
-                  right: (isInputFocused || inputText.length > 0) ? 0 : undefined,
-                }}
-              >
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setSourceModalVisible(true)}
+                <View
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    backgroundColor: isDarkMode ? '#2d2d30' : '#f0f0f2',
-                    paddingHorizontal: 10,
-                    paddingVertical: 5,
-                    borderRadius: 14,
-                    gap: 6,
-                    borderWidth: 1.5,
-                    borderColor: isDarkMode ? '#3a3a3c' : '#e5e5e7',
+                    justifyContent: 'flex-end',
+                    gap: isPad ? 12 : 8,
+                    position: (isInputFocused || inputText.length > 0) ? 'absolute' : 'relative',
+                    bottom: (isInputFocused || inputText.length > 0) ? 0 : undefined,
+                    right: (isInputFocused || inputText.length > 0) ? 0 : undefined,
                   }}
                 >
-                  <Ionicons name="library-outline" size={14} color={colors.text} />
-                  <Text style={{ fontSize: 13, color: colors.text, fontFamily: 'Nunito-SemiBold' }}>
-                    {selectedCount}
-                  </Text>
-                  <Ionicons name="chevron-down" size={12} color={colors.textSecondary} />
-                </TouchableOpacity>
-
-                {(isInputFocused || inputText.trim().length > 0) && (
                   <TouchableOpacity
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: (inputText.trim().length > 0 && !isStreaming) ? '#3B82F6' : (isDarkMode ? '#2d2d30' : '#f0f0f2'),
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    onPress={handleSend}
-                    disabled={!inputText.trim() || isStreaming}
                     activeOpacity={0.7}
+                    onPress={() => setSourceModalVisible(true)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: isDarkMode ? '#2d2d30' : '#f0f0f2',
+                      paddingHorizontal: isPad ? 14 : 10,
+                      paddingVertical: isPad ? 8 : 5,
+                      borderRadius: isPad ? 18 : 14,
+                      gap: 6,
+                      borderWidth: 1.5,
+                      borderColor: isDarkMode ? '#3a3a3c' : '#e5e5e7',
+                    }}
                   >
-                    <Ionicons
-                      name="arrow-up-outline"
-                      size={18}
-                      color={(inputText.trim().length > 0 && !isStreaming) ? '#FFFFFF' : colors.textMuted}
-                    />
+                    <Ionicons name="library-outline" size={isPad ? 18 : 14} color={colors.text} />
+                    <Text style={{ fontSize: isPad ? 15 : 13, color: colors.text, fontFamily: 'Nunito-SemiBold' }}>
+                      {selectedCount}
+                    </Text>
+                    <Ionicons name="chevron-down" size={isPad ? 16 : 12} color={colors.textSecondary} />
                   </TouchableOpacity>
-                )}
+
+                  {(isInputFocused || inputText.trim().length > 0) && (
+                    <TouchableOpacity
+                      style={{
+                        width: isPad ? 40 : 32,
+                        height: isPad ? 40 : 32,
+                        borderRadius: isPad ? 20 : 16,
+                        backgroundColor: (inputText.trim().length > 0 && !isStreaming) ? '#3B82F6' : (isDarkMode ? '#2d2d30' : '#f0f0f2'),
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      onPress={handleSend}
+                      disabled={!inputText.trim() || isStreaming}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name="arrow-up-outline"
+                        size={isPad ? 24 : 18}
+                        color={(inputText.trim().length > 0 && !isStreaming) ? '#FFFFFF' : colors.textMuted}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </View>
-          </View>
-        </TouchableWithoutFeedback>
+          </TouchableWithoutFeedback>
+        </View>
       </View>
 
       <SourceSelectionModal
@@ -890,6 +796,6 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
         onToggleMaterial={toggleMaterial}
         onSelectAll={selectAllMaterials}
       />
-    </KeyboardAvoidingView >
+    </KeyboardAvoidingView>
   );
 };

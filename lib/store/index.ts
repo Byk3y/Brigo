@@ -92,6 +92,7 @@ export const useStore = create<StoreWithHydration>()(
         pendingPetName: state.pendingPetName,
         playbackPositions: state.playbackPositions,
         dailyTasks: state.dailyTasks,
+        foundationalTasks: state.foundationalTasks, // Persist foundational tasks to prevent empty flash
         taskProgress: state.taskProgress,
         themeMode: state.themeMode,
         // User profile persistence

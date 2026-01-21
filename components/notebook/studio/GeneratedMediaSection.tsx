@@ -233,16 +233,14 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
         </View>
       ) : (
         <>
-          {/* Grid Container for Media Items on iPad */}
+          {/* Container for Media Items - Single Column on both mobile and iPad */}
           <View style={{
-            flexDirection: isPad ? 'row' : 'column',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            gap: isPad ? 20 : 0
+            flexDirection: 'column',
+            gap: isPad ? 12 : 0
           }}>
             {/* Generating States at the TOP */}
             {generatingType === 'flashcards' && (
-              <View style={{ width: isPad ? '48.5%' : '100%', marginBottom: isPad ? 0 : 10 }}>
+              <View style={{ width: '100%', marginBottom: isPad ? 0 : 10 }}>
                 <StudioMediaItem
                   icon="albums-outline"
                   iconColor="#737373"
@@ -255,7 +253,7 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
             )}
 
             {generatingType === 'quiz' && (
-              <View style={{ width: isPad ? '48.5%' : '100%', marginBottom: isPad ? 0 : 10 }}>
+              <View style={{ width: '100%', marginBottom: isPad ? 0 : 10 }}>
                 <StudioMediaItem
                   icon="help-circle-outline"
                   iconColor="#737373"
@@ -268,7 +266,7 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
             )}
 
             {generatingType === 'audio' && (
-              <View style={{ width: isPad ? '48.5%' : '100%', marginBottom: isPad ? 0 : 10 }}>
+              <View style={{ width: '100%', marginBottom: isPad ? 0 : 10 }}>
                 <StudioMediaItem
                   icon="stats-chart"
                   iconColor="#737373"
@@ -281,7 +279,7 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
             )}
 
             {generatingType === 'prediction' && !hasProcessingPrediction && (
-              <View style={{ width: isPad ? '48.5%' : '100%', marginBottom: isPad ? 0 : 10 }}>
+              <View style={{ width: '100%', marginBottom: isPad ? 0 : 10 }}>
                 <StudioMediaItem
                   icon="bulb-outline"
                   iconColor="#737373"
@@ -295,7 +293,7 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
 
             {/* Sorted Media Items (newest first) */}
             {sortedMediaItems.map(item => (
-              <View key={item.data.id} style={{ width: isPad ? '48.5%' : '100%', marginBottom: isPad ? 0 : 10 }}>
+              <View key={item.data.id} style={{ width: '100%', marginBottom: isPad ? 0 : 10 }}>
                 {renderMediaItem(item)}
               </View>
             ))}

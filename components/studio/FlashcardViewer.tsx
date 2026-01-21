@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Dimensions, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -34,8 +34,9 @@ interface FlashcardViewerProps {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 80;
-const CARD_HEIGHT = SCREEN_HEIGHT * 0.58;
+const isPad = Platform.OS === 'ios' && Platform.isPad;
+const CARD_WIDTH = isPad ? Math.min(SCREEN_WIDTH - 200, 800) : SCREEN_WIDTH - 80;
+const CARD_HEIGHT = isPad ? Math.min(SCREEN_HEIGHT * 0.65, 900) : SCREEN_HEIGHT * 0.58;
 
 export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   flashcards,
@@ -229,18 +230,18 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: isPad ? 40 : 24, paddingVertical: isPad ? 32 : 16 }}>
         {/* Header */}
         <TouchableOpacity
           onPress={onClose}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.icon} />
+          <Ionicons name="arrow-back" size={isPad ? 32 : 24} color={colors.icon} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginHorizontal: 16 }}>
           <Text
             style={{
-              fontSize: 18,
+              fontSize: isPad ? 22 : 18,
               fontFamily: 'Nunito-Medium',
               color: colors.text,
               textAlign: 'center'
@@ -250,7 +251,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
             {title} Flashcards
           </Text>
         </View>
-        <View style={{ width: 24 }} />{/* Spacer to balance the back arrow for centering */}
+        <View style={{ width: isPad ? 32 : 24 }} />{/* Spacer to balance the back arrow for centering */}
       </View>
 
       {/* Card Container */}
@@ -277,8 +278,8 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
                   {currentCard.question}
                 </Text>
               </View>
-              <View style={{ paddingBottom: 32, alignItems: 'center' }}>
-                <Text style={{ fontSize: 14, color: '#a1a1aa' }}>
+              <View style={{ paddingBottom: isPad ? 40 : 32, alignItems: 'center' }}>
+                <Text style={{ fontSize: isPad ? 16 : 14, color: '#a1a1aa', fontFamily: 'Nunito-Medium' }}>
                   See answer
                 </Text>
               </View>
@@ -296,14 +297,19 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
               <View style={styles.answerTag}>
                 <Text style={styles.answerTagText}>Answer</Text>
               </View>
-              <View style={{ flex: 1, paddingHorizontal: 40, paddingVertical: 64 }}>
+              <View style={{ flex: 1, paddingHorizontal: isPad ? 60 : 40, paddingVertical: isPad ? 80 : 64 }}>
                 <Text style={styles.answerText}>
                   {currentCard.answer}
                 </Text>
 
                 {!!currentCard.explanation && (
-                  <View style={{ marginTop: 24, paddingTop: 24, borderTopWidth: 1, borderTopColor: '#525252' }}>
-                    <Text style={{ fontSize: 16, color: '#d4d4d8', lineHeight: 24 }}>
+                  <View style={{ marginTop: isPad ? 32 : 24, paddingTop: isPad ? 32 : 24, borderTopWidth: 1, borderTopColor: '#525252' }}>
+                    <Text style={{
+                      fontSize: isPad ? 18 : 16,
+                      color: '#d4d4d8',
+                      lineHeight: isPad ? 28 : 24,
+                      fontFamily: 'Nunito-Regular'
+                    }}>
                       {currentCard.explanation}
                     </Text>
                   </View>
@@ -320,14 +326,14 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
       </View>
 
       {/* Navigation */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 48, paddingBottom: 48 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: isPad ? 80 : 48, paddingBottom: isPad ? 64 : 48 }}>
         <TouchableOpacity
           onPress={goToPrevious}
           disabled={currentIndex === 0}
           style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
+            width: isPad ? 72 : 56,
+            height: isPad ? 72 : 56,
+            borderRadius: isPad ? 36 : 28,
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 1,
@@ -337,12 +343,12 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
         >
           <Ionicons
             name="arrow-back"
-            size={24}
+            size={isPad ? 32 : 24}
             color={currentIndex === 0 ? colors.textMuted : '#3b82f6'}
           />
         </TouchableOpacity>
 
-        <Text style={{ fontSize: 18, color: colors.text, fontFamily: 'Nunito-Medium', minWidth: 80, textAlign: 'center' }}>
+        <Text style={{ fontSize: isPad ? 24 : 18, color: colors.text, fontFamily: 'Nunito-Medium', minWidth: isPad ? 120 : 80, textAlign: 'center' }}>
           {currentIndex + 1} / {flashcards.length}
         </Text>
 
@@ -350,9 +356,9 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
           onPress={goToNext}
           disabled={currentIndex === flashcards.length - 1}
           style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
+            width: isPad ? 72 : 56,
+            height: isPad ? 72 : 56,
+            borderRadius: isPad ? 36 : 28,
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 1,
@@ -362,7 +368,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
         >
           <Ionicons
             name="arrow-forward"
-            size={24}
+            size={isPad ? 32 : 24}
             color={currentIndex === flashcards.length - 1 ? colors.textMuted : '#3b82f6'}
           />
         </TouchableOpacity>
@@ -376,11 +382,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: 32,
+    borderRadius: isPad ? 44 : 32,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
-    shadowRadius: 12,
+    shadowRadius: isPad ? 20 : 12,
     elevation: 10,
     zIndex: 100,
     backfaceVisibility: 'hidden',
@@ -396,16 +402,16 @@ const styles = StyleSheet.create({
     zIndex: -2,
   },
   questionText: {
-    fontSize: 28,
-    lineHeight: 40,
+    fontSize: isPad ? 36 : 28,
+    lineHeight: isPad ? 52 : 40,
     color: '#ffffff',
     textAlign: 'center',
     fontFamily: 'Nunito-Regular',
     letterSpacing: 0.2,
   },
   answerText: {
-    fontSize: 24,
-    lineHeight: 36,
+    fontSize: isPad ? 32 : 24,
+    lineHeight: isPad ? 48 : 36,
     color: '#ffffff',
     fontFamily: 'Nunito-Medium',
     letterSpacing: 0.2,
@@ -415,15 +421,15 @@ const styles = StyleSheet.create({
     top: 16,
     left: 16,
     backgroundColor: 'rgba(79, 91, 213, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: isPad ? 16 : 12,
+    paddingVertical: isPad ? 8 : 6,
+    borderRadius: isPad ? 16 : 12,
     borderWidth: 1,
     borderColor: 'rgba(79, 91, 213, 0.4)',
     zIndex: 10,
   },
   answerTagText: {
-    fontSize: 12,
+    fontSize: isPad ? 15 : 12,
     color: '#818cf8',
     fontFamily: 'Nunito-SemiBold',
     letterSpacing: 0.5,

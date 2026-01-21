@@ -100,6 +100,10 @@ export const useStore = create<StoreWithHydration>()(
         userProfileSyncedAt: state.userProfileSyncedAt,
         flashcardsStudied: state.flashcardsStudied,
         audioSettings: state.audioSettings,
+        // Walkthrough state persistence
+        hasSeenHomeWalkthrough: state.hasSeenHomeWalkthrough,
+        hasSeenNotebookWalkthrough: state.hasSeenNotebookWalkthrough,
+        hasSeenStudioWalkthrough: state.hasSeenStudioWalkthrough,
         // Add other persistent state here as needed
       }),
       migrate: (persistedState: any, version: number) => {

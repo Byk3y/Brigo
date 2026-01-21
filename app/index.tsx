@@ -60,22 +60,21 @@ export default function HomeScreen() {
 
   // Walkthrough - start for first-time users
   const { start: startWalkthrough } = useSpotlightTour();
+  const { _hasHydrated } = useStore();
 
   // Start walkthrough when user lands on home for first time
   useEffect(() => {
-    if (!authUser || !hasCompletedOnboarding || hasSeenHomeWalkthrough) return;
+    if (!authUser || !hasCompletedOnboarding || !isInitialized || !_hasHydrated || hasSeenHomeWalkthrough) return;
 
     // Delay to ensure components are mounted
     const timer = setTimeout(() => {
-      if (__DEV__) console.log('[Walkthrough] Starting home walkthrough...');
       startWalkthrough();
-      // Mark as seen immediately when started, or we can do it on completion
-      // For now, let's mark it as true so it doesn't trigger again if they navigate away mid-tour
+      // Mark as seen immediately so it doesn't re-trigger if they navigate away
       setHomeWalkthroughSeen();
-    }, 2000);
+    }, 1500);
 
     return () => clearTimeout(timer);
-  }, [authUser, hasCompletedOnboarding, hasSeenHomeWalkthrough, startWalkthrough, setHomeWalkthroughSeen]);
+  }, [authUser, hasCompletedOnboarding, isInitialized, _hasHydrated, hasSeenHomeWalkthrough, startWalkthrough, setHomeWalkthroughSeen]);
 
   // Custom Hook for creation logic
   const {

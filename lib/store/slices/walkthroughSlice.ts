@@ -27,79 +27,26 @@ export const createWalkthroughSlice: StateCreator<
     [],
     [],
     WalkthroughSlice
-> = (set, get) => ({
-    // Initial state - all false, will be loaded from storage
+> = (set) => ({
+    // Initial state
     hasSeenHomeWalkthrough: false,
     hasSeenNotebookWalkthrough: false,
     hasSeenStudioWalkthrough: false,
 
-    // Mark home walkthrough as seen and persist
-    setHomeWalkthroughSeen: async () => {
-        set({ hasSeenHomeWalkthrough: true });
-        try {
-            const current = await AsyncStorage.getItem(WALKTHROUGH_STORAGE_KEY);
-            const state = current ? JSON.parse(current) : {};
-            state.hasSeenHomeWalkthrough = true;
-            await AsyncStorage.setItem(WALKTHROUGH_STORAGE_KEY, JSON.stringify(state));
-        } catch (error) {
-            console.error('Failed to persist home walkthrough state:', error);
-        }
-    },
+    // Actions - handled by persist middleware in root store
+    setHomeWalkthroughSeen: () => set({ hasSeenHomeWalkthrough: true }),
+    setNotebookWalkthroughSeen: () => set({ hasSeenNotebookWalkthrough: true }),
+    setStudioWalkthroughSeen: () => set({ hasSeenStudioWalkthrough: true }),
 
-    // Mark notebook walkthrough as seen and persist
-    setNotebookWalkthroughSeen: async () => {
-        set({ hasSeenNotebookWalkthrough: true });
-        try {
-            const current = await AsyncStorage.getItem(WALKTHROUGH_STORAGE_KEY);
-            const state = current ? JSON.parse(current) : {};
-            state.hasSeenNotebookWalkthrough = true;
-            await AsyncStorage.setItem(WALKTHROUGH_STORAGE_KEY, JSON.stringify(state));
-        } catch (error) {
-            console.error('Failed to persist notebook walkthrough state:', error);
-        }
-    },
-
-    // Mark studio walkthrough as seen and persist
-    setStudioWalkthroughSeen: async () => {
-        set({ hasSeenStudioWalkthrough: true });
-        try {
-            const current = await AsyncStorage.getItem(WALKTHROUGH_STORAGE_KEY);
-            const state = current ? JSON.parse(current) : {};
-            state.hasSeenStudioWalkthrough = true;
-            await AsyncStorage.setItem(WALKTHROUGH_STORAGE_KEY, JSON.stringify(state));
-        } catch (error) {
-            console.error('Failed to persist studio walkthrough state:', error);
-        }
-    },
-
-    // Load walkthrough state from storage on app start
-    loadWalkthroughState: async () => {
-        try {
-            const stored = await AsyncStorage.getItem(WALKTHROUGH_STORAGE_KEY);
-            if (stored) {
-                const state = JSON.parse(stored);
-                set({
-                    hasSeenHomeWalkthrough: state.hasSeenHomeWalkthrough || false,
-                    hasSeenNotebookWalkthrough: state.hasSeenNotebookWalkthrough || false,
-                    hasSeenStudioWalkthrough: state.hasSeenStudioWalkthrough || false,
-                });
-            }
-        } catch (error) {
-            console.error('Failed to load walkthrough state:', error);
-        }
-    },
+    // Redundant - kept for type compatibility but does nothing manually now
+    loadWalkthroughState: async () => { },
 
     // Reset for testing purposes
-    resetAllWalkthroughs: async () => {
+    resetAllWalkthroughs: () => {
         set({
             hasSeenHomeWalkthrough: false,
             hasSeenNotebookWalkthrough: false,
             hasSeenStudioWalkthrough: false,
         });
-        try {
-            await AsyncStorage.removeItem(WALKTHROUGH_STORAGE_KEY);
-        } catch (error) {
-            console.error('Failed to reset walkthrough state:', error);
-        }
     },
 });

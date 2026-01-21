@@ -19,17 +19,17 @@ import { StudioWalkthroughTooltip } from '@/lib/walkthrough/WalkthroughTooltip';
 // Inner component to trigger the tour
 const StudioTourTrigger = () => {
   const { start } = useSpotlightTour();
-  const { hasSeenStudioWalkthrough, setStudioWalkthroughSeen } = useStore();
+  const { hasSeenStudioWalkthrough, setStudioWalkthroughSeen, _hasHydrated } = useStore();
 
   useEffect(() => {
-    if (!hasSeenStudioWalkthrough) {
+    if (_hasHydrated && !hasSeenStudioWalkthrough) {
       const timer = setTimeout(() => {
         start();
         setStudioWalkthroughSeen();
-      }, 1500);
+      }, 1000); // Shorter delay since they've already been the notebook for a bit
       return () => clearTimeout(timer);
     }
-  }, [hasSeenStudioWalkthrough]);
+  }, [hasSeenStudioWalkthrough, _hasHydrated]);
 
   return null;
 };

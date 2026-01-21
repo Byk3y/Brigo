@@ -4,6 +4,7 @@
 
 import React, { memo, useMemo } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ImageSourcePropType } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { MotiViewCompat as MotiView } from '@/components/MotiViewCompat';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -40,74 +41,28 @@ interface PetDisplayProps {
  * FieryStreakNumber - Memoized sub-component to handle heavy fire animations
  * isolated from the pet's mounting logic.
  */
-const FieryStreakNumber = memo(({ streak }: { streak: number }) => {
+const FieryStreakNumber = memo(({ streak, isDying }: { streak: number, isDying: boolean }) => {
     return (
         <View style={styles.fieryTextContainer}>
-            {/* Layer 1: Outer Ember/Deep Heat (Bottom) */}
-            <MotiView
-                animate={{
-                    opacity: [0.6, 1, 0.7],
-                    scale: [1, 1.05, 1],
-                }}
-                transition={{
-                    type: 'timing',
-                    duration: 2000,
-                    loop: true,
-                    easing: Easing.bezier(0.4, 0, 0.6, 1),
-                }}
-                style={StyleSheet.absoluteFill}
+            <LottieView
+                source={require('@/assets/animations/fire.json')}
+                autoPlay
+                loop
+                style={[
+                    styles.lottieIcon,
+                    isDying && { opacity: 0.3 } // Dim the fire when dying/lost
+                ]}
+            />
+            <Text
+                style={[
+                    styles.streakValue,
+                    { color: isDying ? '#9CA3AF' : '#FF5F06' } // Gray out the number when dying/lost
+                ]}
+                adjustsFontSizeToFit
+                numberOfLines={1}
             >
-                <Text
-                    style={[styles.streakValue, styles.emberLayer]}
-                    adjustsFontSizeToFit
-                    numberOfLines={1}
-                >
-                    {streak}
-                </Text>
-            </MotiView>
-
-            {/* Layer 2: Main Flame Body (Middle) */}
-            <MotiView
-                animate={{
-                    opacity: [0.8, 1, 0.9],
-                    scale: [1, 1.02, 1],
-                }}
-                transition={{
-                    type: 'timing',
-                    duration: 1200,
-                    loop: true,
-                    delay: 200,
-                }}
-                style={StyleSheet.absoluteFill}
-            >
-                <Text
-                    style={[styles.streakValue, styles.flameLayer]}
-                    adjustsFontSizeToFit
-                    numberOfLines={1}
-                >
-                    {streak}
-                </Text>
-            </MotiView>
-
-            {/* Layer 3: Hot Core (Top) */}
-            <MotiView
-                animate={{
-                    opacity: [1, 0.9, 1],
-                }}
-                transition={{
-                    type: 'timing',
-                    duration: 800,
-                    loop: true,
-                }}
-            >
-                <Text
-                    style={[styles.streakValue, styles.coreLayer]}
-                    adjustsFontSizeToFit
-                    numberOfLines={1}
-                >
-                    {streak}
-                </Text>
-            </MotiView>
+                {streak}
+            </Text>
         </View>
     );
 });
@@ -199,7 +154,7 @@ export const PetDisplay = memo(({
                     )}
                 </View>
 
-                <FieryStreakNumber streak={streak} />
+                <FieryStreakNumber streak={streak} isDying={Boolean(isDying)} />
             </View>
 
             <View style={styles.petCharacterContainer}>
@@ -360,28 +315,20 @@ const styles = StyleSheet.create({
     },
     streakValue: {
         fontSize: 72,
-        fontWeight: '900',
+        fontFamily: 'Nunito-Bold',
         letterSpacing: -3,
+        marginLeft: -15, // Pull tight to the large flame
+        paddingBottom: 0, // Lowered to the absolute baseline
     },
     fieryTextContainer: {
-        height: 80,
-        justifyContent: 'center',
-        position: 'relative',
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        height: 100,
+        marginLeft: -15,
     },
-    emberLayer: {
-        color: '#FF4500',
-        textShadowColor: '#EA580C',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 15, // Reduced slightly for perf
-    },
-    flameLayer: {
-        color: '#FFCC00',
-        textShadowColor: '#FFD700',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 8, // Reduced slightly for perf
-    },
-    coreLayer: {
-        color: '#FFF9E5',
+    lottieIcon: {
+        width: 100,
+        height: 100,
     },
     petCharacterContainer: {
         alignItems: 'center',

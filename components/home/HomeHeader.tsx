@@ -7,6 +7,7 @@ import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { generateGradientFromString, getAvatarUrl } from '@/lib/utils/avatarGradient';
 import { SvgUri } from 'react-native-svg';
 import { BrigoLogo } from '../BrigoLogo';
+import { StreakCount } from './StreakCount';
 
 export const HomeHeader: React.FC = () => {
     const router = useRouter();
@@ -36,6 +37,7 @@ export const HomeHeader: React.FC = () => {
         }}>
             <BrigoLogo size={38} textColor={colors.text} />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <StreakCount />
                 <TouchableOpacity
                     onPress={handleProfilePress}
                     activeOpacity={0.8}

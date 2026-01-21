@@ -7,8 +7,10 @@ import {
     StyleSheet,
     Alert,
     Share,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ResponsiveContainer from '@/lib/components/ResponsiveContainer';
 import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
 import { MathMarkdown } from './MathMarkdown';
@@ -17,6 +19,8 @@ import * as Clipboard from 'expo-clipboard';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { useFeedback } from '@/lib/feedback';
 import type { ExamPrediction, PredictedQuestion } from '@/lib/store/types';
+
+const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 interface PredictionViewerProps {
     prediction: ExamPrediction;
@@ -134,8 +138,8 @@ export const PredictionViewer: React.FC<PredictionViewerProps> = ({ prediction, 
     const markdownStyles = useMemo(() => ({
         body: {
             color: colors.text,
-            fontSize: 15,
-            lineHeight: 22,
+            fontSize: isPad ? 18 : 15,
+            lineHeight: isPad ? 26 : 22,
             fontFamily: 'Nunito-Regular',
         },
         bullet_list: {
@@ -163,7 +167,7 @@ export const PredictionViewer: React.FC<PredictionViewerProps> = ({ prediction, 
     }), [colors, isDarkMode]);
 
     const renderHeader = () => (
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View style={[styles.header, { borderBottomColor: colors.border, paddingHorizontal: isPad ? 32 : 16 }]}>
             <TouchableOpacity
                 onPress={() => {
                     play('tap');
@@ -172,13 +176,13 @@ export const PredictionViewer: React.FC<PredictionViewerProps> = ({ prediction, 
                 style={styles.closeButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-                <Ionicons name="chevron-back" size={26} color={colors.text} />
+                <Ionicons name="chevron-back" size={isPad ? 30 : 26} color={colors.text} />
             </TouchableOpacity>
             <View style={styles.headerCenter}>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>
+                <Text style={[styles.headerTitle, { color: colors.text, fontSize: isPad ? 22 : 17 }]}>
                     {prediction.title}
                 </Text>
-                <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+                <Text style={[styles.headerSubtitle, { color: colors.textSecondary, fontSize: isPad ? 16 : 13 }]}>
                     {predictions.length} Predicted Question{predictions.length !== 1 ? 's' : ''}
                 </Text>
             </View>
@@ -187,7 +191,7 @@ export const PredictionViewer: React.FC<PredictionViewerProps> = ({ prediction, 
                 style={styles.shareButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-                <Ionicons name="share-outline" size={22} color={colors.text} />
+                <Ionicons name="share-outline" size={isPad ? 26 : 22} color={colors.text} />
             </TouchableOpacity>
         </View>
     );
@@ -295,16 +299,18 @@ export const PredictionViewer: React.FC<PredictionViewerProps> = ({ prediction, 
 
         return (
             <View style={styles.prioritySection}>
-                <View style={styles.priorityHeader}>
-                    <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
-                    <Text style={[styles.priorityTitle, { color: colors.text }]}>
-                        {title}
-                    </Text>
-                    <Text style={[styles.priorityCount, { color: colors.textMuted }]}>
-                        {questions.length}
-                    </Text>
-                </View>
-                {questions.map((q) => renderQuestionCard(q, priority))}
+                <ResponsiveContainer maxWidth={isPad ? 900 : 500} withPadding={true}>
+                    <View style={styles.priorityHeader}>
+                        <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+                        <Text style={[styles.priorityTitle, { color: colors.text, fontSize: isPad ? 18 : 14 }]}>
+                            {title}
+                        </Text>
+                        <Text style={[styles.priorityCount, { color: colors.textMuted, fontSize: isPad ? 16 : 13 }]}>
+                            {questions.length}
+                        </Text>
+                    </View>
+                    {questions.map((q) => renderQuestionCard(q, priority))}
+                </ResponsiveContainer>
             </View>
         );
     };
@@ -325,11 +331,13 @@ export const PredictionViewer: React.FC<PredictionViewerProps> = ({ prediction, 
                         {renderPrioritySection('Lower Priority', groupedPredictions.low, 'low')}
 
                         {/* Disclaimer footer */}
-                        <View style={[styles.disclaimerContainer, { backgroundColor: colors.surfaceAlt }]}>
-                            <Text style={[styles.disclaimerText, { color: colors.textMuted }]}>
-                                Heads up: Brigo is smart, but not psychic! Use these as focus areas while still covering all your bases. Good luck! 🍀
-                            </Text>
-                        </View>
+                        <ResponsiveContainer maxWidth={isPad ? 900 : 500} withPadding={true}>
+                            <View style={[styles.disclaimerContainer, { backgroundColor: colors.surfaceAlt }]}>
+                                <Text style={[styles.disclaimerText, { color: colors.textMuted, fontSize: isPad ? 16 : 13, lineHeight: isPad ? 24 : 20 }]}>
+                                    Heads up: Brigo is smart, but not psychic! Use these as focus areas while still covering all your bases. Good luck! 🍀
+                                </Text>
+                            </View>
+                        </ResponsiveContainer>
                     </>
                 ) : (
                     <View style={styles.emptyState}>
@@ -409,9 +417,8 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     questionCard: {
-        marginHorizontal: 16,
         marginBottom: 10,
-        borderRadius: 14,
+        borderRadius: isPad ? 18 : 14,
         borderWidth: 1,
         overflow: 'hidden',
         flexDirection: 'row',
@@ -428,9 +435,9 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
     },
     typeIcon: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
+        width: isPad ? 36 : 28,
+        height: isPad ? 36 : 28,
+        borderRadius: isPad ? 10 : 8,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
@@ -441,9 +448,9 @@ const styles = StyleSheet.create({
     },
     questionText: {
         flex: 1,
-        fontSize: 15,
+        fontSize: isPad ? 20 : 15,
         fontFamily: 'Outfit-Medium',
-        lineHeight: 22,
+        lineHeight: isPad ? 28 : 22,
     },
     answerContainer: {
         marginTop: 14,
@@ -457,7 +464,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     answerLabel: {
-        fontSize: 11,
+        fontSize: isPad ? 14 : 11,
         fontFamily: 'SpaceGrotesk-Bold',
         color: '#9333ea',
         textTransform: 'uppercase',
@@ -481,10 +488,9 @@ const styles = StyleSheet.create({
         marginTop: 12,
     },
     disclaimerContainer: {
-        marginHorizontal: 16,
         marginTop: 8,
         marginBottom: 20,
-        padding: 16,
+        padding: isPad ? 24 : 16,
         borderRadius: 12,
     },
     disclaimerText: {

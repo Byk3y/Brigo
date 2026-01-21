@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Platform } from 'react-native';
 import { NotebookCard } from '@/components/NotebookCard';
 import { LimitedAccessBanner } from '@/components/upgrade/LimitedAccessBanner';
 import { StreakFreezeBanner } from '@/components/home/StreakFreezeBanner';
@@ -53,6 +53,7 @@ export function NotebookList({
 }: NotebookListProps) {
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
+  const isPad = Platform.OS === 'ios' && Platform.isPad;
 
   return (
     <ScrollView
@@ -74,7 +75,7 @@ export function NotebookList({
         />
       }
     >
-      <ResponsiveContainer>
+      <ResponsiveContainer maxWidth={isPad ? 900 : 500}>
         {isRefreshing && (
           <View style={{ alignItems: 'center', paddingVertical: 12 }}>
             <TikTokLoader size={10} color="#6366f1" containerWidth={60} />
@@ -100,19 +101,20 @@ export function NotebookList({
           />
         )}
 
-        {/* Add Notebook Card (Empty State) */}
-        {notebooks.length === 0 && !isRefreshing && (
-          <AddNotebookCard onPress={onCreateNotebook} />
-        )}
-
         {/* Notebook Cards */}
-        {notebooks.map((notebook) => (
-          <NotebookCard
-            key={notebook.id}
-            notebook={notebook}
-            onPress={() => onNotebookPress(notebook.id)}
-          />
-        ))}
+        <View style={isPad ? { flexDirection: 'row', flexWrap: 'wrap', gap: 20 } : null}>
+          {/* Add Notebook Card (Always on iPad, or if empty on mobile) */}
+          {((notebooks.length === 0 && !isRefreshing) || isPad) && (
+            <AddNotebookCard onPress={onCreateNotebook} />
+          )}
+          {notebooks.map((notebook) => (
+            <NotebookCard
+              key={notebook.id}
+              notebook={notebook}
+              onPress={() => onNotebookPress(notebook.id)}
+            />
+          ))}
+        </View>
       </ResponsiveContainer>
     </ScrollView>
   );

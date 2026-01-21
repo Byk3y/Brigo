@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { MotiView } from 'moti';
 import { PetNameEditor } from './PetNameEditor';
 import { useTheme } from '@/lib/ThemeContext';
 
@@ -19,13 +20,13 @@ export function PetInfo({ name, points, onNameChange }: PetInfoProps) {
     // Calculate progress within current stage (0-100 points per stage)
     // Handle edge case: at exactly 100, 200, etc., show 100% progress
     const pointsInStage = points % 100;
-    const progressPercentage = pointsInStage === 0 && points > 0 
+    const progressPercentage = pointsInStage === 0 && points > 0
         ? 100  // At stage boundary (100, 200, etc.), show 100%
         : (pointsInStage / 100) * 100;
     const pointsToNext = pointsInStage === 0 && points > 0
         ? 0  // At stage boundary, already at next stage
         : 100 - pointsInStage;
-    
+
     // At the bottom of gradient (near dark area), use light text in dark mode
     const textOnGradient = isDarkMode ? '#E0E0E0' : '#555555';
 
@@ -41,8 +42,15 @@ export function PetInfo({ name, points, onNameChange }: PetInfoProps) {
                         styles.xpBarBackground,
                         { backgroundColor: 'rgba(255, 255, 255, 0.5)' }
                     ]}>
-                        <View
-                            style={[styles.xpBarFill, { width: `${progressPercentage}%` }]}
+                        <MotiView
+                            animate={{ width: `${progressPercentage}%` }}
+                            transition={{
+                                type: 'spring',
+                                damping: 15,
+                                stiffness: 90,
+                                mass: 1,
+                            } as any}
+                            style={styles.xpBarFill}
                         />
                     </View>
                     <Text style={[styles.xpText, { color: textOnGradient }]}>

@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useStore } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { generateGradientFromString, getAvatarUrl } from '@/lib/utils/avatarGradient';
-import { SvgUri } from 'react-native-svg';
+import { Image } from 'expo-image';
 import { BrigoLogo } from '../BrigoLogo';
 import { StreakCount } from './StreakCount';
 
@@ -53,10 +53,12 @@ export const HomeHeader: React.FC = () => {
                         elevation: 4,
                     }}
                 >
-                    <SvgUri
-                        uri={avatarUrl}
-                        width="100%"
-                        height="100%"
+                    <Image
+                        source={avatarUrl}
+                        transition={200}
+                        style={{ width: '100%', height: '100%' }}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
                     />
                 </TouchableOpacity>
             </View>

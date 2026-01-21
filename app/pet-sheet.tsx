@@ -20,6 +20,7 @@ import {
 import { useRouter } from 'expo-router';
 import { getLocalDateString } from '@/lib/utils/time';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '@/lib/store';
 import { usePetSheetGestures } from '@/hooks/usePetSheetGestures';

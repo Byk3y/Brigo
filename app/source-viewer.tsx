@@ -11,6 +11,7 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
+    StyleSheet,
     Linking,
     Share,
     Platform,

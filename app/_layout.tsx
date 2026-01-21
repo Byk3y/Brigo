@@ -36,12 +36,10 @@ if (typeof console !== 'undefined' && console.error) {
 
 // Initialize Mixpanel as early as possible (before React renders)
 import { initMixpanel } from '@/lib/services/analyticsService';
-
 initMixpanel();
 
 // Initialize Google Sign-In configuration (OAuth flow - works in Expo Go)
 import { configureGoogleSignIn } from '@/lib/auth/googleSignIn';
-
 configureGoogleSignIn();
 
 import { Stack } from 'expo-router';
@@ -52,7 +50,6 @@ import { ErrorNotificationProvider } from '@/lib/contexts/ErrorNotificationConte
 import { ErrorNotificationContainer } from '@/components/ErrorNotificationContainer';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { InAppNotification } from '@/components/InAppNotification';
-import { SecondarySplashScreen } from '@/components/SecondarySplashScreen';
 import { NetworkProvider } from '@/lib/contexts/NetworkContext';
 import { CelebrationProvider } from '@/lib/contexts/CelebrationContext';
 import { CelebrationOverlay } from '@/components/CelebrationOverlay';
@@ -72,6 +69,9 @@ import { useStreakCheck } from '@/hooks/useStreakCheck';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useWidgetSync } from '@/hooks/useWidgetSync';
 import { useStore } from '@/lib/store';
+import { SpotlightTourProvider } from 'react-native-spotlight-tour';
+import { HOME_TOUR_STEPS } from '@/lib/walkthrough/steps';
+import { HomeWalkthroughTooltip } from '@/lib/walkthrough/WalkthroughTooltip';
 
 // Initialize audio configuration
 import { initAudioConfig } from '@/lib/audioConfig';
@@ -151,7 +151,6 @@ function RootLayoutInner() {
         <Stack.Screen name="auth/magic-link" />
         <Stack.Screen name="auth/callback" />
 
-
         <Stack.Screen name="quiz/[id]" />
         <Stack.Screen
           name="pet-sheet"
@@ -169,11 +168,7 @@ function RootLayoutInner() {
           }}
         />
       </Stack>
-      {/* 
-        Hidden render to force texture decoding of the large pet image.
-        Keep at full render size to hold the decoded texture in memory between opens.
-        Opacity 0 and offscreen positioning prevent visual impact.
-      */}
+
       <Image
         source={require('@/assets/pets/stage-1/full-view.png')}
         style={{ width: 300, height: 300, opacity: 0, position: 'absolute', top: -9999, left: -9999 }}
@@ -218,15 +213,28 @@ export default function RootLayout() {
     <ThemeProvider>
       <NetworkProvider>
         <CelebrationProvider>
-          <ErrorBoundary component="RootLayout">
-            <ErrorNotificationProvider>
-              <ErrorNotificationContainer />
-              <RootLayoutInner />
-            </ErrorNotificationProvider>
-          </ErrorBoundary>
+          <RootLayoutTour />
         </CelebrationProvider>
       </NetworkProvider>
     </ThemeProvider>
   );
 }
 
+function RootLayoutTour() {
+  const { isDarkMode } = useTheme();
+
+  return (
+    <SpotlightTourProvider
+      steps={HOME_TOUR_STEPS}
+      onBackdropPress="continue"
+      backdropColor={isDarkMode ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.6)'}
+    >
+      <ErrorBoundary component="RootLayout">
+        <ErrorNotificationProvider>
+          <ErrorNotificationContainer />
+          <RootLayoutInner />
+        </ErrorNotificationProvider>
+      </ErrorBoundary>
+    </SpotlightTourProvider>
+  );
+}

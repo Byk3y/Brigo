@@ -1,11 +1,8 @@
-/**
- * GenerateOptionsSection - The "Generate new" section with generation buttons
- */
-
 import React from 'react';
 import { View, Text } from 'react-native';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { GenerateOption } from './GenerateOption';
+import { AttachStep } from 'react-native-spotlight-tour';
 
 type GeneratingType = 'flashcards' | 'quiz' | 'audio' | 'prediction' | null;
 
@@ -50,60 +47,73 @@ export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
         )}
       </View>
 
-      {/* Predict Questions Option */}
-      <GenerateOption
-        type="prediction"
-        icon="bulb-outline"
-        color="#9333ea"
-        label="Predict Questions"
-        bgColor="bg-purple-50"
-        textColor="text-purple-600"
-        isGenerating={generatingType === 'prediction'}
-        onPress={() => onGeneratePrediction()}
-        disabled={isDisabled}
-      />
+      {/* Predict Questions Option - Index 0 */}
+      {/* @ts-ignore - Library type mismatch for children */}
+      <AttachStep index={0} fill={true} style={{ width: '100%' }}>
+        <GenerateOption
+          type="prediction"
+          icon="bulb-outline"
+          color="#9333ea"
+          label="Predict Questions"
+          bgColor="bg-purple-50"
+          textColor="text-purple-600"
+          isGenerating={generatingType === 'prediction'}
+          onPress={() => onGeneratePrediction()}
+          disabled={isDisabled}
+        />
+      </AttachStep>
 
-      {/* Audio Overview Option */}
-      <GenerateOption
-        type="audio"
-        icon="stats-chart"
-        color="#4f46e5"
-        label="Podcast"
-        bgColor="bg-indigo-50"
-        textColor="text-indigo-600"
-        isGenerating={generatingType === 'audio'}
-        onPress={onGenerateAudio}
-        disabled={isDisabled}
-      />
+      {/* Audio Overview Option - Index 1 */}
+      {/* @ts-ignore - Library type mismatch for children */}
+      <AttachStep index={1} fill={true} style={{ width: '100%' }}>
+        <GenerateOption
+          type="audio"
+          icon="stats-chart"
+          color="#4f46e5"
+          label="Podcast"
+          bgColor="bg-indigo-50"
+          textColor="text-indigo-600"
+          isGenerating={generatingType === 'audio'}
+          onPress={onGenerateAudio}
+          disabled={isDisabled}
+        />
+      </AttachStep>
 
-      {/* Flashcards Option */}
-      <GenerateOption
-        type="flashcards"
-        icon="albums-outline"
-        color="#dc2626"
-        label="Flashcards"
-        bgColor="bg-red-50"
-        textColor="text-red-600"
-        isGenerating={generatingType === 'flashcards'}
-        onPress={onGenerateFlashcards}
-        disabled={isDisabled}
-      />
+      {/* Flashcards Option - Index 2 */}
+      {/* @ts-ignore - Library type mismatch for children */}
+      <AttachStep index={2} fill={true} style={{ width: '100%' }}>
+        <GenerateOption
+          type="flashcards"
+          icon="albums-outline"
+          color="#dc2626"
+          label="Flashcards"
+          bgColor="bg-red-50"
+          textColor="text-red-600"
+          isGenerating={generatingType === 'flashcards'}
+          onPress={onGenerateFlashcards}
+          disabled={isDisabled}
+        />
+      </AttachStep>
 
-      {/* Quiz Option */}
-      <GenerateOption
-        type="quiz"
-        icon="help-circle-outline"
-        color="#0891b2"
-        label="Quiz"
-        bgColor="bg-cyan-50"
-        textColor="text-cyan-600"
-        isGenerating={generatingType === 'quiz'}
-        onPress={onGenerateQuiz}
-        disabled={isDisabled}
-      />
+      {/* Quiz Option - Index 3 */}
+      {/* @ts-ignore - Library type mismatch for children */}
+      <AttachStep index={3} fill={true} style={{ width: '100%' }}>
+        <GenerateOption
+          type="quiz"
+          icon="help-circle-outline"
+          color="#0891b2"
+          label="Quiz"
+          bgColor="bg-cyan-50"
+          textColor="text-cyan-600"
+          isGenerating={generatingType === 'quiz'}
+          onPress={onGenerateQuiz}
+          disabled={isDisabled}
+        />
+      </AttachStep>
     </View>
   );
 };
+
 
 
 

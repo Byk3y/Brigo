@@ -1,9 +1,3 @@
-/**
- * PetBubble - Draggable pet bubble with edge-snapping
- * Opens the pet half-sheet modal when tapped
- * Can be dragged around the screen and snaps to nearest edge on release
- */
-
 import React, { useEffect } from 'react';
 import { Animated, Image } from 'react-native';
 import { useStore } from '@/lib/store';
@@ -13,70 +7,56 @@ import { usePetBubblePosition } from './PetBubble/hooks/usePetBubblePosition';
 import { usePetBubbleAnimations } from './PetBubble/hooks/usePetBubbleAnimations';
 import { usePetBubbleGestures } from './PetBubble/hooks/usePetBubbleGestures';
 import { getLocalDateString } from '@/lib/utils/time';
+import { AttachStep } from 'react-native-spotlight-tour';
 
 export const PetBubble: React.FC = () => {
   const { user, petState, dailyTasks } = useStore();
-
+  // ... (rest of the logic remains the same)
   // Check if secure_pet task is already completed today
   const today = getLocalDateString();
   const secureTask = dailyTasks?.find(t => t.task_key === 'secure_pet');
 
-  // A task is completed today if the server says 'completed: true' AND:
-  // 1. It has a completed_at that starts with today's date
-  // 2. OR it has NO completed_at (fallback for cached/legacy data) but server says it's completed
   const isSecureTaskCompletedToday = secureTask?.completed && (
     !secureTask.completed_at || secureTask.completed_at.startsWith(today)
   );
 
-  // Check if we have fresh user data loaded (not just defaults)
-  // If user data isn't loaded yet (streak=0 and no last_streak_date), assume at-risk to prevent flash
   const hasUserDataLoaded = user.id !== '' && (user.streak > 0 || user.last_streak_date !== undefined);
 
-  // A streak is "at risk" if it hasn't been secured today and the user has an active streak
   const isAtRisk = hasUserDataLoaded
     ? (user.streak > 0 && user.last_streak_date !== today && !isSecureTaskCompletedToday)
-    : true; // Assume at-risk until we have data (prevents "live then dying" flash)
+    : true;
 
-  // A streak is "lost" if it's 0 but there's a recoverable streak in meta
   const recoverableStreak = user.meta?.last_recoverable_streak ?? 0;
   const isStreakLost = user.streak === 0 && recoverableStreak > 0;
 
   const isDying = isAtRisk || isStreakLost;
 
-  // Get the correct bubble image for current stage
   const bubbleImage = getPetBubbleImage(petState.stage, isDying);
 
-  // Get stage-specific scale to ensure visual consistency
   let stageScale = PET_STAGE_SCALES[petState.stage] || 1.0;
 
-  // Reduce scale for Stage 2 if dying as per user request
   if (isDying && petState.stage === 2) {
-    stageScale = 0.85; // Reduced - water bubble image is large
+    stageScale = 0.85;
   }
 
-  // Increase scale for Stage 1 if dying to make it more visible
   if (isDying && petState.stage === 1) {
-    stageScale = 1.15; // Slightly larger than normal stage 1
+    stageScale = 1.15;
   }
 
   const bubbleSize = PET_SIZE * stageScale;
 
-  // Position management
   const { position, setPosition, positionRef, screenDimensions, insets } = usePetBubblePosition({
     scale: stageScale,
     stage: petState.stage,
     isDying,
   });
 
-  // Animation management
   const animations = usePetBubbleAnimations(position, stageScale);
 
-  // Update animated position when position state changes
   useEffect(() => {
     animations.updatePosition(position);
   }, [position.x, position.y, animations.updatePosition]);
 
-  // Gesture handling
   const { panResponder } = usePetBubbleGestures({
     position,
     positionRef,
@@ -118,28 +98,30 @@ export const PetBubble: React.FC = () => {
       }}
       {...panResponder.panHandlers}
     >
-      <Animated.View
-        style={{
-          transform: [{ scale: animations.scaleAnim }],
-          // Add urgency glow if dying
-          ...(isDying && {
-            shadowColor: '#EF4444',
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.6,
-            shadowRadius: 12,
-            elevation: 8,
-          })
-        }}
-        className="items-center justify-center"
-      >
-        {/* Living Pet Bubble - changes based on stage */}
-        <Image
-          source={bubbleImage}
-          style={{ width: bubbleSize, height: bubbleSize }}
-          resizeMode="contain"
-        />
-      </Animated.View>
+      {/* @ts-ignore - Library type mismatch for children */}
+      <AttachStep index={2}>
+        <Animated.View
+          style={{
+            transform: [{ scale: animations.scaleAnim }],
+            ...(isDying && {
+              shadowColor: '#EF4444',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.6,
+              shadowRadius: 12,
+              elevation: 8,
+            })
+          }}
+          className="items-center justify-center"
+        >
+          <Image
+            source={bubbleImage}
+            style={{ width: bubbleSize, height: bubbleSize }}
+            resizeMode="contain"
+          />
+        </Animated.View>
+      </AttachStep>
     </Animated.View>
   );
 };
+
 

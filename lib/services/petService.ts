@@ -33,8 +33,8 @@ export const petService = {
         return {
           stage: (data as any).current_stage || (data as any).stage,
           points: (data as any).current_points || (data as any).points,
-          name: data.name,
-          mood: data.mood as any,
+          name: data.name || 'Nova',
+          mood: (data.mood as any) || 'happy',
         };
       }
 
@@ -55,7 +55,7 @@ export const petService = {
   savePetState: async (userId: string, petState: PetState): Promise<void> => {
     try {
       // Default pet names that should not overwrite custom names
-      const DEFAULT_PET_NAMES = ['Nova', 'Sparky', 'Pet', 'Bridget', ''];
+      const DEFAULT_PET_NAMES = ['Nova', 'Sparky', 'Pet', 'Bridget', 'Holian', ''];
 
       // 1. Fetch current database state to prevent downgrading progress or losing custom name
       const { data: existing } = await supabase
@@ -83,7 +83,7 @@ export const petService = {
 
         if (dbHasCustomName && incomingIsDefault) {
           console.warn(`[PetService] Name protection: preserving custom name "${dbName}" instead of default "${petState.name}".`);
-          nameToSave = dbName;
+          nameToSave = dbName as string;
         }
       }
 

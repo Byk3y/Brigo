@@ -248,7 +248,7 @@ export default function AuthCallbackScreen() {
           if (pendingPetName) {
             // Check if pet state already exists with a customized name
             // Default names that can be overwritten: 'Nova', 'Sparky', or empty/null
-            const defaultNames = ['Nova', 'Sparky'];
+            const defaultNames = ['Nova', 'Sparky', 'Holian'];
 
             try {
               const { data: existingPetState, error: petStateError } = await (supabase

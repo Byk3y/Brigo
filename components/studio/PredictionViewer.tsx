@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
+import { MathMarkdown } from './MathMarkdown';
 import { MotiView, AnimatePresence } from 'moti';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
@@ -220,13 +221,24 @@ export const PredictionViewer: React.FC<PredictionViewerProps> = ({ prediction, 
                                     color="#9333ea"
                                 />
                             </View>
-                            <Text
-                                style={[styles.questionText, { color: colors.text }]}
-                                numberOfLines={isExpanded ? undefined : 2}
-                            >
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#9333ea' }}>{q.displayNumber}. </Text>
-                                {q.question}
-                            </Text>
+                            <View style={styles.questionContainer}>
+                                <MathMarkdown
+                                    content={`${q.displayNumber}. ${q.question}`}
+                                    horizontal
+                                    markdownStyles={{
+                                        body: {
+                                            ...styles.questionText,
+                                            color: colors.text,
+                                        },
+                                        strong: {
+                                            ...markdownStyles.strong,
+                                        },
+                                        code_inline: {
+                                            ...markdownStyles.code_inline,
+                                        }
+                                    }}
+                                />
+                            </View>
                         </View>
 
                         {/* Expandable answer */}
@@ -249,9 +261,10 @@ export const PredictionViewer: React.FC<PredictionViewerProps> = ({ prediction, 
                                                 <Ionicons name="copy-outline" size={16} color="#9333ea" />
                                             </TouchableOpacity>
                                         </View>
-                                        <Markdown style={markdownStyles}>
-                                            {q.answer}
-                                        </Markdown>
+                                        <MathMarkdown
+                                            content={q.answer}
+                                            markdownStyles={markdownStyles}
+                                        />
                                     </View>
                                 </MotiView>
                             )}
@@ -310,6 +323,13 @@ export const PredictionViewer: React.FC<PredictionViewerProps> = ({ prediction, 
                         {renderPrioritySection('High Priority', groupedPredictions.high, 'high')}
                         {renderPrioritySection('Medium Priority', groupedPredictions.medium, 'medium')}
                         {renderPrioritySection('Lower Priority', groupedPredictions.low, 'low')}
+
+                        {/* Disclaimer footer */}
+                        <View style={[styles.disclaimerContainer, { backgroundColor: colors.surfaceAlt }]}>
+                            <Text style={[styles.disclaimerText, { color: colors.textMuted }]}>
+                                Heads up: Brigo is smart, but not psychic! Use these as focus areas while still covering all your bases. Good luck! 🍀
+                            </Text>
+                        </View>
                     </>
                 ) : (
                     <View style={styles.emptyState}>
@@ -416,6 +436,9 @@ const styles = StyleSheet.create({
         marginRight: 12,
         marginTop: 2,
     },
+    questionContainer: {
+        flex: 1,
+    },
     questionText: {
         flex: 1,
         fontSize: 15,
@@ -456,5 +479,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'SpaceGrotesk-Medium',
         marginTop: 12,
+    },
+    disclaimerContainer: {
+        marginHorizontal: 16,
+        marginTop: 8,
+        marginBottom: 20,
+        padding: 16,
+        borderRadius: 12,
+    },
+    disclaimerText: {
+        fontSize: 13,
+        fontFamily: 'Nunito-Regular',
+        lineHeight: 20,
+        textAlign: 'center',
     },
 });

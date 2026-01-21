@@ -15,7 +15,7 @@ interface GenerateOptionProps {
     disabled: boolean;
 }
 
-export const GenerateOption: React.FC<GenerateOptionProps> = ({
+export const GenerateOption = React.forwardRef<View, GenerateOptionProps>(({
     type,
     icon,
     color,
@@ -23,7 +23,7 @@ export const GenerateOption: React.FC<GenerateOptionProps> = ({
     isGenerating,
     onPress,
     disabled
-}) => {
+}, ref) => {
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
 
@@ -45,6 +45,7 @@ export const GenerateOption: React.FC<GenerateOptionProps> = ({
 
     return (
         <TouchableOpacity
+            ref={ref}
             onPress={onPress}
             disabled={disabled}
             style={{
@@ -55,6 +56,7 @@ export const GenerateOption: React.FC<GenerateOptionProps> = ({
                 flexDirection: 'row',
                 alignItems: 'center',
                 marginBottom: 10,
+                width: '100%',
                 opacity: disabled && !isGenerating ? 0.6 : 1,
             }}
             activeOpacity={0.7}
@@ -81,4 +83,4 @@ export const GenerateOption: React.FC<GenerateOptionProps> = ({
             )}
         </TouchableOpacity>
     );
-};
+});

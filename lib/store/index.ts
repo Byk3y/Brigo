@@ -19,6 +19,7 @@ import { createThemeSlice, type ThemeSlice } from './slices/themeSlice';
 import { createSubscriptionSlice, type SubscriptionSlice } from './slices/subscriptionSlice';
 import { createNotificationSlice, type NotificationSlice } from './slices/notificationSlice';
 import { createAudioSettingsSlice, type AudioSettingsSlice } from './slices/audioSettingsSlice';
+import { createWalkthroughSlice, type WalkthroughSlice } from './slices/walkthroughSlice';
 
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -38,7 +39,8 @@ type AppState = AuthSlice &
   ThemeSlice &
   SubscriptionSlice &
   NotificationSlice &
-  AudioSettingsSlice;
+  AudioSettingsSlice &
+  WalkthroughSlice;
 
 // Add hydration state (not persisted)
 type StoreWithHydration = AppState & {
@@ -65,6 +67,7 @@ export const useStore = create<StoreWithHydration>()(
       ...createSubscriptionSlice(...a),
       ...createNotificationSlice(...a),
       ...createAudioSettingsSlice(...a),
+      ...createWalkthroughSlice(...a),
       _hasHydrated: false,
       _setHasHydrated: (hydrated: boolean) => {
         a[0]({ _hasHydrated: hydrated });

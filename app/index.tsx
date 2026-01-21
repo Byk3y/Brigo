@@ -3,10 +3,11 @@
  * Shows empty state or list of study notebooks
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Alert, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useSegments } from 'expo-router';
+import { useSpotlightTour } from 'react-native-spotlight-tour';
 import { useStore } from '@/lib/store';
 import { useNotebookCreation } from '@/lib/hooks/useNotebookCreation';
 import { PetBubble } from '@/components/PetBubble';
@@ -30,6 +31,7 @@ import { supabase } from '@/lib/supabase';
 
 
 
+
 export default function HomeScreen() {
   const router = useRouter();
   const segments = useSegments();
@@ -47,11 +49,33 @@ export default function HomeScreen() {
     previousStreakForRestore,
     setShowStreakRestoreModal,
     applyStreakFreeze,
+    hasSeenHomeWalkthrough,
+    setHomeWalkthroughSeen,
+    hasCompletedOnboarding,
   } = useStore();
 
   // Theme
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
+
+  // Walkthrough - start for first-time users
+  const { start: startWalkthrough } = useSpotlightTour();
+
+  // Start walkthrough when user lands on home for first time
+  useEffect(() => {
+    if (!authUser || !hasCompletedOnboarding || hasSeenHomeWalkthrough) return;
+
+    // Delay to ensure components are mounted
+    const timer = setTimeout(() => {
+      if (__DEV__) console.log('[Walkthrough] Starting home walkthrough...');
+      startWalkthrough();
+      // Mark as seen immediately when started, or we can do it on completion
+      // For now, let's mark it as true so it doesn't trigger again if they navigate away mid-tour
+      setHomeWalkthroughSeen();
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [authUser, hasCompletedOnboarding, hasSeenHomeWalkthrough, startWalkthrough, setHomeWalkthroughSeen]);
 
   // Custom Hook for creation logic
   const {

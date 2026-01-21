@@ -1,8 +1,10 @@
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { useStore } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { getLocalDateString } from '@/lib/utils/time';
+import { AttachStep } from 'react-native-spotlight-tour';
 
 export const StreakCount: React.FC = () => {
     const { user, dailyTasks } = useStore();
@@ -16,28 +18,34 @@ export const StreakCount: React.FC = () => {
     const today = getLocalDateString();
     const isAtRisk = streakCount > 0 && user?.last_streak_date !== today && !isSecureTaskCompleted;
 
+    // Don't render anything if streak is 0 (nothing to highlight)
     if (streakCount === 0) return null;
 
     return (
-        <View style={styles.container}>
-            <LottieView
-                source={require('../../assets/animations/fire.json')}
-                autoPlay
-                loop
-                style={[
-                    styles.lottie,
-                    isAtRisk && { opacity: 0.3 } // Dim the flame if you haven't studied today
-                ]}
-            />
-            <Text style={[
-                styles.text,
-                { color: isAtRisk ? (isDarkMode ? '#4B5563' : '#9CA3AF') : '#FF5F06' }
-            ]}>
-                {streakCount}
-            </Text>
-        </View>
+        // @ts-ignore - Library type mismatch for children
+        <AttachStep index={3}>
+
+            <View style={styles.container}>
+                <LottieView
+                    source={require('../../assets/animations/fire.json')}
+                    autoPlay
+                    loop
+                    style={[
+                        styles.lottie,
+                        isAtRisk && { opacity: 0.3 } // Dim the flame if you haven't studied today
+                    ]}
+                />
+                <Text style={[
+                    styles.text,
+                    { color: isAtRisk ? (isDarkMode ? '#4B5563' : '#9CA3AF') : '#FF5F06' }
+                ]}>
+                    {streakCount}
+                </Text>
+            </View>
+        </AttachStep>
     );
 };
+
 
 const styles = StyleSheet.create({
     container: {
@@ -60,3 +68,4 @@ const styles = StyleSheet.create({
         paddingBottom: 5, // Lowered from 8 to bring it closer to the floor
     },
 });
+

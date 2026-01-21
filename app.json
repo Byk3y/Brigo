@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.brigo.ai",
-      "buildNumber": "24",
+      "buildNumber": "29",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -83,7 +83,8 @@
       "expo-notifications",
       "expo-localization",
       "expo-audio",
-      "expo-font"
+      "expo-font",
+      "expo-asset"
     ],
     "scheme": "brigo",
     "owner": "francis.dev",

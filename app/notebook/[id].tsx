@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,13 +13,11 @@ import { SourcesTab } from '@/components/notebook/SourcesTab';
 import { ChatTab } from '@/components/notebook/ChatTab';
 import { StudioTab } from '@/components/notebook/StudioTab';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
-// Note: LockedNotebookOverlay removed - all notebooks are now accessible (Library vs Factory model)
 import { NotebookHeader } from '@/components/notebook/NotebookHeader';
 import { NotebookTabBar, type TabType } from '@/components/notebook/NotebookTabBar';
 import { RenameNotebookModal } from '@/components/notebook/RenameNotebookModal';
 import { useNotebookDetail } from '@/hooks/useNotebookDetail';
 import { useNotebookSubscription } from '@/hooks/useNotebookSubscription';
-// Note: useNotebookAccess removed - all notebooks are now accessible
 import { useNotebookActions } from '@/hooks/useNotebookActions';
 import { useMaterialAddition } from '@/lib/hooks/useMaterialAddition';
 import MaterialTypeSelector from '@/components/MaterialTypeSelector';
@@ -27,6 +25,41 @@ import TextInputModal from '@/components/TextInputModal';
 import { TikTokLoader } from '@/components/TikTokLoader';
 import { UpgradeModal } from '@/components/upgrade/UpgradeModal';
 import { useUpgrade } from '@/lib/hooks/useUpgrade';
+import { SpotlightTourProvider, useSpotlightTour } from 'react-native-spotlight-tour';
+import { NOTEBOOK_TOUR_STEPS } from '@/lib/walkthrough/steps';
+import { NotebookWalkthroughTooltip } from '@/lib/walkthrough/WalkthroughTooltip';
+
+// Inner component to trigger the tour
+const NotebookTourTrigger = () => {
+  const { start } = useSpotlightTour();
+  const { hasSeenNotebookWalkthrough, setNotebookWalkthroughSeen } = useStore();
+
+  useEffect(() => {
+    if (!hasSeenNotebookWalkthrough) {
+      const timer = setTimeout(() => {
+        start();
+        setNotebookWalkthroughSeen();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [hasSeenNotebookWalkthrough]);
+
+  return null;
+};
+
+// Wrapper provider for the notebook tour
+const NotebookTourController: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <SpotlightTourProvider
+      steps={NOTEBOOK_TOUR_STEPS}
+      onBackdropPress="continue"
+    >
+      <NotebookTourTrigger />
+      {children}
+    </SpotlightTourProvider>
+  );
+};
+
 
 export default function NotebookDetailScreen() {
   const router = useRouter();
@@ -36,12 +69,11 @@ export default function NotebookDetailScreen() {
   const [triggerQuizGeneration, setTriggerQuizGeneration] = useState(false);
 
   // Set initial tab if provided in params
-  React.useEffect(() => {
+  useEffect(() => {
     if (tab && (tab === 'sources' || tab === 'chat' || tab === 'studio')) {
       setActiveTab(tab as TabType);
     }
   }, [tab]);
-
 
   // Load notebook data
   const { notebook, loading, setNotebook } = useNotebookDetail(id);
@@ -49,9 +81,7 @@ export default function NotebookDetailScreen() {
   // Set up real-time subscription
   useNotebookSubscription(id, setNotebook);
 
-  // Note: Notebook access is no longer locked - all users can access all notebooks
-
-  // Material Addition Logic (Hoisted to parent to survive tab switches)
+  // Material Addition Logic
   const {
     isAddingMaterial,
     handleAudioUpload,
@@ -168,76 +198,78 @@ export default function NotebookDetailScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
-      {/* Header */}
-      <NotebookHeader
-        title={notebook.title}
-        onBack={() => router.back()}
-        onMenuPress={handleMenuPress}
-      />
+      <NotebookTourController>
+        {/* Header */}
+        <NotebookHeader
+          title={notebook.title}
+          onBack={() => router.back()}
+          onMenuPress={handleMenuPress}
+        />
 
-      {/* Tab Content */}
-      <View style={{ flex: 1 }}>
-        {activeTab === 'sources' && (
-          <SourcesTab
-            notebook={notebook}
-            onAddPress={() => setShowMaterialSelector(true)}
-            onCameraPress={handleCameraUpload}
-            onRetryMaterial={handleRetryMaterial}
-            isAddingMaterial={isAddingMaterial}
-          />
-        )}
-        {activeTab === 'chat' && <ChatTab notebook={notebook} onTakeQuiz={handleTakeQuiz} />}
-        {activeTab === 'studio' && (
-          <StudioTab
-            notebook={notebook}
-            onGenerateQuiz={triggerQuizGeneration ? () => { } : undefined}
-          />
-        )}
-      </View>
+        {/* Tab Content */}
+        <View style={{ flex: 1 }}>
+          {activeTab === 'sources' && (
+            <SourcesTab
+              notebook={notebook}
+              onAddPress={() => setShowMaterialSelector(true)}
+              onCameraPress={handleCameraUpload}
+              onRetryMaterial={handleRetryMaterial}
+              isAddingMaterial={isAddingMaterial}
+            />
+          )}
+          {activeTab === 'chat' && <ChatTab notebook={notebook} onTakeQuiz={handleTakeQuiz} />}
+          {activeTab === 'studio' && (
+            <StudioTab
+              notebook={notebook}
+              onGenerateQuiz={triggerQuizGeneration ? () => { } : undefined}
+            />
+          )}
+        </View>
 
-      {/* Tab Bar */}
-      <NotebookTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+        {/* Tab Bar */}
+        <NotebookTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Rename Modal */}
-      <RenameNotebookModal
-        visible={renameModalVisible}
-        value={renameValue}
-        onValueChange={setRenameValue}
-        onSave={handleSaveRename}
-        onDismiss={setRenameModalVisible}
-      />
+        {/* Rename Modal */}
+        <RenameNotebookModal
+          visible={renameModalVisible}
+          value={renameValue}
+          onValueChange={setRenameValue}
+          onSave={handleSaveRename}
+          onDismiss={setRenameModalVisible}
+        />
 
-      {/* Shared Modals for Material Addition */}
-      <MaterialTypeSelector
-        visible={showMaterialSelector}
-        onClose={() => setShowMaterialSelector(false)}
-        onSelectType={handleMaterialTypeSelected}
-        notebookId={id}
-      />
+        {/* Shared Modals for Material Addition */}
+        <MaterialTypeSelector
+          visible={showMaterialSelector}
+          onClose={() => setShowMaterialSelector(false)}
+          onSelectType={handleMaterialTypeSelected}
+          notebookId={id}
+        />
 
-      <TextInputModal
-        visible={showTextInput}
-        type={textInputType}
-        onClose={() => setShowTextInput(false)}
-        onSave={onTextSave}
-      />
+        <TextInputModal
+          visible={showTextInput}
+          type={textInputType}
+          onClose={() => setShowTextInput(false)}
+          onSave={onTextSave}
+        />
 
-      <UpgradeModal
-        visible={showAddUpgradeModal}
-        onDismiss={() => {
-          trackUpgradeModalDismissed('create_attempt');
-          setShowAddUpgradeModal(false);
-        }}
-        source="create_attempt"
-        notebooksCount={notebooks.length}
-        flashcardsStudied={flashcardsStudied}
-        streakDays={user.streak || 0}
-        petName={user.name || 'Sparky'}
-        petLevel={Math.floor((user.streak || 0) / 7) + 1}
-        limitReason={limitReason}
-      />
-
-      {/* Note: Locked Notebook Overlay removed - all notebooks accessible under Library vs Factory model */}
+        <UpgradeModal
+          visible={showAddUpgradeModal}
+          onDismiss={() => {
+            trackUpgradeModalDismissed('create_attempt');
+            setShowAddUpgradeModal(false);
+          }}
+          source="create_attempt"
+          notebooksCount={notebooks.length}
+          flashcardsStudied={flashcardsStudied}
+          streakDays={user.streak || 0}
+          petName={user.name || 'Sparky'}
+          petLevel={Math.floor((user.streak || 0) / 7) + 1}
+          limitReason={limitReason}
+        />
+      </NotebookTourController>
     </SafeAreaView>
   );
 }
+
+

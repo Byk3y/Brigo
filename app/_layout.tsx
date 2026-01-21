@@ -54,6 +54,8 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { InAppNotification } from '@/components/InAppNotification';
 import { SecondarySplashScreen } from '@/components/SecondarySplashScreen';
 import { NetworkProvider } from '@/lib/contexts/NetworkContext';
+import { CelebrationProvider } from '@/lib/contexts/CelebrationContext';
+import { CelebrationOverlay } from '@/components/CelebrationOverlay';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import '../global.css';
 
@@ -205,6 +207,7 @@ function RootLayoutInner() {
 
       <InAppNotification />
       <OfflineBanner />
+      <CelebrationOverlay />
     </View>
   );
 }
@@ -214,12 +217,14 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <NetworkProvider>
-        <ErrorBoundary component="RootLayout">
-          <ErrorNotificationProvider>
-            <ErrorNotificationContainer />
-            <RootLayoutInner />
-          </ErrorNotificationProvider>
-        </ErrorBoundary>
+        <CelebrationProvider>
+          <ErrorBoundary component="RootLayout">
+            <ErrorNotificationProvider>
+              <ErrorNotificationContainer />
+              <RootLayoutInner />
+            </ErrorNotificationProvider>
+          </ErrorBoundary>
+        </CelebrationProvider>
       </NetworkProvider>
     </ThemeProvider>
   );

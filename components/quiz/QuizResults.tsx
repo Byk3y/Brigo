@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { QuizResultsProps } from '@/lib/quiz/types';
 import { RESULTS_COLORS, BUTTON_COLORS } from '@/lib/quiz/constants';
+import { useCelebration } from '@/lib/contexts/CelebrationContext';
 
 export function QuizResults({
   scorePercent,
@@ -28,9 +29,14 @@ export function QuizResults({
   const [displayScore, setDisplayScore] = useState(0);
   const [displayPercent, setDisplayPercent] = useState(0);
   const fadeAnim = useMemo(() => new Animated.Value(0), []);
+  const { triggerCelebration } = useCelebration();
 
   // Animation logic
   useEffect(() => {
+    // Trigger celebration for perfect score
+    if (scorePercent === 100) {
+      triggerCelebration();
+    }
     // Fade in content
     Animated.timing(fadeAnim, {
       toValue: 1,

@@ -34,6 +34,7 @@ import { usePetTasks } from '@/hooks/usePetTasks';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { BrigoLogo } from '@/components/BrigoLogo';
 import { track } from '@/lib/services/analyticsService';
+import { useCelebration } from '@/lib/contexts/CelebrationContext';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -50,6 +51,7 @@ export default function PetSheetScreen() {
   // Theme
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
+  const { triggerCelebration } = useCelebration();
 
   // Pet growth missions - includes both foundational and daily tasks
   const { allTasks, taskProgress, foundationalTasks, loadDailyTasks, loadFoundationalTasks, checkAndAwardTask } = usePetTasks();
@@ -108,6 +110,7 @@ export default function PetSheetScreen() {
         freezes_remaining: user.streak_freezes - 1,
       });
       setHasJustRestored(true);
+      triggerCelebration();
     }
   };
 

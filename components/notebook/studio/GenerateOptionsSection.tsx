@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { GenerateOption } from './GenerateOption';
 import { AttachStep } from 'react-native-spotlight-tour';
@@ -23,17 +23,18 @@ export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
   onGeneratePrediction,
   isProcessingSources = false,
 }) => {
+  const isPad = Platform.OS === 'ios' && Platform.isPad;
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
 
   const isDisabled = generatingType !== null || isProcessingSources;
 
   return (
-    <View style={{ paddingHorizontal: 16, paddingVertical: 24 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingHorizontal: 8 }}>
+    <View style={{ paddingHorizontal: isPad ? 24 : 16, paddingVertical: isPad ? 32 : 24 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: isPad ? 20 : 16, paddingHorizontal: 8 }}>
         <Text
           style={{
-            fontSize: 14,
+            fontSize: isPad ? 17 : 14,
             fontWeight: '500',
             color: colors.textSecondary,
           }}
@@ -41,7 +42,7 @@ export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
           Generate new
         </Text>
         {isProcessingSources && (
-          <Text style={{ fontSize: 12, color: '#f59e0b', fontWeight: '600' }}>
+          <Text style={{ fontSize: isPad ? 14 : 12, color: '#f59e0b', fontWeight: '600' }}>
             Wait for sources...
           </Text>
         )}

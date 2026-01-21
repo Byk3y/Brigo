@@ -57,6 +57,7 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
   onDeletePrediction,
   onGeneratePrediction,
 }) => {
+  const isPad = Platform.OS === 'ios' && Platform.isPad;
   const router = useRouter();
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
@@ -213,13 +214,13 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
   };
 
   return (
-    <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+    <View style={{ paddingHorizontal: isPad ? 24 : 16, paddingVertical: 8 }}>
       <Text
         style={{
-          fontSize: 14,
+          fontSize: isPad ? 17 : 14,
           fontWeight: '500',
           color: colors.textSecondary,
-          marginBottom: 16,
+          marginBottom: isPad ? 20 : 16,
           paddingHorizontal: 8,
         }}
       >

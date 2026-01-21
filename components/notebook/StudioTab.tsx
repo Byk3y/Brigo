@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useStore, type Notebook } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
@@ -137,35 +137,43 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
     return <StudioExtractingState />;
   }
 
+  const isPad = Platform.OS === 'ios' && Platform.isPad;
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StudioTourController>
         <ScrollView
           style={{ flex: 1, backgroundColor: colors.background }}
+          contentContainerStyle={{
+            paddingHorizontal: isPad ? 48 : 0,
+            paddingVertical: isPad ? 24 : 0
+          }}
         >
-          <GenerateOptionsSection
-            generatingType={generatingType}
-            onGenerateAudio={handleGenerateAudioOverview}
-            onGenerateFlashcards={handleGenerateFlashcards}
-            onGenerateQuiz={handleGenerateQuiz}
-            onGeneratePrediction={handleGeneratePrediction}
-            isProcessingSources={isProcessingSources}
-          />
+          <View style={{ maxWidth: isPad ? 800 : '100%', alignSelf: 'center', width: '100%' }}>
+            <GenerateOptionsSection
+              generatingType={generatingType}
+              onGenerateAudio={handleGenerateAudioOverview}
+              onGenerateFlashcards={handleGenerateFlashcards}
+              onGenerateQuiz={handleGenerateQuiz}
+              onGeneratePrediction={handleGeneratePrediction}
+              isProcessingSources={isProcessingSources}
+            />
 
-          <GeneratedMediaSection
-            notebookId={notebook.id}
-            notebookTitle={notebook.title}
-            flashcard_sets={flashcard_sets}
-            quizzes={quizzes}
-            audioOverviews={audioOverviews}
-            examPredictions={examPredictions}
-            loading={loading}
-            generatingType={generatingType}
-            audioProgressStage={audioProgress.stage}
-            onDeleteAudio={handleDeleteAudioOverview}
-            onDeletePrediction={handleDeletePrediction}
-            onGeneratePrediction={handleGeneratePrediction}
-          />
+            <GeneratedMediaSection
+              notebookId={notebook.id}
+              notebookTitle={notebook.title}
+              flashcard_sets={flashcard_sets}
+              quizzes={quizzes}
+              audioOverviews={audioOverviews}
+              examPredictions={examPredictions}
+              loading={loading}
+              generatingType={generatingType}
+              audioProgressStage={audioProgress.stage}
+              onDeleteAudio={handleDeleteAudioOverview}
+              onDeletePrediction={handleDeletePrediction}
+              onGeneratePrediction={handleGeneratePrediction}
+            />
+          </View>
         </ScrollView>
       </StudioTourController>
 

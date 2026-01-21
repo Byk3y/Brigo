@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, Alert, Modal, Pressable } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, Alert, Modal, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import type { Notebook, Material } from '@/lib/store';
@@ -31,6 +31,7 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
   onRetryMaterial,
   isAddingMaterial
 }) => {
+  const isPad = Platform.OS === 'ios' && Platform.isPad;
   const router = useRouter();
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
@@ -160,15 +161,17 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
     // Initial extraction state (no materials yet)
     if (notebook.status === 'extracting' && (!notebook.materials || notebook.materials.length === 0)) {
       return (
-        <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 20 }}>
-          <PreviewSkeleton />
-          <View style={{ marginTop: 24 }}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Current Sources</Text>
-            <View style={[styles.loadingSourceItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <TikTokLoader size={12} color="#6366f1" containerWidth={60} />
-              <Text style={{ color: colors.textSecondary, marginLeft: 12, fontFamily: 'Nunito-Medium' }}>
-                Uploading and analyzing...
-              </Text>
+        <View style={{ flex: 1, paddingHorizontal: isPad ? 48 : 20, paddingTop: isPad ? 32 : 20 }}>
+          <View style={{ maxWidth: isPad ? 800 : '100%', alignSelf: 'center', width: '100%' }}>
+            <PreviewSkeleton />
+            <View style={{ marginTop: isPad ? 32 : 24 }}>
+              <Text style={[styles.sectionTitle, { color: colors.text, fontSize: isPad ? 22 : 18 }]}>Current Sources</Text>
+              <View style={[styles.loadingSourceItem, { backgroundColor: colors.surface, borderColor: colors.border, padding: isPad ? 20 : 16 }]}>
+                <TikTokLoader size={isPad ? 14 : 12} color="#6366f1" containerWidth={isPad ? 80 : 60} />
+                <Text style={{ color: colors.textSecondary, marginLeft: 12, fontSize: isPad ? 17 : 14, fontFamily: 'Nunito-Medium' }}>
+                  Uploading and analyzing...
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -178,169 +181,171 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
     return (
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120, paddingTop: 10 }}
+        contentContainerStyle={{ paddingHorizontal: isPad ? 48 : 20, paddingBottom: 120, paddingTop: isPad ? 30 : 10 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleManualRefresh} tintColor="#6366f1" />
         }
       >
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Sources</Text>
-          </View>
-          {isDeleteMode ? (
-            <TouchableOpacity onPress={handleExitDeleteMode} style={styles.doneButton}>
-              <Text style={styles.doneButtonText}>Done</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={handleMenuPress} style={{ padding: 4 }}>
-              <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Dropdown Menu */}
-        <Modal
-          visible={showMenu}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowMenu(false)}
-        >
-          <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)}>
-            <View style={[
-              styles.menuContainer,
-              {
-                backgroundColor: isDarkMode ? colors.surface : '#FFFFFF',
-                borderColor: colors.border,
-              }
-            ]}>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={handleDeleteModeToggle}
-              >
-                <Ionicons name="trash-outline" size={18} color={colors.text} />
-                <Text style={[styles.menuItemText, { color: colors.text }]}>Delete a source</Text>
+        <View style={{ maxWidth: isPad ? 800 : '100%', alignSelf: 'center', width: '100%' }}>
+          <View style={[styles.header, { marginBottom: isPad ? 32 : 20 }]}>
+            <View style={styles.headerLeft}>
+              <Text style={[styles.sectionTitle, { color: colors.text, fontSize: isPad ? 22 : 18 }]}>Sources</Text>
+            </View>
+            {isDeleteMode ? (
+              <TouchableOpacity onPress={handleExitDeleteMode} style={styles.doneButton}>
+                <Text style={[styles.doneButtonText, { fontSize: isPad ? 17 : 15 }]}>Done</Text>
               </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Modal>
+            ) : (
+              <TouchableOpacity onPress={handleMenuPress} style={{ padding: isPad ? 8 : 4 }}>
+                <Ionicons name="ellipsis-vertical" size={isPad ? 24 : 20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
 
-        <View style={{ gap: 4 }}>
-          {/* Phase A Loading: Uploading (Local State) */}
-          {isAddingMaterial && (
-            <View style={styles.materialItem}>
-              <View style={styles.iconContainer}>
-                <TikTokLoader size={10} color="#6366f1" containerWidth={40} />
-              </View>
-              <View style={{ flex: 1, marginHorizontal: 8 }}>
-                <Text
-                  style={{
-                    fontSize: 17,
-                    fontFamily: 'Nunito-SemiBold',
-                    color: colors.text
-                  }}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
+          {/* Dropdown Menu */}
+          <Modal
+            visible={showMenu}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowMenu(false)}
+          >
+            <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)}>
+              <View style={[
+                styles.menuContainer,
+                {
+                  backgroundColor: isDarkMode ? colors.surface : '#FFFFFF',
+                  borderColor: colors.border,
+                }
+              ]}>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={handleDeleteModeToggle}
                 >
-                  Uploading source...
-                </Text>
+                  <Ionicons name="trash-outline" size={18} color={colors.text} />
+                  <Text style={[styles.menuItemText, { color: colors.text }]}>Delete a source</Text>
+                </TouchableOpacity>
               </View>
-            </View>
-          )}
+            </Pressable>
+          </Modal>
 
-          {/* Phase B Loading: Backend Processing (DB State) */}
-          {notebook.materials && notebook.materials.map((mat, index) => {
-            const isImage = mat.type === 'image' || mat.type === 'photo';
-            const isProcessing = mat.processed === false || mat.status === 'processing';
-            const isFailed = mat.status === 'failed';
-            const hasContent = mat.status === 'processed' || mat.processed === true;
-            const isDeleting = deletingId === mat.id;
-
-            const handleSourcePress = () => {
-              // In delete mode, don't navigate
-              if (isDeleteMode) return;
-              if (isProcessing || isFailed) return;
-
-              // Prevent double-tap navigation
-              if (isNavigatingRef.current) return;
-              isNavigatingRef.current = true;
-
-              // Reset navigation lock after navigation completes
-              setTimeout(() => {
-                isNavigatingRef.current = false;
-              }, 1000);
-
-              // For images, open the image viewer
-              if (isImage) {
-                handleViewImage(mat);
-                return;
-              }
-
-              // For all other sources, open the source content viewer
-              router.push({
-                pathname: '/source-viewer',
-                params: { id: mat.id },
-              });
-            };
-
-            return (
-              <TouchableOpacity
-                key={mat.id || index}
-                onPress={handleSourcePress}
-                activeOpacity={isDeleteMode ? 1 : (hasContent ? 0.7 : 1)}
-                style={[styles.materialItem, { opacity: isDeleting ? 0.5 : 1 }]}
-              >
+          <View style={{ gap: 4 }}>
+            {/* Phase A Loading: Uploading (Local State) */}
+            {isAddingMaterial && (
+              <View style={styles.materialItem}>
                 <View style={styles.iconContainer}>
-                  {renderIcon(mat.type, isProcessing, isFailed)}
+                  <TikTokLoader size={10} color="#6366f1" containerWidth={40} />
                 </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
+                <View style={{ flex: 1, marginHorizontal: 8 }}>
                   <Text
+                    style={{
+                      fontSize: 17,
+                      fontFamily: 'Nunito-SemiBold',
+                      color: colors.text
+                    }}
                     numberOfLines={1}
                     ellipsizeMode="tail"
-                    style={[
-                      styles.materialTitle,
-                      { color: colors.text, opacity: isProcessing ? 0.6 : 1 }
-                    ]}
                   >
-                    {mat.title || mat.filename || 'Untitled Source'}
+                    Uploading source...
                   </Text>
                 </View>
-                {isFailed && !isDeleteMode && (
-                  <TouchableOpacity
-                    onPress={() => onRetryMaterial?.(mat.id)}
-                    style={styles.miniRetryButton}
-                  >
-                    <Ionicons name="refresh" size={16} color="#FFF" />
-                  </TouchableOpacity>
-                )}
-                {hasContent && !isImage && !isDeleteMode && (
-                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                )}
-                {isDeleteMode && (
-                  <TouchableOpacity
-                    onPress={() => handleDeleteSource(mat.id, mat.title || mat.filename || 'Source')}
-                    style={styles.deleteButton}
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? (
-                      <TikTokLoader size={8} color="#ef4444" containerWidth={24} />
-                    ) : (
-                      <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
-                    )}
-                  </TouchableOpacity>
-                )}
-              </TouchableOpacity>
-            );
-          })}
+              </View>
+            )}
 
-          {(!isAddingMaterial && (!notebook.materials || notebook.materials.length === 0)) && (
-            <View style={[styles.emptyContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={{ fontSize: 32, marginBottom: 12 }}>📥</Text>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No sources yet</Text>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                Add PDFs, notes, or website links to start learning.
-              </Text>
-            </View>
-          )}
+            {/* Phase B Loading: Backend Processing (DB State) */}
+            {notebook.materials && notebook.materials.map((mat, index) => {
+              const isImage = mat.type === 'image' || mat.type === 'photo';
+              const isProcessing = mat.processed === false || mat.status === 'processing';
+              const isFailed = mat.status === 'failed';
+              const hasContent = mat.status === 'processed' || mat.processed === true;
+              const isDeleting = deletingId === mat.id;
+
+              const handleSourcePress = () => {
+                // In delete mode, don't navigate
+                if (isDeleteMode) return;
+                if (isProcessing || isFailed) return;
+
+                // Prevent double-tap navigation
+                if (isNavigatingRef.current) return;
+                isNavigatingRef.current = true;
+
+                // Reset navigation lock after navigation completes
+                setTimeout(() => {
+                  isNavigatingRef.current = false;
+                }, 1000);
+
+                // For images, open the image viewer
+                if (isImage) {
+                  handleViewImage(mat);
+                  return;
+                }
+
+                // For all other sources, open the source content viewer
+                router.push({
+                  pathname: '/source-viewer',
+                  params: { id: mat.id },
+                });
+              };
+
+              return (
+                <TouchableOpacity
+                  key={mat.id || index}
+                  onPress={handleSourcePress}
+                  activeOpacity={isDeleteMode ? 1 : (hasContent ? 0.7 : 1)}
+                  style={[styles.materialItem, { opacity: isDeleting ? 0.5 : 1 }]}
+                >
+                  <View style={styles.iconContainer}>
+                    {renderIcon(mat.type, isProcessing, isFailed)}
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                      style={[
+                        styles.materialTitle,
+                        { color: colors.text, opacity: isProcessing ? 0.6 : 1 }
+                      ]}
+                    >
+                      {mat.title || mat.filename || 'Untitled Source'}
+                    </Text>
+                  </View>
+                  {isFailed && !isDeleteMode && (
+                    <TouchableOpacity
+                      onPress={() => onRetryMaterial?.(mat.id)}
+                      style={styles.miniRetryButton}
+                    >
+                      <Ionicons name="refresh" size={16} color="#FFF" />
+                    </TouchableOpacity>
+                  )}
+                  {hasContent && !isImage && !isDeleteMode && (
+                    <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                  )}
+                  {isDeleteMode && (
+                    <TouchableOpacity
+                      onPress={() => handleDeleteSource(mat.id, mat.title || mat.filename || 'Source')}
+                      style={styles.deleteButton}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? (
+                        <TikTokLoader size={8} color="#ef4444" containerWidth={24} />
+                      ) : (
+                        <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+
+            {(!isAddingMaterial && (!notebook.materials || notebook.materials.length === 0)) && (
+              <View style={[styles.emptyContainer, { backgroundColor: colors.surface, borderColor: colors.border, padding: isPad ? 48 : 32 }]}>
+                <Text style={{ fontSize: isPad ? 44 : 32, marginBottom: 12 }}>📥</Text>
+                <Text style={[styles.emptyTitle, { color: colors.text, fontSize: isPad ? 20 : 16 }]}>No sources yet</Text>
+                <Text style={[styles.emptyText, { color: colors.textSecondary, fontSize: isPad ? 16 : 14 }]}>
+                  Add PDFs, notes, or website links to start learning.
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
       </ScrollView>
     );

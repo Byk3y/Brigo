@@ -78,7 +78,7 @@ export function Screen1({ colors }: Screen1Props) {
             style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
           >
             <TypewriterText
-              text="You're studying. But are you studying the right things?"
+              text="Stop guessing what to study."
               style={[styles.bubbleText, { color: colors.text }]}
               speed={35}
               delay={1500}
@@ -89,7 +89,7 @@ export function Screen1({ colors }: Screen1Props) {
               animate={{ opacity: speechComplete ? 1 : 0 }}
               transition={{ type: 'timing', duration: 500 } as any}
             >
-              <Text style={[styles.bubbleTextBold, { color: colors.primary }]}>Brigo makes sure you are.</Text>
+              <Text style={[styles.bubbleTextBold, { color: colors.primary }]}>Brigo shows you what matters.</Text>
             </MotiView>
 
             <View style={styles.bubbleTail}>

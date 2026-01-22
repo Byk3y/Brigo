@@ -188,16 +188,16 @@ export function Screen3({ colors, onContinue }: Screen3Props) {
         {/* Feature Grid */}
         <View style={styles.featureGrid}>
           <FeatureItem
-            icon="copy-outline"
-            title="Flashcards"
+            icon="sparkles-outline"
+            title="Exam Predictions"
             color="#F97316"
             delay={200}
             isVisible={headlineComplete}
             colors={colors}
           />
           <FeatureItem
-            icon="list-outline"
-            title="Quizzes"
+            icon="copy-outline"
+            title="Flashcards"
             color="#3B82F6"
             delay={400}
             isVisible={headlineComplete}
@@ -213,7 +213,7 @@ export function Screen3({ colors, onContinue }: Screen3Props) {
           />
           <FeatureItem
             icon="headset-outline"
-            title="Podcasts"
+            title="Audio Summaries"
             color="#8B5CF6"
             delay={800}
             isVisible={headlineComplete}

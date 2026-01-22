@@ -14,7 +14,7 @@ const MASCOT_SIZE = Math.min(width * 0.45, 180);
 const MASCOT_GROUP_HEIGHT = Math.min(width * 0.55, 220);
 
 // Words to cycle through
-const ROTATING_WORDS = ['remember.', 'succeed.', 'excel.', 'master.'];
+const ROTATING_WORDS = ['ace exams.', 'study smart.', 'save time.', 'succeed.'];
 
 interface Screen1Props {
   colors: ReturnType<typeof getThemeColors>;
@@ -78,7 +78,7 @@ export function Screen1({ colors }: Screen1Props) {
             style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
           >
             <TypewriterText
-              text="Reading alone won't help you remember."
+              text="You're studying. But are you studying the right things?"
               style={[styles.bubbleText, { color: colors.text }]}
               speed={35}
               delay={1500}
@@ -89,7 +89,7 @@ export function Screen1({ colors }: Screen1Props) {
               animate={{ opacity: speechComplete ? 1 : 0 }}
               transition={{ type: 'timing', duration: 500 } as any}
             >
-              <Text style={[styles.bubbleTextBold, { color: colors.primary }]}>Brigo makes sure you do.</Text>
+              <Text style={[styles.bubbleTextBold, { color: colors.primary }]}>Brigo makes sure you are.</Text>
             </MotiView>
 
             <View style={styles.bubbleTail}>
@@ -152,7 +152,7 @@ export function Screen1({ colors }: Screen1Props) {
             </View>
 
             <Text style={[styles.body, { color: colors.textSecondary }]}>
-              Most people forget <Text style={{ color: colors.text, fontWeight: '900', fontFamily: 'SpaceGrotesk-Bold' }}>80% of what they learn</Text>. That's hours of hard work—gone. Brigo uses proven science to make knowledge stick.
+              Most students <Text style={{ color: colors.text, fontWeight: '900', fontFamily: 'SpaceGrotesk-Bold' }}>waste hours on topics that won't show up</Text> on their exams. Brigo uses AI to focus your study time on what actually matters.
             </Text>
           </View>
         </MotiView>

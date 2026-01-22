@@ -45,7 +45,7 @@ import BrigoSmug from '../../../assets/onboarding-ui/mascot/brigo_smug.png';
 
 export function Screen3({ colors, onContinue }: Screen3Props) {
   const router = useRouter();
-  const { authUser } = useStore();
+  const { authUser, setCurrentOnboardingScreen } = useStore();
   const { handleError } = useErrorHandler();
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [headlineComplete, setHeadlineComplete] = useState(false);
@@ -67,6 +67,9 @@ export function Screen3({ colors, onContinue }: Screen3Props) {
     if (authUser) {
       onContinue();
     } else {
+      // Save progress to next screen BEFORE navigating to auth
+      // This ensures user continues to pet naming after auth completes
+      setCurrentOnboardingScreen(4);
       router.replace('/auth');
     }
   };
@@ -83,6 +86,8 @@ export function Screen3({ colors, onContinue }: Screen3Props) {
     if (authUser) {
       onContinue();
     } else {
+      // Save progress to next screen BEFORE navigating to auth
+      setCurrentOnboardingScreen(4);
       router.replace('/auth');
     }
   };
@@ -152,7 +157,7 @@ export function Screen3({ colors, onContinue }: Screen3Props) {
             style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
           >
             <TypewriterText
-              text="You felt the difference. Let's make it permanent."
+              text="Ready to study smarter? Let's set you up."
               style={[styles.headline, { color: colors.text }]}
               speed={40}
               delay={1000}

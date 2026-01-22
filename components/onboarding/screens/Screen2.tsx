@@ -83,7 +83,7 @@ export function Screen2({ colors }: Screen2Props) {
             style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
           >
             <TypewriterText
-              text="This is why your brain forgets."
+              text="Here's how students waste their time."
               style={[styles.headline, { color: colors.text }]}
               speed={40}
               delay={1200}
@@ -107,21 +107,21 @@ export function Screen2({ colors }: Screen2Props) {
           transition={{ type: 'timing', duration: 600 } as any}
           style={[styles.comparisonContainer, { backgroundColor: colors.surfaceElevated, borderColor: colors.primary + '15' }]}
         >
-          <Text style={[styles.comparisonTitle, { color: colors.textSecondary }]}>WHAT YOU REMEMBER AFTER 2 DAYS</Text>
+          <Text style={[styles.comparisonTitle, { color: colors.textSecondary }]}>EXAM PREPARATION EFFICIENCY</Text>
 
           <View style={styles.comparisonRow}>
             <View style={styles.barLabelContainer}>
-              <Text style={[styles.barLabel, { color: colors.textSecondary }]}>Just reading</Text>
+              <Text style={[styles.barLabel, { color: colors.textSecondary }]}>Studying everything</Text>
               <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
                 <MotiView
                   from={{ width: '0%' }}
-                  animate={{ width: headlineComplete ? '20%' : '0%' }}
+                  animate={{ width: headlineComplete ? '25%' : '0%' }}
                   transition={{ type: 'timing', duration: 1200, delay: 1000 } as any}
                   style={[styles.barFill, { backgroundColor: colors.textMuted }]}
                 />
               </View>
             </View>
-            <Text style={[styles.percentageText, { color: colors.textMuted }]}>20%</Text>
+            <Text style={[styles.percentageText, { color: colors.textMuted }]}>25%</Text>
           </View>
 
           <View style={styles.comparisonRow}>
@@ -157,9 +157,9 @@ export function Screen2({ colors }: Screen2Props) {
             <Ionicons name="flash" size={18} color={colors.primary} />
           </View>
           <View style={styles.insightContent}>
-            <Text style={[styles.insightLabel, { color: colors.primary }]}>THE SCIENCE</Text>
+            <Text style={[styles.insightLabel, { color: colors.primary }]}>THE BRIGO WAY</Text>
             <TypewriterText
-              text="There's a way to flip this. A method that makes your brain hold onto information instead of letting it slip away. That's what Brigo does."
+              text="Brigo analyzes your material and tells you exactly what to focus on. No more guessing. No more wasted hours."
               style={[styles.body, { color: colors.textSecondary }]}
               speed={25}
               startTrigger={headlineComplete}

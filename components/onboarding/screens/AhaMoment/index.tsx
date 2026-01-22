@@ -768,10 +768,10 @@ export function Screen3_AhaMoment({ colors, onComplete }: Screen3_AhaMomentProps
             >
                 <Text style={[styles.revelationTitle, { color: colors.text }]}>Same brain. Same facts.</Text>
                 <Text style={[styles.revelationSubtitle, { color: colors.primary, marginTop: 4 }]}>
-                    Different method.
+                    Smarter method.
                 </Text>
                 <Text style={[styles.revelationText, { color: colors.textSecondary }]}>
-                    That's Active Recall — the science behind Brigo.
+                    Brigo uses AI to help you study the right way.
                 </Text>
             </MotiView>
 

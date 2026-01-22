@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Dimensions, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { MotiView } from 'moti';
 import * as Haptics from 'expo-haptics';
 import { getThemeColors } from '@/lib/ThemeContext';
@@ -31,133 +31,133 @@ export function Screen4_PetNaming({ petName, onNameChange, colors }: Screen4PetN
   }, []);
 
   return (
-    <View
-      style={styles.container}
-    >
-      <ResponsiveContainer>
-        {/* Top Section: Mascot + Speech Bubble */}
-        <View style={styles.topSection}>
-          {/* Mascot + Shadow Group */}
-          <View style={styles.mascotGroup}>
-            <MotiView
-              animate={{
-                scale: [0.8, 1.05, 0.8],
-                opacity: [0.03, 0.08, 0.03]
-              }}
-              transition={{ loop: true, type: 'timing', duration: 3200 } as any}
-              style={[styles.shadow, { backgroundColor: '#000' }]}
-            />
-            <MotiView
-              from={{ opacity: 0, scale: 0.5, translateY: 20 }}
-              animate={{ opacity: 1, scale: 1, translateY: 0 }}
-              transition={{ type: 'spring', damping: 15, delay: 300 } as any}
-              style={styles.petContainer}
-            >
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <ResponsiveContainer>
+          {/* Top Section: Mascot + Speech Bubble */}
+          <View style={styles.topSection}>
+            {/* Mascot + Shadow Group */}
+            <View style={styles.mascotGroup}>
               <MotiView
-                animate={{ translateY: [-8, 8, -8] }}
-                transition={{ loop: true, type: 'timing', duration: 3000 } as any}
+                animate={{
+                  scale: [0.8, 1.05, 0.8],
+                  opacity: [0.03, 0.08, 0.03]
+                }}
+                transition={{ loop: true, type: 'timing', duration: 3200 } as any}
+                style={[styles.shadow, { backgroundColor: '#000' }]}
+              />
+              <MotiView
+                from={{ opacity: 0, scale: 0.5, translateY: 20 }}
+                animate={{ opacity: 1, scale: 1, translateY: 0 }}
+                transition={{ type: 'spring', damping: 15, delay: 300 } as any}
+                style={styles.petContainer}
               >
-                <Image
-                  source={PetStage1}
-                  style={styles.petImage}
-                  resizeMode="contain"
-                />
+                <MotiView
+                  animate={{ translateY: [-8, 8, -8] }}
+                  transition={{ loop: true, type: 'timing', duration: 3000 } as any}
+                >
+                  <Image
+                    source={PetStage1}
+                    style={styles.petImage}
+                    resizeMode="contain"
+                  />
+                </MotiView>
               </MotiView>
+            </View>
+
+            <MotiView
+              from={{ opacity: 0, scale: 0.9, translateY: 10 }}
+              animate={{ opacity: 1, scale: 1, translateY: 0 }}
+              transition={{ type: 'spring', damping: 28, delay: 600 } as any}
+              style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
+            >
+              <TypewriterText
+                text="Every learner needs a study buddy! What's my name?"
+                style={[styles.headline, { color: colors.text }]}
+                speed={40}
+                delay={1000}
+                onComplete={handleHeadlineComplete}
+              />
+              <View style={styles.bubbleTail}>
+                <Svg width="20" height="12" viewBox="0 0 20 12">
+                  <Path
+                    d="M10 12C10 12 7.5 4 0 0L20 0C12.5 4 10 12 10 12Z"
+                    fill={colors.surfaceElevated}
+                  />
+                </Svg>
+              </View>
             </MotiView>
           </View>
 
+          {/* Input Section */}
           <MotiView
-            from={{ opacity: 0, scale: 0.9, translateY: 10 }}
-            animate={{ opacity: 1, scale: 1, translateY: 0 }}
-            transition={{ type: 'spring', damping: 28, delay: 600 } as any}
-            style={[styles.bubbleContainer, { backgroundColor: colors.surfaceElevated }]}
+            from={{ opacity: 0, translateY: 20 }}
+            animate={{ opacity: headlineComplete ? 1 : 0, translateY: headlineComplete ? 0 : 20 }}
+            transition={{ type: 'timing', duration: 600, delay: 200 } as any}
+            style={styles.inputSection}
           >
-            <TypewriterText
-              text="Every learner needs a study buddy! What's my name?"
-              style={[styles.headline, { color: colors.text }]}
-              speed={40}
-              delay={1000}
-              onComplete={handleHeadlineComplete}
+            <TextInput
+              value={petName}
+              onChangeText={onNameChange}
+              placeholder="Give me a name..."
+              placeholderTextColor={colors.textSecondary + '60'}
+              style={[
+                styles.input,
+                {
+                  color: colors.text,
+                  backgroundColor: colors.surfaceElevated,
+                  borderColor: petName.trim() ? colors.primary : colors.border + '40',
+                }
+              ]}
+              maxLength={15}
+              autoCapitalize="words"
+              autoCorrect={false}
             />
-            <View style={styles.bubbleTail}>
-              <Svg width="20" height="12" viewBox="0 0 20 12">
-                <Path
-                  d="M10 12C10 12 7.5 4 0 0L20 0C12.5 4 10 12 10 12Z"
-                  fill={colors.surfaceElevated}
-                />
-              </Svg>
+
+            {/* Suggestions */}
+            <View style={styles.suggestionsContainer}>
+              <Text style={[styles.suggestionTitle, { color: colors.primary }]}>OR PICK ONE</Text>
+              <View style={styles.suggestionsGrid}>
+                {suggestions.map((name) => {
+                  const isSelected = petName === name;
+                  return (
+                    <TouchableOpacity
+                      key={name}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        onNameChange(name);
+                      }}
+                      activeOpacity={0.7}
+                      style={[
+                        styles.suggestionChip,
+                        {
+                          backgroundColor: isSelected ? colors.primary + '08' : colors.surface,
+                          borderColor: isSelected ? colors.primary : colors.border + '40',
+                        }
+                      ]}
+                    >
+                      <Text style={[
+                        styles.suggestionText,
+                        { color: isSelected ? colors.primary : colors.textSecondary }
+                      ]}>
+                        {name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Explainer / Motivation */}
+            <View style={[styles.infoCard, { backgroundColor: colors.primary + '05', borderColor: colors.primary + '20' }]}>
+              <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                I'll grow stronger as you learn! Take care of me, and I'll help you study smarter.
+              </Text>
             </View>
           </MotiView>
-        </View>
-
-        {/* Input Section */}
-        <MotiView
-          from={{ opacity: 0, translateY: 20 }}
-          animate={{ opacity: headlineComplete ? 1 : 0, translateY: headlineComplete ? 0 : 20 }}
-          transition={{ type: 'timing', duration: 600, delay: 200 } as any}
-          style={styles.inputSection}
-        >
-          <TextInput
-            value={petName}
-            onChangeText={onNameChange}
-            placeholder="Give me a name..."
-            placeholderTextColor={colors.textSecondary + '60'}
-            style={[
-              styles.input,
-              {
-                color: colors.text,
-                backgroundColor: colors.surfaceElevated,
-                borderColor: petName.trim() ? colors.primary : colors.border + '40',
-              }
-            ]}
-            maxLength={15}
-            autoCapitalize="words"
-            autoCorrect={false}
-          />
-
-          {/* Suggestions */}
-          <View style={styles.suggestionsContainer}>
-            <Text style={[styles.suggestionTitle, { color: colors.primary }]}>OR PICK ONE</Text>
-            <View style={styles.suggestionsGrid}>
-              {suggestions.map((name) => {
-                const isSelected = petName === name;
-                return (
-                  <TouchableOpacity
-                    key={name}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      onNameChange(name);
-                    }}
-                    activeOpacity={0.7}
-                    style={[
-                      styles.suggestionChip,
-                      {
-                        backgroundColor: isSelected ? colors.primary + '08' : colors.surface,
-                        borderColor: isSelected ? colors.primary : colors.border + '40',
-                      }
-                    ]}
-                  >
-                    <Text style={[
-                      styles.suggestionText,
-                      { color: isSelected ? colors.primary : colors.textSecondary }
-                    ]}>
-                      {name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Explainer / Motivation */}
-          <View style={[styles.infoCard, { backgroundColor: colors.primary + '05', borderColor: colors.primary + '20' }]}>
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              I'll grow stronger as you learn! Take care of me, and I'll help you remember everything.
-            </Text>
-          </View>
-        </MotiView>
-      </ResponsiveContainer>
-    </View>
+        </ResponsiveContainer>
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 

@@ -105,13 +105,13 @@ struct MascotConfig {
         case "brigo-save-the-streak":
             return MascotConfig(scale: 1.45, offsetY: 12)
             
-        // HORIZONTAL/WIDE POSES - Need to come UP (negative offset)
+        // HORIZONTAL/WIDE POSES - Anchored at bottom with reduced scale to prevent text overlap
         case "brigo-please-study":
-            return MascotConfig(scale: 1.35, offsetY: -25)  // Lifted up to show full image
+            return MascotConfig(scale: 1.25, offsetY: 8)  // Reduced scale, anchored at bottom
         case "brigo-is-waiting":
-            return MascotConfig(scale: 1.35, offsetY: -20)
+            return MascotConfig(scale: 1.25, offsetY: 8)  // Reduced scale, anchored at bottom
         case "brigo-still-scrolling":
-            return MascotConfig(scale: 1.35, offsetY: -20)
+            return MascotConfig(scale: 1.25, offsetY: 8)  // Reduced scale, anchored at bottom
         case "brigo-miss-me-yet":
             return MascotConfig(scale: 1.35, offsetY: 8)  // Adjusted to bring up slightly
             

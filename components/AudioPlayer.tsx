@@ -94,6 +94,30 @@ export function AudioPlayer({
         };
     }, []);
 
+    // Set up lock screen controls when player is ready
+    useEffect(() => {
+        if (!player || !status.isLoaded) return;
+
+        // Enable lock screen controls with metadata
+        try {
+            player.setActiveForLockScreen(true, {
+                title: title || 'Study Podcast',
+                artist: 'Brigo',
+            });
+        } catch (error) {
+            console.warn('[AudioPlayer] Failed to set lock screen controls:', error);
+        }
+
+        return () => {
+            // Clear lock screen controls when component unmounts
+            try {
+                player.clearLockScreenControls();
+            } catch (error) {
+                // Ignore cleanup errors
+            }
+        };
+    }, [player, status.isLoaded, title]);
+
     // Initialize player when ready
     useEffect(() => {
         if (!player) return;

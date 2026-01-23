@@ -22,9 +22,11 @@ export const PetBubble: React.FC = () => {
 
   const hasUserDataLoaded = user.id !== '' && (user.streak > 0 || user.last_streak_date !== undefined);
 
+  // New users (streak=0, no last_streak_date) should NOT see dying pet
+  // Only users with an existing streak that hasn't been secured today are "at risk"
   const isAtRisk = hasUserDataLoaded
     ? (user.streak > 0 && user.last_streak_date !== today && !isSecureTaskCompletedToday)
-    : true;
+    : false;
 
   const recoverableStreak = user.meta?.last_recoverable_streak ?? 0;
   const isStreakLost = user.streak === 0 && recoverableStreak > 0;

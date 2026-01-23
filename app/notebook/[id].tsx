@@ -218,7 +218,7 @@ export default function NotebookDetailScreen() {
             />
           </View>
           <View style={{ flex: 1, display: activeTab === 'chat' ? 'flex' : 'none' }}>
-            <ChatTab notebook={notebook} onTakeQuiz={handleTakeQuiz} />
+            <ChatTab notebook={notebook} onTakeQuiz={handleTakeQuiz} onRetryMaterial={handleRetryMaterial} />
           </View>
           <View style={{ flex: 1, display: activeTab === 'studio' ? 'flex' : 'none' }}>
             <StudioTab

@@ -400,8 +400,33 @@ export const notebookService = {
                 component: 'notebook-service',
                 metadata: { notebookId, materialId }
             });
-            console.error('Retry failed:', error.message);
-            // On immediate trigger failure, reset status so UI isn't stuck
+            console.error('Retry error (checking if processing succeeded):', error.message);
+
+            // CRITICAL FIX: Check if the material was actually processed before marking as failed
+            // This prevents race conditions where the edge function succeeded but the response failed
+            const { data: material } = await supabase
+                .from('materials')
+                .select('status, processed, content')
+                .eq('id', materialId)
+                .single();
+
+            // If material is already processed with content, don't override to failed
+            if (material?.processed && material?.content) {
+                console.log('Material was actually processed successfully despite error, updating status');
+                await supabase
+                    .from('materials')
+                    .update({ status: 'processed' })
+                    .eq('id', materialId);
+
+                await supabase
+                    .from('notebooks')
+                    .update({ status: 'ready_for_studio' })
+                    .eq('id', notebookId);
+
+                return { success: true }; // Processing actually succeeded
+            }
+
+            // Only mark as failed if processing truly failed
             await supabase
                 .from('materials')
                 .update({

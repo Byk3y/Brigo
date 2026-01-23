@@ -255,7 +255,9 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
             {notebook.materials && notebook.materials.map((mat, index) => {
               const isImage = mat.type === 'image' || mat.type === 'photo';
               const isProcessing = mat.processed === false || mat.status === 'processing';
-              const isFailed = mat.status === 'failed';
+              // Only show as failed if status is 'failed' AND material wasn't actually processed
+              // This handles race conditions where processing succeeded but status wasn't updated correctly
+              const isFailed = mat.status === 'failed' && !mat.processed;
               const hasContent = mat.status === 'processed' || mat.processed === true;
               const isDeleting = deletingId === mat.id;
 

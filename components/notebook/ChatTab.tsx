@@ -37,6 +37,7 @@ const EMPTY_ARRAY: any[] = [];
 interface ChatTabProps {
   notebook: Notebook;
   onTakeQuiz?: () => void;
+  onRetryMaterial?: (materialId: string) => void;
 }
 
 const TypingIndicator = ({ color }: { color: string }) => {
@@ -78,7 +79,7 @@ const TypingIndicator = ({ color }: { color: string }) => {
   );
 };
 
-export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
+export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz, onRetryMaterial }) => {
   const isPad = Platform.OS === 'ios' && Platform.isPad;
   const [inputText, setInputText] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -298,6 +299,23 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
   const isBackgroundProcessing = (notebook.meta as any)?.background_processing === true;
   const hasExistingContent = !!briefing;
 
+  // Check if any material has truly failed (status failed AND not processed)
+  const failedMaterials = notebook.materials?.filter(m => m.status === 'failed' && !m.processed) || [];
+  const hasFailedMaterial = failedMaterials.length > 0;
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  const handleRetryAll = async () => {
+    if (!onRetryMaterial || failedMaterials.length === 0) return;
+    setIsRetrying(true);
+    try {
+      for (const material of failedMaterials) {
+        await onRetryMaterial(material.id);
+      }
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   if (isExtracting && !hasExistingContent) {
     return (
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -397,9 +415,39 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz }) => {
               <Text style={{ fontSize: isPad ? 64 : 48, marginRight: isPad ? 20 : 12 }}>{notebook.emoji || getTopicEmoji(notebook.title)}</Text>
             </Animated.View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: isPad ? 32 : 24, color: colors.text, marginBottom: isPad ? 8 : 4, fontFamily: 'Nunito-Bold' }}>
-                {notebook.title}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Text style={{ fontSize: isPad ? 32 : 24, color: colors.text, marginBottom: isPad ? 8 : 4, fontFamily: 'Nunito-Bold', flex: 1 }}>
+                  {notebook.title}
+                </Text>
+                {hasFailedMaterial && onRetryMaterial && (
+                  <TouchableOpacity
+                    onPress={handleRetryAll}
+                    disabled={isRetrying}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                      paddingHorizontal: isPad ? 14 : 10,
+                      paddingVertical: isPad ? 8 : 6,
+                      borderRadius: isPad ? 12 : 8,
+                      borderWidth: 1,
+                      borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+                      gap: 6,
+                    }}
+                  >
+                    {isRetrying ? (
+                      <ActivityIndicator size="small" color="#ef4444" />
+                    ) : (
+                      <>
+                        <Ionicons name="refresh" size={isPad ? 18 : 14} color="#ef4444" />
+                        <Text style={{ fontSize: isPad ? 14 : 12, color: '#ef4444', fontFamily: 'Nunito-SemiBold' }}>
+                          Retry
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
               <Text style={{ fontSize: isPad ? 18 : 14, color: colors.textSecondary, fontFamily: 'Nunito-Regular' }}>
                 {materialCount} source{materialCount !== 1 ? 's' : ''}
               </Text>

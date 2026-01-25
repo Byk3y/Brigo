@@ -37,7 +37,21 @@ export async function discoverSources(query: string): Promise<DiscoverSourcesRes
 
     if (error) {
         console.error('[discoverSources] Error:', error);
-        throw new Error(error.message || 'Failed to discover sources');
+
+        // Try to extract detailed error message from response body
+        let detail = error.message;
+        if (error.name === 'FunctionsHttpError') {
+            try {
+                const errBody = await (error as any).context.json();
+                if (errBody && errBody.error) {
+                    detail = errBody.error;
+                }
+            } catch (e) {
+                // Ignore parsing errors
+            }
+        }
+
+        throw new Error(detail || 'Failed to discover sources');
     }
 
     if (!data.success) {

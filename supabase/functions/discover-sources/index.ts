@@ -90,7 +90,14 @@ For each source:
 - url: The canonical URL (include .pdf links for papers)
 - snippet: Start with "You" describing the student value (e.g., "You will learn...", "You can explore...")
 
-Summary: One intellectual sentence synthesizing the topic.`,
+Return the result as a valid JSON object with the following structure:
+{
+  "summary": "One-sentence intellectual synthesis",
+  "sources": [
+    { "title": "...", "url": "...", "snippet": "..." }
+  ]
+}
+Do not include any other text or markdown formatting in your response.`,
                             },
                         ],
                     },
@@ -103,39 +110,7 @@ Summary: One intellectual sentence synthesizing the topic.`,
                 generationConfig: {
                     temperature: 0.2,
                     maxOutputTokens: 2048,
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "object",
-                        properties: {
-                            summary: {
-                                type: "string",
-                                description: "A one-sentence intellectual synthesis of the topic"
-                            },
-                            sources: {
-                                type: "array",
-                                description: "Array of high-quality study sources",
-                                items: {
-                                    type: "object",
-                                    properties: {
-                                        title: {
-                                            type: "string",
-                                            description: "The exact title of the source page"
-                                        },
-                                        url: {
-                                            type: "string",
-                                            description: "The canonical URL of the source"
-                                        },
-                                        snippet: {
-                                            type: "string",
-                                            description: "A brief description starting with 'You' explaining the value"
-                                        }
-                                    },
-                                    required: ["title", "url", "snippet"]
-                                }
-                            }
-                        },
-                        required: ["summary", "sources"]
-                    }
+                    // Note: responseMimeType: "application/json" and responseSchema are NOT supported with google_search tool
                 },
             }),
         }
@@ -143,8 +118,8 @@ Summary: One intellectual sentence synthesizing the topic.`,
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error('[Discover Sources] Gemini API error status:', response.status);
-        throw new Error(`Gemini API error: ${response.status}`);
+        console.error('[Discover Sources] Gemini API error status:', response.status, 'Body:', errorText);
+        throw new Error(`Gemini API error (${response.status}): ${errorText}`);
     }
 
     const result = await response.json();
@@ -370,7 +345,7 @@ Deno.serve(async (req) => {
         // Rate limiting
         const rateLimitResult = await checkRateLimit({
             identifier: userId || 'anonymous',
-            limit: 30, // Relaxed limit for testing
+            limit: 30,
             window: 3600,
             endpoint: 'discover-sources',
         });

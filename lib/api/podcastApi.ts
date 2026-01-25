@@ -2,20 +2,20 @@
  * Podcast API Client
  * Handles communication with the generate-audio-overview Edge Function
  * 
- * Note: Database operations are handled by audioService
+ * Note: Database operations are handled by podcastService
  */
 
 import { supabase } from '@/lib/supabase';
 import { handleError } from '@/lib/errors';
-import { audioService } from '@/lib/services/audioService';
+import { podcastService } from '@/lib/services/podcastService';
 
 const EDGE_FUNCTION_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/generate-audio-overview`;
 
-export interface GenerateAudioOverviewRequest {
+export interface GeneratePodcastRequest {
   notebook_id: string;
 }
 
-export interface GenerateAudioOverviewResponse {
+export interface GeneratePodcastResponse {
   success: boolean;
   overview_id: string;
   status: string;
@@ -27,9 +27,9 @@ export interface GenerateAudioOverviewResponse {
  * Trigger podcast generation for a notebook
  * Returns immediately with overview_id for status polling
  */
-export async function generateAudioOverview(
+export async function generatePodcast(
   notebookId: string
-): Promise<GenerateAudioOverviewResponse> {
+): Promise<GeneratePodcastResponse> {
   try {
     // Get current session
     const { data: { session } } = await supabase.auth.getSession();
@@ -45,7 +45,7 @@ export async function generateAudioOverview(
       },
       body: JSON.stringify({
         notebook_id: notebookId,
-      } as GenerateAudioOverviewRequest),
+      } as GeneratePodcastRequest),
     });
 
     if (!response.ok) {
@@ -75,11 +75,11 @@ export async function generateAudioOverview(
 
     // Parse success body defensively to handle truncated responses
     const raw = await response.text();
-    let data: GenerateAudioOverviewResponse;
+    let data: GeneratePodcastResponse;
     try {
       data = JSON.parse(raw);
     } catch (parseError) {
-      const enhancedError: any = new Error('Malformed response from audio generator');
+      const enhancedError: any = new Error('Malformed response from podcast generator');
       enhancedError.isNetworkError = true; // trigger recovery flow to re-check pending jobs
       enhancedError.raw = raw;
       throw enhancedError;
@@ -99,8 +99,8 @@ export async function generateAudioOverview(
 
     if (isNetworkOrParseError) {
       try {
-        // Check for pending audio generation - if found, generation started successfully
-        const pendingAudio = await audioService.findPending(notebookId);
+        // Check for pending podcast generation - if found, generation started successfully
+        const pendingAudio = await podcastService.findPending(notebookId);
 
         if (pendingAudio) {
           // Generation actually started! Don't log as error, just log info
@@ -121,18 +121,18 @@ export async function generateAudioOverview(
           throw enhancedError;
         }
       } catch (checkError) {
-        // If checking for pending audio fails, fall through to normal error handling
+        // If checking for pending podcast fails, fall through to normal error handling
         // This ensures we don't lose error information if the check itself fails
         if (__DEV__) {
-          console.warn('[Audio Overview API] Failed to check for pending audio:', checkError);
+          console.warn('[Podcast API] Failed to check for pending podcast:', checkError);
         }
       }
     }
 
     // Use centralized error handling (only if generation didn't start or check failed)
     const appError = await handleError(error, {
-      operation: 'generate_audio_overview',
-      component: 'audio-overview-api',
+      operation: 'generate_podcast',
+      component: 'podcast-api',
       metadata: { notebookId },
     });
 

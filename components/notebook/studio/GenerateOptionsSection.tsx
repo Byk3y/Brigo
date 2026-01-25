@@ -8,7 +8,7 @@ type GeneratingType = 'flashcards' | 'quiz' | 'audio' | 'prediction' | null;
 
 interface GenerateOptionsSectionProps {
   generatingType: GeneratingType;
-  onGenerateAudio: () => void;
+  onGeneratePodcast: () => void;
   onGenerateFlashcards: () => void;
   onGenerateQuiz: () => void;
   onGeneratePrediction: () => void;
@@ -17,7 +17,7 @@ interface GenerateOptionsSectionProps {
 
 export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
   generatingType,
-  onGenerateAudio,
+  onGeneratePodcast,
   onGenerateFlashcards,
   onGenerateQuiz,
   onGeneratePrediction,
@@ -72,7 +72,7 @@ export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
           </AttachStep>
         </View>
 
-        {/* Audio Overview Option - Index 1 */}
+        {/* Podcast Option - Index 1 */}
         <View style={{ width: isPad ? '48.5%' : '100%', marginBottom: isPad ? 0 : 4 }}>
           {/* @ts-ignore - Library type mismatch for children */}
           <AttachStep index={1} fill={true} style={{ width: '100%' }}>
@@ -84,7 +84,7 @@ export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
               bgColor="bg-indigo-50"
               textColor="text-indigo-600"
               isGenerating={generatingType === 'audio'}
-              onPress={onGenerateAudio}
+              onPress={onGeneratePodcast}
               disabled={isDisabled}
             />
           </AttachStep>

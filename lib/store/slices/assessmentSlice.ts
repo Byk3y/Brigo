@@ -75,8 +75,8 @@ export const createAssessmentSlice: StateCreator<
       methods.push('Flashcards', 'Notes', 'Summaries');
       message = "You love reading! We'll use flashcards and detailed notes to help you learn.";
     } else if (learningStyle === 'auditory') {
-      methods.push('Audio Overviews', 'Podcasts', 'Listening');
-      message = "You're an auditory learner! We'll create podcast-style audio overviews for you.";
+      methods.push('Podcasts', 'Audio Guides', 'Listening');
+      message = "You're an auditory learner! We'll create tailored podcasts for you.";
     }
 
     // Personalize pet companion message based on study goal

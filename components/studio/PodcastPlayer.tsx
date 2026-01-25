@@ -3,18 +3,18 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
-import type { AudioOverview } from '@/lib/store/types';
+import type { Podcast } from '@/lib/store/types';
 import { useStore } from '@/lib/store';
 
-interface AudioPlayerProps {
-  audio: AudioOverview;
+interface PodcastPlayerProps {
+  podcast: Podcast;
 }
 
-export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audio }) => {
+export const PodcastPlayer: React.FC<PodcastPlayerProps> = ({ podcast }) => {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(audio.duration * 1000);
+  const [duration, setDuration] = useState(podcast.duration * 1000);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const { checkAndAwardTask, audioSettings } = useStore();
 
@@ -23,12 +23,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audio }) => {
   useEffect(() => {
     loadAudio();
     return () => { if (sound) sound.unloadAsync(); };
-  }, [audio.audio_url]);
+  }, [podcast.audio_url]);
 
   const loadAudio = async () => {
     try {
       const { sound: audioSound } = await Audio.Sound.createAsync(
-        { uri: audio.audio_url },
+        { uri: podcast.audio_url },
         {
           shouldPlay: false,
           volume: audioSettings.voiceVolume // Apply saved volume
@@ -88,7 +88,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audio }) => {
 
   return (
     <View className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
-      <Text className="text-base font-semibold text-neutral-900 mb-4">{audio.title}</Text>
+      <Text className="text-base font-semibold text-neutral-900 mb-4">{podcast.title}</Text>
       <View className="mb-3">
         <Slider
           style={{ width: '100%', height: 40 }}
@@ -113,7 +113,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audio }) => {
           <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color="#ffffff" />
         </TouchableOpacity>
         <View className="bg-white border border-neutral-200 rounded-full px-3 py-2">
-          <Text className="text-sm font-medium text-neutral-700">{Math.round(audio.duration / 60)} min</Text>
+          <Text className="text-sm font-medium text-neutral-700">{Math.round(podcast.duration / 60)} min</Text>
         </View>
       </View>
     </View>

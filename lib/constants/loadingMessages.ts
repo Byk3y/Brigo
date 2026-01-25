@@ -23,7 +23,7 @@ export const LOADING_MESSAGES = {
         'Curating...',
         'Polishing...'
     ],
-    audio: [
+    podcast: [
         'Scripting...',
         'Synthesizing...',
         'Recording...',

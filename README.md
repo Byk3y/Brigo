@@ -7,7 +7,7 @@ A gamified mobile study app that helps students learn effectively using AI-gener
 Brigo transforms uploaded study materials (PDFs, text, YouTube videos) into:
 - **AI-powered quizzes** with adaptive difficulty
 - **Smart flashcards** using spaced repetition
-- **Audio overviews** (podcast-style summaries)
+- **Podcasts** (summaries of your materials)
 - **Interactive AI tutor** chat
 
 Users are motivated through a **virtual pet system** that grows as they complete daily study tasks and maintain streaks.
@@ -68,7 +68,7 @@ Users are motivated through a **virtual pet system** that grows as they complete
 │   ├── onboarding/        # Onboarding flow
 │   ├── quiz/              # Quiz player
 │   ├── flashcards/        # Flashcard viewer
-│   ├── audio-player/      # Audio overview player
+│   ├── audio-player/      # Podcast player
 │   └── paywall.tsx        # Subscription paywall
 ├── components/            # Reusable UI components
 │   ├── onboarding/        # Onboarding screens

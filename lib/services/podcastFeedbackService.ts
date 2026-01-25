@@ -1,31 +1,31 @@
 /**
- * Audio Feedback Service
+ * Podcast Feedback Service
  * Handles like/dislike operations for podcasts
  */
 
 import { supabase } from '@/lib/supabase';
 import { handleError } from '@/lib/errors';
 
-export type AudioFeedback = {
+export type PodcastFeedback = {
   id: string;
   user_id: string;
-  audio_overview_id: string;
+  audio_overview_id: string; // Keep DB column name
   is_liked: boolean;
   created_at: string;
   updated_at: string;
 };
 
-export const audioFeedbackService = {
+export const podcastFeedbackService = {
   /**
-   * Get user's feedback for a specific audio overview
+   * Get user's feedback for a specific podcast
    * @param userId - The user's ID
-   * @param audioOverviewId - The audio overview's ID
+   * @param audioOverviewId - The podcast's ID
    * @returns The feedback record or null if none exists
    */
   getFeedback: async (
     userId: string,
     audioOverviewId: string
-  ): Promise<AudioFeedback | null> => {
+  ): Promise<PodcastFeedback | null> => {
     try {
       const { data, error } = await supabase
         .from('audio_feedback')
@@ -41,19 +41,23 @@ export const audioFeedbackService = {
         }
 
         await handleError(error, {
-          operation: 'get_audio_feedback',
-          component: 'audio-feedback-service',
+          operation: 'get_podcast_feedback',
+          component: 'podcast-feedback-service',
           userId,
           metadata: { audioOverviewId },
         });
         throw error;
       }
 
-      return data;
+      return {
+        ...data,
+        created_at: data.created_at || '',
+        updated_at: data.updated_at || '',
+      };
     } catch (error) {
       const appError = await handleError(error, {
-        operation: 'get_audio_feedback',
-        component: 'audio-feedback-service',
+        operation: 'get_podcast_feedback',
+        component: 'podcast-feedback-service',
         userId,
         metadata: { audioOverviewId },
       });
@@ -65,7 +69,7 @@ export const audioFeedbackService = {
    * Save or update user's feedback for a podcast
    * Uses upsert pattern: inserts if new, updates if exists
    * @param userId - The user's ID
-   * @param audioOverviewId - The audio overview's ID
+   * @param audioOverviewId - The podcast's ID
    * @param isLiked - true for like, false for dislike
    */
   saveFeedback: async (
@@ -89,8 +93,8 @@ export const audioFeedbackService = {
 
       if (error) {
         await handleError(error, {
-          operation: 'save_audio_feedback',
-          component: 'audio-feedback-service',
+          operation: 'save_podcast_feedback',
+          component: 'podcast-feedback-service',
           userId,
           metadata: { audioOverviewId, isLiked },
         });
@@ -98,8 +102,8 @@ export const audioFeedbackService = {
       }
     } catch (error) {
       const appError = await handleError(error, {
-        operation: 'save_audio_feedback',
-        component: 'audio-feedback-service',
+        operation: 'save_podcast_feedback',
+        component: 'podcast-feedback-service',
         userId,
         metadata: { audioOverviewId, isLiked },
       });
@@ -110,7 +114,7 @@ export const audioFeedbackService = {
   /**
    * Remove user's feedback for a podcast
    * @param userId - The user's ID
-   * @param audioOverviewId - The audio overview's ID
+   * @param audioOverviewId - The podcast's ID
    */
   removeFeedback: async (
     userId: string,
@@ -125,8 +129,8 @@ export const audioFeedbackService = {
 
       if (error) {
         await handleError(error, {
-          operation: 'remove_audio_feedback',
-          component: 'audio-feedback-service',
+          operation: 'remove_podcast_feedback',
+          component: 'podcast-feedback-service',
           userId,
           metadata: { audioOverviewId },
         });
@@ -134,8 +138,8 @@ export const audioFeedbackService = {
       }
     } catch (error) {
       const appError = await handleError(error, {
-        operation: 'remove_audio_feedback',
-        component: 'audio-feedback-service',
+        operation: 'remove_podcast_feedback',
+        component: 'podcast-feedback-service',
         userId,
         metadata: { audioOverviewId },
       });

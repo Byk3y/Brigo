@@ -16,7 +16,7 @@ import { useAudioPlaybackPosition } from '@/lib/hooks/useAudioPlaybackPosition';
 import { useErrorHandler } from '@/lib/hooks/useErrorHandler';
 import { AudioVisualizer } from './AudioVisualizer';
 import { useStore } from '@/lib/store';
-import { audioFeedbackService } from '@/lib/services/audioFeedbackService';
+import { podcastFeedbackService } from '@/lib/services/podcastFeedbackService';
 import {
     CloseIcon,
     DownloadIcon,
@@ -31,9 +31,9 @@ import { SubtitleDisplay } from './SubtitleDisplay';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { configureForMediaPlayback, configureForMixing } from '@/lib/audioConfig';
 
-interface AudioPlayerProps {
+interface PodcastPlayerProps {
     audioUrl: string;
-    audioOverviewId: string;
+    podcastId: string;
     notebookId: string;
     title?: string;
     duration?: number;
@@ -44,9 +44,9 @@ interface AudioPlayerProps {
     downloadProgress?: number;
 }
 
-export function AudioPlayer({
+export function PodcastPlayer({
     audioUrl,
-    audioOverviewId,
+    podcastId,
     notebookId,
     title = 'Podcast',
     duration = 0,
@@ -55,7 +55,7 @@ export function AudioPlayer({
     onDownload,
     isDownloading = false,
     downloadProgress = 0,
-}: AudioPlayerProps) {
+}: PodcastPlayerProps) {
     const { handleError } = useErrorHandler();
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
@@ -80,7 +80,7 @@ export function AudioPlayer({
         savedPosition,
         saveCurrentPosition,
         clearSavedPosition,
-    } = useAudioPlaybackPosition(audioOverviewId, notebookId, audioUrl, audioDuration);
+    } = useAudioPlaybackPosition(podcastId, notebookId, audioUrl, audioDuration);
 
     // Create audio player using expo-audio hook
     const player = useAudioPlayer({ uri: audioUrl });
@@ -105,7 +105,7 @@ export function AudioPlayer({
                 artist: 'Brigo',
             });
         } catch (error) {
-            console.warn('[AudioPlayer] Failed to set lock screen controls:', error);
+            console.warn('[PodcastPlayer] Failed to set lock screen controls:', error);
         }
 
         return () => {
@@ -163,7 +163,6 @@ export function AudioPlayer({
             if (lastTimeRef.current > 0) {
                 saveCurrentPosition(lastTimeRef.current);
             }
-            // No need to call player.remove() as useAudioPlayer hook handles cleanup.
         };
     }, [player]);
 
@@ -199,7 +198,7 @@ export function AudioPlayer({
         const loadFeedback = async () => {
             try {
                 feedbackLoadingRef.current = true;
-                const feedback = await audioFeedbackService.getFeedback(authUser.id, audioOverviewId);
+                const feedback = await podcastFeedbackService.getFeedback(authUser.id, podcastId);
                 if (isMounted && feedback) setLiked(feedback.is_liked);
             } catch (error) {
                 console.error('Failed to load audio feedback:', error);
@@ -209,7 +208,7 @@ export function AudioPlayer({
         };
         loadFeedback();
         return () => { isMounted = false; };
-    }, [authUser?.id, audioOverviewId]);
+    }, [authUser?.id, podcastId]);
 
     const handleSlidingStart = useCallback(() => {
         isDraggingSlider.current = true;
@@ -268,14 +267,14 @@ export function AudioPlayer({
         feedbackOperationRef.current = true;
         if (authUser?.id) {
             try {
-                if (newValue === null) await audioFeedbackService.removeFeedback(authUser.id, audioOverviewId);
-                else await audioFeedbackService.saveFeedback(authUser.id, audioOverviewId, true);
+                if (newValue === null) await podcastFeedbackService.removeFeedback(authUser.id, podcastId);
+                else await podcastFeedbackService.saveFeedback(authUser.id, podcastId, true);
                 if (checkAndAwardTask) checkAndAwardTask('audio_feedback_given');
             } catch (error) {
                 setLiked(previousValue);
             } finally { feedbackOperationRef.current = false; }
         } else feedbackOperationRef.current = false;
-    }, [liked, authUser?.id, audioOverviewId]);
+    }, [liked, authUser?.id, podcastId]);
 
     const handleDislike = useCallback(async () => {
         if (feedbackOperationRef.current) return;
@@ -285,14 +284,14 @@ export function AudioPlayer({
         feedbackOperationRef.current = true;
         if (authUser?.id) {
             try {
-                if (newValue === null) await audioFeedbackService.removeFeedback(authUser.id, audioOverviewId);
-                else await audioFeedbackService.saveFeedback(authUser.id, audioOverviewId, false);
+                if (newValue === null) await podcastFeedbackService.removeFeedback(authUser.id, podcastId);
+                else await podcastFeedbackService.saveFeedback(authUser.id, podcastId, false);
                 if (checkAndAwardTask) checkAndAwardTask('audio_feedback_given');
             } catch (error) {
                 setLiked(previousValue);
             } finally { feedbackOperationRef.current = false; }
         } else feedbackOperationRef.current = false;
-    }, [liked, authUser?.id, audioOverviewId]);
+    }, [liked, authUser?.id, podcastId]);
 
     const isPlaying = status.playing;
     const displayDuration = status.duration || audioDuration || 0;
@@ -303,7 +302,7 @@ export function AudioPlayer({
             <SafeAreaView className="flex-1">
                 <View style={{
                     flexDirection: 'row',
-                    itemsCenter: 'center',
+                    alignItems: 'center',
                     justifyContent: 'space-between',
                     paddingHorizontal: isPad ? 40 : 16,
                     paddingVertical: isPad ? 24 : 12,
@@ -434,4 +433,4 @@ export function AudioPlayer({
     );
 }
 
-export default AudioPlayer;
+export default PodcastPlayer;

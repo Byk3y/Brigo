@@ -1,5 +1,5 @@
 /**
- * Audio Download Service
+ * Podcast Download Service
  * Handles downloading and sharing podcast files
  */
 
@@ -20,7 +20,6 @@ interface DownloadProgress {
 
 /**
  * Sanitize filename to prevent path traversal and invalid characters
- * Removes special characters: /\?%*:|"<> and limits length
  */
 function sanitizeFilename(filename: string): string {
   // Remove special characters and replace with underscore
@@ -44,7 +43,6 @@ function sanitizeFilename(filename: string): string {
 
 /**
  * Extract file extension from storage path
- * Pattern: {user_id}/audio_overviews/{notebook_id}/{overview_id}.{ext}
  */
 function extractFileExtension(storagePath?: string): string {
   if (!storagePath) return '.mp3';
@@ -55,14 +53,8 @@ function extractFileExtension(storagePath?: string): string {
 
 /**
  * Download and share a podcast file
- *
- * @param audioUrl - Signed URL to the audio file in Supabase Storage
- * @param title - Title of the audio overview (will be sanitized for filename)
- * @param storagePath - Optional storage path to extract file extension
- * @param onProgress - Optional callback for download progress updates
- * @returns Promise with success status and message
  */
-export async function downloadAudioFile(
+export async function downloadPodcastFile(
   audioUrl: string,
   title: string,
   storagePath?: string,
@@ -73,7 +65,7 @@ export async function downloadAudioFile(
     if (!audioUrl || typeof audioUrl !== 'string' || audioUrl.trim().length === 0) {
       return {
         success: false,
-        message: 'Invalid audio URL provided.',
+        message: 'Invalid podcast URL provided.',
       };
     }
 
@@ -90,7 +82,7 @@ export async function downloadAudioFile(
     } catch {
       return {
         success: false,
-        message: 'Invalid audio URL format.',
+        message: 'Invalid podcast URL format.',
       };
     }
 
@@ -109,7 +101,6 @@ export async function downloadAudioFile(
     const filename = `${sanitizedTitle}${extension}`;
 
     // Download directly to cache directory using FileSystem.downloadAsync
-    // Note: Cache directory is managed by the OS and will be cleaned up automatically
     const fileUri = `${FileSystem.cacheDirectory}${filename}`;
 
     // Use createDownloadResumable for progress tracking
@@ -132,7 +123,16 @@ export async function downloadAudioFile(
     );
 
     // Start the download
-    const { uri } = await downloadResumable.downloadAsync();
+    const result = await downloadResumable.downloadAsync();
+
+    if (!result || !result.uri) {
+      return {
+        success: false,
+        message: 'Download failed to initialize.',
+      };
+    }
+
+    const uri = result.uri;
 
     // Verify file was downloaded successfully
     const fileInfo = await FileSystem.getInfoAsync(uri);
@@ -144,10 +144,6 @@ export async function downloadAudioFile(
     }
 
     // Present native share sheet using the downloaded file URI
-    // Note: If user cancels the share sheet, shareAsync behavior varies by platform:
-    // - iOS: May throw an error or return a cancelled status
-    // - Android: May return a cancelled status
-    // We treat cancellation as success since the file was downloaded successfully
     try {
       await Sharing.shareAsync(uri, {
         mimeType: extension === '.wav' ? 'audio/wav' : 'audio/mpeg',
@@ -156,7 +152,6 @@ export async function downloadAudioFile(
       });
     } catch (shareError: any) {
       // If sharing fails but file was downloaded, check if it's a cancellation
-      // Some platforms throw on cancellation, others return cancelled status
       const errorMsg = shareError?.message?.toLowerCase() || '';
       const errorCode = shareError?.code?.toLowerCase() || '';
 
@@ -169,10 +164,9 @@ export async function downloadAudioFile(
         errorCode === 'cancelled'
       ) {
         // User cancelled share, but download was successful
-        // File remains in cache for potential future sharing
         return {
           success: true,
-          message: 'Audio downloaded. You can share it later.',
+          message: 'Podcast downloaded. You can share it later.',
         };
       }
       // Re-throw if it's a real error (not cancellation)
@@ -181,7 +175,7 @@ export async function downloadAudioFile(
 
     return {
       success: true,
-      message: 'Audio downloaded successfully!',
+      message: 'Podcast downloaded successfully!',
     };
   } catch (error: any) {
     // Handle specific error types
@@ -201,8 +195,8 @@ export async function downloadAudioFile(
 
     // Log error for debugging
     await handleError(error, {
-      operation: 'download_audio_file',
-      component: 'audio-download-service',
+      operation: 'download_podcast_file',
+      component: 'podcast-download-service',
       metadata: { title, storagePath },
     });
 
@@ -213,6 +207,6 @@ export async function downloadAudioFile(
   }
 }
 
-export const audioDownloadService = {
-  downloadAudioFile,
+export const podcastDownloadService = {
+  downloadPodcastFile,
 };

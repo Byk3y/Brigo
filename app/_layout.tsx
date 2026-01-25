@@ -24,9 +24,10 @@ if (typeof console !== 'undefined' && console.error) {
       message.includes('AuthApiError') ||
       message.includes('operation is already in progress') ||
       message.includes('Network request failed') ||
+      message.includes('native store is not available') ||
+      message.includes('RevenueCat') ||
       (message.includes('rate limit') && message.includes('Auth'))
     ) {
-      if (__DEV__) return;
       return;
     }
     // Log all other errors normally

@@ -1,14 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { studioService } from '@/lib/services/studioService';
-import { audioService } from '@/lib/services/audioService';
+import { podcastService } from '@/lib/services/podcastService';
 import { examPredictionService } from '@/lib/services/examPredictionService';
-import type { Quiz, AudioOverview, FlashcardSet, ExamPrediction } from '@/lib/store/types';
+import type { Quiz, Podcast, FlashcardSet, ExamPrediction } from '@/lib/store/types';
 
 interface UseStudioContentReturn {
     flashcard_sets: FlashcardSet[];
     quizzes: Quiz[];
-    audioOverviews: AudioOverview[];
-    setAudioOverviews: React.Dispatch<React.SetStateAction<AudioOverview[]>>;
+    podcasts: Podcast[];
+    setPodcasts: React.Dispatch<React.SetStateAction<Podcast[]>>;
     examPredictions: ExamPrediction[];
     setExamPredictions: React.Dispatch<React.SetStateAction<ExamPrediction[]>>;
     loading: boolean;
@@ -18,7 +18,7 @@ interface UseStudioContentReturn {
 export const useStudioContent = (notebookId: string): UseStudioContentReturn => {
     const [flashcard_sets, setFlashcardSets] = useState<FlashcardSet[]>([]);
     const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-    const [audioOverviews, setAudioOverviews] = useState<AudioOverview[]>([]);
+    const [podcasts, setPodcasts] = useState<Podcast[]>([]);
     const [examPredictions, setExamPredictions] = useState<ExamPrediction[]>([]);
     const [loading, setLoading] = useState(true);
     const inFlightRef = useRef<AbortController | null>(null);
@@ -40,9 +40,9 @@ export const useStudioContent = (notebookId: string): UseStudioContentReturn => 
             // Safety timeout so we never stay stuck loading
             timeoutId = setTimeout(() => controller.abort(), 10000);
 
-            const [studioContent, audioOverviewsData, predictionsData] = await Promise.all([
+            const [studioContent, podcastsData, predictionsData] = await Promise.all([
                 studioService.fetchAll(notebookId),
-                audioService.fetchByNotebook(notebookId),
+                podcastService.fetchByNotebook(notebookId),
                 examPredictionService.fetchByNotebook(notebookId),
             ]);
 
@@ -50,7 +50,7 @@ export const useStudioContent = (notebookId: string): UseStudioContentReturn => 
 
             setFlashcardSets(studioContent.flashcard_sets);
             setQuizzes(studioContent.quizzes);
-            setAudioOverviews(audioOverviewsData);
+            setPodcasts(podcastsData);
             setExamPredictions(predictionsData);
         } catch (error) {
             // Ignore intentional aborts (timeout or new fetch)
@@ -80,8 +80,8 @@ export const useStudioContent = (notebookId: string): UseStudioContentReturn => 
     return {
         flashcard_sets,
         quizzes,
-        audioOverviews,
-        setAudioOverviews,
+        podcasts,
+        setPodcasts,
         examPredictions,
         setExamPredictions,
         loading,

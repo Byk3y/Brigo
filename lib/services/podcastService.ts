@@ -1,24 +1,24 @@
 /**
- * Audio Service
+ * Podcast Service
  * Handles podcast database operations
  */
 
 import { supabase } from '@/lib/supabase';
 import { handleError } from '@/lib/errors';
 import { storageService } from '@/lib/storage/storageService';
-import type { AudioOverview } from '@/lib/store/types';
+import type { Podcast } from '@/lib/store/types';
 
-export interface AudioOverviewStatus {
+export interface PodcastStatus {
   status: 'pending' | 'generating_script' | 'generating_audio' | 'completed' | 'failed';
   progress?: number; // 0-100
   error_message?: string;
 }
 
-export const audioService = {
+export const podcastService = {
   /**
    * Get status of a podcast (for polling during generation)
    */
-  getStatus: async (overviewId: string): Promise<AudioOverviewStatus> => {
+  getStatus: async (overviewId: string): Promise<PodcastStatus> => {
     try {
       const { data, error } = await supabase
         .from('audio_overviews')
@@ -28,8 +28,8 @@ export const audioService = {
 
       if (error) {
         await handleError(error, {
-          operation: 'get_audio_overview_status',
-          component: 'audio-service',
+          operation: 'get_podcast_status',
+          component: 'podcast-service',
           metadata: { overviewId },
         });
         throw new Error(`Failed to get status: ${error.message}`);
@@ -45,14 +45,14 @@ export const audioService = {
       };
 
       return {
-        status: data.status,
-        progress: progressMap[data.status] || 0,
-        error_message: data.error_message,
+        status: data.status as any,
+        progress: progressMap[data.status || 'pending'] || 0,
+        error_message: data.error_message || undefined,
       };
     } catch (error) {
       const appError = await handleError(error, {
-        operation: 'get_audio_overview_status',
-        component: 'audio-service',
+        operation: 'get_podcast_status',
+        component: 'podcast-service',
         metadata: { overviewId },
       });
       throw appError;
@@ -62,7 +62,7 @@ export const audioService = {
   /**
    * Fetch all podcasts for a notebook
    */
-  fetchByNotebook: async (notebookId: string): Promise<AudioOverview[]> => {
+  fetchByNotebook: async (notebookId: string): Promise<Podcast[]> => {
     try {
       const { data, error } = await supabase
         .from('audio_overviews')
@@ -73,28 +73,28 @@ export const audioService = {
 
       if (error) {
         await handleError(error, {
-          operation: 'fetch_audio_overviews',
-          component: 'audio-service',
+          operation: 'fetch_podcasts',
+          component: 'podcast-service',
           metadata: { notebookId },
         });
         return [];
       }
 
-      // Transform to AudioOverview type
+      // Transform to Podcast type
       return (data || []).map(overview => ({
         id: overview.id,
         notebook_id: overview.notebook_id,
         title: overview.title,
         duration: overview.duration,
-        audio_url: overview.audio_url,
-        script: overview.script,
-        generated_at: overview.created_at,
+        audio_url: overview.audio_url || '',
+        script: overview.script || '',
+        generated_at: overview.created_at || '',
       }));
     } catch (error) {
       // Use centralized error handling - return empty array on error for graceful degradation
       await handleError(error, {
-        operation: 'fetch_audio_overviews',
-        component: 'audio-service',
+        operation: 'fetch_podcasts',
+        component: 'podcast-service',
         metadata: { notebookId },
       });
       return [];
@@ -105,7 +105,7 @@ export const audioService = {
    * Get a single podcast by ID
    * Refreshes signed URL if needed
    */
-  getById: async (overviewId: string): Promise<AudioOverview | null> => {
+  getById: async (overviewId: string): Promise<Podcast | null> => {
     try {
       const { data, error } = await supabase
         .from('audio_overviews')
@@ -115,8 +115,8 @@ export const audioService = {
 
       if (error || !data) {
         handleError(error || new Error('Podcast not found'), {
-          operation: 'get_audio_overview_by_id',
-          component: 'audio-service',
+          operation: 'get_podcast_by_id',
+          component: 'podcast-service',
           metadata: { overviewId }
         });
         return null;
@@ -144,8 +144,8 @@ export const audioService = {
 
           if (updateError) {
             await handleError(updateError, {
-              operation: 'update_audio_url',
-              component: 'audio-service',
+              operation: 'update_podcast_url',
+              component: 'podcast-service',
               metadata: { overviewId },
             });
             // Continue with new URL even if update fails
@@ -154,13 +154,13 @@ export const audioService = {
           // URL refresh failed - log error but continue with old URL
           // The old URL might be expired, but we'll let the audio player handle the error
           if (__DEV__) {
-            console.warn('[Audio Service] Failed to refresh signed URL:', urlError || 'No URL returned');
+            console.warn('[Podcast Service] Failed to refresh signed URL:', urlError || 'No URL returned');
           }
           await handleError(
             urlError || new Error('Failed to get signed URL'),
             {
-              operation: 'refresh_audio_url',
-              component: 'audio-service',
+              operation: 'refresh_podcast_url',
+              component: 'podcast-service',
               metadata: { overviewId, storagePath: data.storage_path },
             }
           );
@@ -172,15 +172,15 @@ export const audioService = {
         notebook_id: data.notebook_id,
         title: data.title,
         duration: data.duration,
-        audio_url: audioUrl,
+        audio_url: audioUrl || '',
         storage_path: data.storage_path,
-        script: data.script,
-        generated_at: data.created_at,
+        script: data.script || '',
+        generated_at: data.created_at || '',
       };
     } catch (error) {
       await handleError(error, {
-        operation: 'get_audio_overview',
-        component: 'audio-service',
+        operation: 'get_podcast',
+        component: 'podcast-service',
         metadata: { overviewId },
       });
       return null;
@@ -207,8 +207,8 @@ export const audioService = {
 
       if (deleteError) {
         await handleError(deleteError, {
-          operation: 'delete_audio_overview',
-          component: 'audio-service',
+          operation: 'delete_podcast',
+          component: 'podcast-service',
           metadata: { overviewId },
         });
         throw new Error(`Failed to delete podcast: ${deleteError.message}`);
@@ -221,8 +221,8 @@ export const audioService = {
       }
     } catch (error) {
       const appError = await handleError(error, {
-        operation: 'delete_audio_overview',
-        component: 'audio-service',
+        operation: 'delete_podcast',
+        component: 'podcast-service',
         metadata: { overviewId },
       });
       throw appError;
@@ -245,18 +245,18 @@ export const audioService = {
 
       if (error) {
         await handleError(error, {
-          operation: 'find_pending_audio',
-          component: 'audio-service',
+          operation: 'find_pending_podcast',
+          component: 'podcast-service',
           metadata: { notebookId },
         });
         return null;
       }
 
-      return data || null;
+      return data ? { id: data.id, status: data.status || 'pending' } : null;
     } catch (error) {
       await handleError(error, {
-        operation: 'find_pending_audio',
-        component: 'audio-service',
+        operation: 'find_pending_podcast',
+        component: 'podcast-service',
         metadata: { notebookId },
       });
       return null;
@@ -278,8 +278,8 @@ export const audioService = {
 
       if (error) {
         await handleError(error, {
-          operation: 'check_completed_audio',
-          component: 'audio-service',
+          operation: 'check_completed_podcasts',
+          component: 'podcast-service',
           metadata: { userId },
         });
         return false;
@@ -288,8 +288,8 @@ export const audioService = {
       return !!data;
     } catch (error) {
       await handleError(error, {
-        operation: 'check_completed_audio',
-        component: 'audio-service',
+        operation: 'check_completed_podcasts',
+        component: 'podcast-service',
         metadata: { userId },
       });
       return false;
@@ -354,14 +354,14 @@ function isUrlExpired(url: string): boolean {
     } catch (decodeError) {
       // Failed to decode token, assume expired to be safe
       if (__DEV__) {
-        console.warn('[Audio Service] Failed to decode JWT token:', decodeError);
+        console.warn('[Podcast Service] Failed to decode JWT token:', decodeError);
       }
       return true;
     }
   } catch (error) {
     // Any other error, assume expired to be safe
     if (__DEV__) {
-      console.warn('[Audio Service] Error checking URL expiration:', error);
+      console.warn('[Podcast Service] Error checking URL expiration:', error);
     }
     return true;
   }

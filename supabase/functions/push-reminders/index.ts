@@ -11,6 +11,7 @@ interface Profile {
     last_streak_date: string
     streak: number
     last_notification_sent_at: string | null
+    first_name: string | null
 }
 
 interface NotificationPayload {
@@ -35,9 +36,10 @@ interface NotificationContext {
     pointsToLevelUp: number
     petStage: number
     topic: string
+    firstName: string
 }
 
-type NotificationCategory = 'passive_aggressive' | 'loss_aversion' | 'hype' | 'context_rich' | 'soft' | 'comeback'
+type NotificationCategory = 'passive_aggressive' | 'loss_aversion' | 'hype' | 'context_rich' | 'soft' | 'comeback' | 'onboarding' | 'task_specific'
 
 interface MessageTemplate {
     title: string
@@ -52,16 +54,16 @@ const templateLibrary: Record<NotificationCategory, MessageTemplate[]> = {
     // Category 1: Passive-Aggressive (The "Unhinged Duo" Move)
     // Best for: Users who have ignored 2+ reminders
     passive_aggressive: [
-        { title: `🙄 Wow, okay.`, body: `So we're just ignoring "{{lastNotebook}}" today? I see how it is. 💅` },
-        { title: `🤡 Is this a joke?`, body: `Your streak is crying. I'm crying. Even "{{lastNotebook}}" is crying. Fix it.` },
-        { title: `🤐 No words.`, body: `If you wanted to lose your streak, you could have just said so. 💅` },
-        { title: `Hi, it's {{petName}}.`, body: `These reminders don't seem to be working. I'll stop for now. ✌️` },
-        { title: `Oh, so we're just 'friends' now?`, body: `Cool. {{petName}} noticed you haven't opened "{{lastNotebook}}" today. 💅` },
-        { title: `🤐 Since you're clearly busy...`, body: `I've started studying on my own. I'm already smarter than you. 🧠` },
-        { title: `👀 I see you opening other apps.`, body: `It's okay. I'm not jealous. I'm just... disappointed. 🦉` },
-        { title: `{{petName}} is packing their bags.`, body: `One session in "{{lastNotebook}}" is the only thing that will make them stay.` },
-        { title: `Is this a joke to you?`, body: `Your {{streak}}-day streak is literally crying. Fix it. 🤡` },
-        { title: `I guess "{{lastNotebook}}" isn't important.`, body: `I'll just wait here... forever. 🕯️` },
+        { title: `🙄 Wow, okay.`, body: `So we're just ignoring "{{lastNotebook}}" today? I see how it is, {{firstName}}. 💅` },
+        { title: `🤡 Is this a joke?`, body: `Your streak is crying. I'm crying. Even "{{lastNotebook}}" is crying. Fix it, {{firstName}}.` },
+        { title: `🤐 No words.`, body: `If you wanted to lose your streak, you could have just said so, {{firstName}}. 💅` },
+        { title: `Hi, {{firstName}}, it's {{petName}}.`, body: `These reminders don't seem to be working. I'll stop for now. ✌️` },
+        { title: `Oh, {{firstName}}, so we're just 'friends' now?`, body: `Cool. {{petName}} noticed you haven't opened "{{lastNotebook}}" today. 💅` },
+        { title: `🤐 Since you're clearly busy...`, body: `I've started studying on my own, {{firstName}}. I'm already smarter than you. 🧠` },
+        { title: `👀 I see you opening other apps.`, body: `It's okay, {{firstName}}. I'm not jealous. I'm just... disappointed. 🦉` },
+        { title: `{{petName}} is packing their bags.`, body: `One session in "{{lastNotebook}}" is the only thing that will make them stay, {{firstName}}.` },
+        { title: `Is this a joke to you, {{firstName}}?`, body: `Your {{streak}}-day streak is literally crying. Fix it. 🤡` },
+        { title: `I guess "{{lastNotebook}}" isn't important.`, body: `I'll just wait here... forever, {{firstName}}. 🕯️` },
     ],
 
     // Category 2: High-Stakes / Loss Aversion
@@ -82,31 +84,32 @@ const templateLibrary: Record<NotificationCategory, MessageTemplate[]> = {
     // Category 3: The "Hype" Bestie
     // Best for: Mid-day nudges or milestone mornings
     hype: [
-        { title: `🚀 LET'S GOOO!`, body: `You're only 1 session away from a {{streak}}-day milestone!` },
-        { title: `You're crushing it!`, body: `{{petName}} is doing a happy dance. 💃 Keep it up!` },
+        { title: `🚀 LET'S GOOO!`, body: `You're only 1 session away from a {{streak}}-day milestone, {{firstName}}!` },
+        { title: `You're crushing it!`, body: `{{petName}} is doing a happy dance. 💃 Keep it up, {{firstName}}!` },
         { title: `☀️ Morning, superstar!`, body: `Ready to make "{{lastNotebook}}" your masterpiece today?` },
-        { title: `🧠 I just saw your progress—`, body: `you're basically a genius now. Review "{{lastNotebook}}" to confirm.` },
-        { title: `⚡️ Energy check!`, body: `5 minutes of study = 0% guilt later tonight.` },
-        { title: `You + Brigo = Academic Weapon.`, body: `⚔️ Let's get it.` },
-        { title: `🏆 The pet shop is talking about you!`, body: `Your {{streak}}-day streak is legendary!` },
-        { title: `New day, new gains.`, body: `Let's tackle "{{lastNotebook}}" together! 🤝` },
-        { title: `🦸‍♂️ Consistency is your superpower.`, body: `Keep the streak alive!` },
-        { title: `🎯 Something tells me today is the day`, body: `you finally master {{subject}}.` },
+        { title: `🧠 I just saw your progress—`, body: `you're basically a genius now, {{firstName}}. Review "{{lastNotebook}}" to confirm.` },
+        { title: `⚡️ Energy check!`, body: `5 minutes of study = 0% guilt later tonight, {{firstName}}.` },
+        { title: `You + Brigo = Academic Weapon.`, body: `⚔️ Let's get it, {{firstName}}!` },
+        { title: `🏆 Big moves, {{firstName}}!`, body: `Your {{streak}}-day streak is legendary!` },
+        { title: `New day, new gains.`, body: `Let's tackle "{{lastNotebook}}" together, {{firstName}}! 🤝` },
+        { title: `🦸‍♂️ Consistency is your superpower.`, body: `Keep the streak alive, {{firstName}}!` },
+        { title: `🎯 Milestone Alert!`, body: `Only {{pointsToLevelUp}} points until {{petName}} evolves! Let's get to work. 🚀` },
+        { title: `Evolution incoming! 🐣`, body: `{{petName}} is almost at Stage {{nextPetStage}}. Hit your goal to level up!` },
     ],
 
     // Category 4: Context-Rich / Topic-Specific
     // Best for: Afternoon "Deep Dive" nudges
     context_rich: [
-        { title: `🤔 Did you ever figure out that part?`, body: `{{petName}} is still confused about "{{lastNotebook}}".` },
-        { title: `📖 That PDF you uploaded`, body: `isn't going to read itself. Let's dive in!` },
-        { title: `📝 You were doing so well with {{subject}}.`, body: `Ready for a quick quiz?` },
-        { title: `🧩 {{petName}} found a tricky question`, body: `in "{{lastNotebook}}". Can you solve it?` },
-        { title: `✅ Only 5 flashcards left`, body: `to master {{subject}}. You've got this!` },
-        { title: `🧠 Reviewing "{{lastNotebook}}" now`, body: `will save you 2 hours of cramming later. Logic.` },
-        { title: `😤 I bet you can't get 100%`, body: `on the {{subject}} quiz right now. Prove me wrong!` },
-        { title: `☕ Just checking in—`, body: `how's the "{{lastNotebook}}" grind going?` },
-        { title: `👥 Your study group is waiting`, body: `(well, just {{petName}}) in "{{lastNotebook}}".` },
-        { title: `🛀 A quick refresh on {{subject}}`, body: `is exactly what your brain needs right now.` },
+        { title: `🤔 Still thinking about it?`, body: `{{petName}} is still curious about that part from "{{lastNotebook}}".` },
+        { title: `📖 Ready to dive in?`, body: `Your "{{lastNotebook}}" materials are waiting for you, {{firstName}}. ✨` },
+        { title: `📝 Quick check-in!`, body: `You were doing great with {{subject}}. Ready for a quick session?` },
+        { title: `🧩 Brain teaser!`, body: `{{petName}} found a tricky concept in "{{lastNotebook}}". Can you master it?` },
+        { title: `✅ Focus time!`, body: `Only 5 minutes on {{subject}} to keep your brain sharp today.` },
+        { title: `🧠 Save future you—`, body: `Reviewing "{{lastNotebook}}" now means no cramming later. Smart move.` },
+        { title: `😤 Growth mindset!`, body: `Level up {{petName}} (Stage {{petStage}}) by mastering "{{lastNotebook}}" today.` },
+        { title: `☕ Study break is over!`, body: `How's the "{{lastNotebook}}" progress coming along, {{firstName}}?` },
+        { title: `👥 {{petName}} missed you!`, body: `They're waiting to help you with "{{lastNotebook}}" right now.` },
+        { title: `🛀 Wind down with {{subject}}`, body: `A 2-minute review is the perfect way to finish your day.` },
     ],
 
     // Category 5: Soft / Supportive
@@ -138,6 +141,26 @@ const templateLibrary: Record<NotificationCategory, MessageTemplate[]> = {
         { title: `🌈 Every expert was once a beginner.`, body: `Let's build something great together, starting now.` },
         { title: `🎬 Plot twist incoming!`, body: `{{petName}} senses a comeback arc. Prove them right?` },
     ],
+
+    // Category 7: Onboarding (For users with 0 notebooks)
+    // Best for: New users who signed up but haven't started yet
+    onboarding: [
+        { title: `👋 Hi {{firstName}}!`, body: `{{petName}} is lonely! Add your first material to get started. ✨` },
+        { title: `Ready to ace your exams?`, body: `Create your first notebook and let's start the journey! 🚀` },
+        { title: `{{petName}} is waiting!`, body: `Upload a PDF or link to see the magic happen. ✨` },
+        { title: `First step is the hardest,`, body: `but {{firstName}}, I'm here to make it easy. Add a source? 🕯️` },
+        { title: `Your pet is hungry!`, body: `Feed {{petName}} some study material to help them grow. 🌱` },
+    ],
+
+    // Category 8: Task-Specific Study Nudges
+    // Injectable context: {{taskTitle}}
+    task_specific: [
+        { title: `🎯 Quick Goal: {{taskTitle}}`, body: `You're so close, {{firstName}}! Let's get this done for {{petName}}. 💪` },
+        { title: `Psst... {{taskTitle}}`, body: `Don't leave it until tomorrow, {{firstName}}. {{petName}} is ready! 🧠` },
+        { title: `Finish what you started!`, body: `{{taskTitle}} is waiting in "{{lastNotebook}}". Let's knock it out. 🤝` },
+        { title: `Time for {{subject}}!`, body: `Let's tackle "{{taskTitle}}" together and earn some points! ✨` },
+        { title: `Ready to level up?`, body: `"{{taskTitle}}" is the fastest way to evolution, {{firstName}}! 🚀` },
+    ],
 }
 
 // ============================================================================
@@ -150,14 +173,35 @@ function selectCategory(
     quizCompletedAt: string | null,
     pointsToLevelUp: number,
     currentHour: number,
-    streak: number
+    streak: number,
+    hasNotebooks: boolean,
+    uncompletedTasks: any[] = []
 ): NotificationCategory {
-    // Priority 0: Streak is 0 - use comeback messages (no guilt-tripping)
+    // Priority 0: Empty State - Onboarding
+    if (!hasNotebooks) {
+        return 'onboarding'
+    }
+
+    // Priority 1: Streak at risk (URGENT loss aversion)
+    // If it's night time (8 PM+) and streak is not secured
+    if (currentHour >= 20 && streak > 0) {
+        return 'loss_aversion'
+    }
+
+    // Priority 2: Task-Specific Nudge (High relevance)
+    // If user has specific study tasks uncompleted
+    const highValueTasks = ['study_flashcards', 'quiz_5_questions', 'podcast_3_min', 'quiz_perfect_score']
+    const hasStudyTask = uncompletedTasks.some(t => highValueTasks.includes(t.task_key))
+    if (hasStudyTask && Math.random() > 0.3) { // 70% chance to show task-specific if available
+        return 'task_specific'
+    }
+
+    // Priority 3: Streak is 0 - use comeback messages
     if (streak === 0) {
         return 'comeback'
     }
 
-    // Priority 1: Quiz recovery (only if bombed a quiz in the last 7 days)
+    // Priority 4: Quiz recovery (only if bombed a quiz in the last 7 days)
     if (quizScore !== null && quizScore < 50 && quizCompletedAt) {
         const quizDate = new Date(quizCompletedAt)
         const now = new Date()
@@ -167,22 +211,17 @@ function selectCategory(
         }
     }
 
-    // Priority 2: Pet level-up nudge (gamification hook)
+    // Priority 5: Pet level-up nudge (gamification hook)
     if (pointsToLevelUp > 0 && pointsToLevelUp <= 20) {
         return 'hype'
     }
 
-    // Priority 3: Streak at risk (1 day gap)
-    if (diffDays === 1) {
-        return 'loss_aversion'
-    }
-
-    // Priority 4: Been gone a while (2+ days)
+    // Priority 6: Been gone a while (2+ days)
     if (diffDays > 1) {
         return 'passive_aggressive'
     }
 
-    // Priority 5: Morning encouragement
+    // Priority 7: Morning encouragement
     if (currentHour >= 8 && currentHour <= 11) {
         return 'hype'
     }
@@ -195,7 +234,7 @@ function selectCategory(
 // TEMPLATE VARIABLE INJECTION
 // ============================================================================
 
-function injectVariables(template: MessageTemplate, context: NotificationContext): MessageTemplate {
+function injectVariables(template: MessageTemplate, context: NotificationContext & { taskTitle?: string }): MessageTemplate {
     let title = template.title
     let body = template.body
 
@@ -208,7 +247,10 @@ function injectVariables(template: MessageTemplate, context: NotificationContext
         '{{quizTitle}}': context.quizTitle || '',
         '{{pointsToLevelUp}}': String(context.pointsToLevelUp),
         '{{petStage}}': String(context.petStage),
+        '{{nextPetStage}}': String(context.petStage + 1),
         '{{topic}}': context.topic,
+        '{{firstName}}': context.firstName,
+        '{{taskTitle}}': context.taskTitle || 'your daily session',
     }
 
     for (const [key, value] of Object.entries(replacements)) {
@@ -242,7 +284,7 @@ Deno.serve(async (req: Request) => {
         // 1. Get users with push tokens
         const { data: profiles, error: profileError } = await supabase
             .from('profiles')
-            .select('id, expo_push_token, timezone, last_streak_date, streak, last_notification_sent_at')
+            .select('id, expo_push_token, timezone, last_streak_date, streak, last_notification_sent_at, first_name')
             .not('expo_push_token', 'is', null)
 
         if (profileError) throw profileError
@@ -271,8 +313,8 @@ Deno.serve(async (req: Request) => {
             }).format(now)
             const currentHour = parseInt(userTime)
 
-            // Only send if it's evening (6 PM to 10 PM) or morning (8 AM to 11 AM)
-            const isValidTime = (currentHour >= 18 && currentHour <= 22) || (currentHour >= 8 && currentHour <= 11)
+            // Only send if it's evening (6 PM to 11 PM) or morning (8 AM to 11 AM)
+            const isValidTime = (currentHour >= 18 && currentHour <= 23) || (currentHour >= 8 && currentHour <= 11)
             if (!isValidTime && !debug) continue
 
             // Format today's date in user's timezone
@@ -297,11 +339,15 @@ Deno.serve(async (req: Request) => {
                 diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
             }
 
-            // ================================================================
-            // PHASE 2: ENHANCED CONTEXT FETCHING
-            // ================================================================
+            // Fetch tasks for the user
+            const { data: rawTasks } = await supabase.rpc('get_daily_tasks', {
+                p_user_id: profile.id,
+                p_timezone: timezone,
+            })
+            const tasks = (rawTasks as any[]) || []
+            const uncompletedTasks = tasks.filter(t => !t.completed)
 
-            // Fetch notebook with subject
+            // Step 2: Fetch notebook with subject
             const { data: notebook } = await supabase
                 .from('notebooks')
                 .select('id, title, meta')
@@ -330,6 +376,24 @@ Deno.serve(async (req: Request) => {
             const contentClassification = notebook?.meta?.content_classification
             const subject = contentClassification?.subject_area || 'your studies'
 
+            // Personalized Persona Names for users without first_name
+            const personas: Record<'supportive' | 'playful' | 'urgent', string[]> = {
+                supportive: ['superstar', 'champion', 'legend', 'ace', 'hero'],
+                playful: ['human', 'friend', 'bestie', 'partner in crime', 'pet parent'],
+                urgent: ['slacker', 'stranger', 'procrastinator', 'missing student']
+            }
+
+            const getPersonalizedName = (cat: NotificationCategory, firstName: string | null) => {
+                if (firstName) return firstName
+                let personaType: 'supportive' | 'playful' | 'urgent' = 'supportive'
+                if (cat === 'passive_aggressive') personaType = 'urgent'
+                else if (cat === 'soft' || cat === 'hype') personaType = 'supportive'
+                else if (cat === 'comeback' || cat === 'onboarding') personaType = 'playful'
+
+                const pool = personas[personaType]
+                return pool[Math.floor(Math.random() * pool.length)]
+            }
+
             // Build context object
             const context: NotificationContext = {
                 petName: pet?.name || 'Nova',
@@ -339,9 +403,10 @@ Deno.serve(async (req: Request) => {
                 quizScore: lastQuiz?.score_percentage ?? null,
                 quizTitle: (lastQuiz?.quiz as any)?.title ?? null,
                 quizCompletedAt: lastQuiz?.completed_at ?? null,
-                pointsToLevelUp: ((pet?.current_stage || 1) * 100) - (pet?.current_points || 0),
+                pointsToLevelUp: Math.max(0, ((pet?.current_stage || 1) * 100) - (pet?.current_points || 0)),
                 petStage: pet?.current_stage || 1,
                 topic: subject, // Use subject as topic fallback
+                firstName: '', // Will be set after category selection
             }
 
             // Get pet bubble image
@@ -358,8 +423,13 @@ Deno.serve(async (req: Request) => {
                 context.quizCompletedAt,
                 context.pointsToLevelUp,
                 currentHour,
-                context.streak
+                context.streak,
+                !!notebook,
+                uncompletedTasks
             )
+
+            // Finalize firstName based on category
+            context.firstName = getPersonalizedName(category, profile.first_name)
 
             // ================================================================
             // PHASE 4: TEMPLATE SELECTION & VARIABLE INJECTION
@@ -367,7 +437,16 @@ Deno.serve(async (req: Request) => {
 
             const templates = templateLibrary[category]
             const rawTemplate = templates[Math.floor(Math.random() * templates.length)]
-            const message = injectVariables(rawTemplate, context)
+
+            // If task specific, get a relevant task title
+            let taskTitle = undefined
+            if (category === 'task_specific') {
+                const highValueTasks = ['study_flashcards', 'quiz_5_questions', 'podcast_3_min', 'quiz_perfect_score']
+                const task = uncompletedTasks.find(t => highValueTasks.includes(t.task_key))
+                if (task) taskTitle = task.title
+            }
+
+            const message = injectVariables(rawTemplate, { ...context, taskTitle })
 
             console.log(`[${profile.id}] Category: ${category}, Template: ${rawTemplate.title.substring(0, 30)}...`)
 

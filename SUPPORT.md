@@ -42,7 +42,7 @@ Brigo isn't just an app; it's a scientific study tool built on two pillars of ed
 
 Transform your materials into active study aids.
 
-- **Audio Overviews:** Brigo creates high-quality, podcast-style summaries of your notebooks. Perfect for listening during commutes or at the gym. 
+- **Podcasts:** Brigo creates high-quality summaries of your notebooks. Perfect for listening during commutes or at the gym. 
 - **Smart Quizzes:** We generate multiple-choice, short-answer, and essay questions tailored to your education level.
 - **Flashcard Decks:** Automatically extracted key terms and concepts for quick active recall sessions.
 - **Daily Limits:** To ensure a high-quality experience for everyone, we have daily limits on how many high-level resources (Audio, Quizzes, Predictions) can be generated.
@@ -119,7 +119,7 @@ Brigo is currently optimized for mobile experiences, ensuring you can study anyw
 ### Technical Requirements
 To use Brigo effectively, your device should have:
 - An active internet connection (required for AI analysis and Exam Prediction).
-- Sufficient storage for cached study materials and audio overviews.
+- Sufficient storage for cached study materials and podcasts.
 - Camera access (for scanning physical notes and textbooks).
 
 ---

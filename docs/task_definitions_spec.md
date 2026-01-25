@@ -113,7 +113,7 @@ points: 2 points
 trigger_event: audio_overview_completed
 display_order: 30
 validation_logic:
-	•	When an audio overview job enters completed status
+	•	When a podcast job enters completed status
 	•	Only first completion counts for this task
 	•	Server checks podcast_jobs table for user's first completed job
 
@@ -130,6 +130,36 @@ testing_checklist:
 
 ⸻
 
+🟦 Task 4 — Try your first AI chat
+
+task_key: first_notebook_chat
+task_type: foundational
+title: Try your first AI chat
+description: Ask Mary a question about your sources to see the magic happen.
+points: 2 points
+trigger_event: notebook_chat_message_sent
+display_order: 40
+validation_logic:
+	•	Award when user sends their first message to the notebook chatbot.
+	•	Server checks message history for the notebook.
+
+⸻
+
+🟦 Task 5 — Rate your first podcast
+
+task_key: audio_feedback_given
+task_type: foundational
+title: Rate your first podcast
+description: Give a thumbs up or down to any podcast to help us improve.
+points: 1 point
+trigger_event: audio_feedback_created
+display_order: 50
+validation_logic:
+	•	Award when user first submits feedback (thumb up/down) for any podcast.
+	•	Once completed, this task is never shown again.
+
+⸻
+
 3. Daily Task Definitions
 
 Daily tasks encourage consistent usage and studying.
@@ -141,7 +171,7 @@ Daily tasks reset at server midnight (see Section 8 for timezone handling).
 
 ⸻
 
-🟩 Task 4 — Study 5 Flashcards
+🟩 Task 6 — Study 5 flashcards
 
 task_key: study_flashcards
 task_type: daily
@@ -151,29 +181,11 @@ points: 1 point
 trigger_event: flashcard_completed
 display_order: 30
 validation_logic:
-	•	Count flashcards completed today (via flashcard_completions table)
-	•	Filter by user_id and completion_date = today (server timezone)
-	•	When count ≥ 5 → complete task
-	•	Progress updates in real-time as each flashcard is completed
-
-appearance_rules:
-	•	Resets daily
-	•	Shows live progress counter (e.g., "3/5 flashcards")
-	•	Progress updates immediately after each flashcard completion
-
-testing_checklist:
-	•	Simulate: Complete 4 flashcards
-	•	Assert: Task shows "4/5 flashcards", not completed
-	•	Simulate: Complete 5th flashcard
-	•	Assert: Task marked complete, 1 point awarded
-	•	Simulate: Complete 6th flashcard same day
-	•	Assert: Task remains completed, no duplicate points
-	•	Simulate: Next day, complete 1 flashcard
-	•	Assert: Task resets, shows "1/5 flashcards"
+	•	Count flashcards completed today (via flashcard_completions table) ≥ 5.
 
 ⸻
 
-🟩 Task 5 — Study for 15 Minutes
+🟩 Task 7 — Study for 15 minutes
 
 task_key: study_15_minutes
 task_type: daily
@@ -183,90 +195,64 @@ points: 2 points
 trigger_event: study_session_updated
 display_order: 20
 validation_logic:
-	•	Using study_sessions table
-	•	Sum of durations for today (completion_date = today, server timezone) ≥ 900 seconds
-	•	Progress calculated from sum of all session durations today
-	•	Task completes when threshold is reached
-
-appearance_rules:
-	•	Resets daily
-	•	Shows live progress indicator (e.g., "8/15 minutes" or "12:30 / 15:00")
-	•	Progress updates when study sessions are recorded
-
-testing_checklist:
-	•	Simulate: Study for 10 minutes
-	•	Assert: Task shows "10/15 minutes", not completed
-	•	Simulate: Study for additional 5 minutes (total 15)
-	•	Assert: Task marked complete, 2 points awarded
-	•	Simulate: Multiple short sessions totaling 15 minutes
-	•	Assert: Task completes when sum reaches 15 minutes
-	•	Simulate: Study 20 minutes in one session
-	•	Assert: Task completes at 15 minutes, shows "15/15 minutes"
+	•	Sum of durations for today ≥ 900 seconds.
 
 ⸻
 
-🟩 Task 6 — Listen to a Podcast
+🟩 Task 8 — Add more study material
+
+task_key: add_material_daily
+task_type: daily
+title: Add more study material
+description: Add a PDF, image, link, text, or audio to an existing notebook.
+points: 2 points
+trigger_event: material_created
+display_order: 60
+validation_logic:
+	•	Award when user adds a material to any notebook today.
+
+⸻
+
+🟩 Task 9 — Listen to a podcast for 60 secs
 
 task_key: listen_audio_overview
 task_type: daily
-title: Listen to a podcast
-description: Play any generated podcast.
+title: Listen to a podcast for 60 secs
+description: Play a generated podcast for at least 60 seconds.
 points: 1 point
-trigger_event: audio_playback_started
+trigger_event: podcast_duration_met
 display_order: 40
 validation_logic:
-	•	When user presses play on any podcast (first play of the day)
-	•	No minimum seconds required for MVP
-	•	Server records first playback event per day (completion_date = today)
-	•	Future enhancement: Configurable minimum play duration (e.g., 30 seconds) can be added later
-
-appearance_rules:
-	•	Resets daily
-	•	Binary completion (no partial progress shown)
-	•	Shows as incomplete or complete only
-
-testing_checklist:
-	•	Simulate: Press play on podcast
-	•	Assert: Task marked complete immediately, 1 point awarded
-	•	Simulate: Press play again same day
-	•	Assert: Task remains completed, no duplicate points
-	•	Simulate: Press play next day
-	•	Assert: Task resets, completes again on first play
-	•	Note: MVP does not require minimum playback duration
+	•	Cumulative or single-session playback today ≥ 60 seconds.
 
 ⸻
 
-🟩 Task 7 — Maintain Daily Streak (Hero Task)
+🟩 Task 10 — Ace a quiz (80%+)
 
-task_key: maintain_streak
+task_key: quiz_perfect_score
 task_type: daily
-title: Maintain your daily streak
+title: Ace a quiz (80%+)
+description: Score 80% or higher on any quiz.
+points: 3 points
+trigger_event: quiz_completed
+display_order: 50
+validation_logic:
+	•	Check quiz_completions for score_percentage ≥ 80.
+
+⸻
+
+🟩 Task 11 — Studied to protect {{petName}} (Hero Task)
+
+task_key: secure_pet
+task_type: daily
+title: Studied to protect {{petName}}
 description: Earn streak credit by opening the app today.
 points: 4 points
 trigger_event: streak_incremented
 display_order: 10
 validation_logic:
-	•	Profiles table updates streak value
-	•	Only award when streak = previous_streak + 1 (increment)
-	•	Do NOT award on streak resets (when streak goes from N to 1)
-	•	Server checks: new_streak = old_streak + 1 before awarding
-	•	Task completes automatically when valid increment occurs
-
-appearance_rules:
-	•	Auto-completes if streak increment happens
-	•	Resets daily
-	•	Marked as hero task in UI (4 points)
-	•	Binary completion (no partial progress)
-
-testing_checklist:
-	•	Simulate: Open app, streak increases from 5 to 6
-	•	Assert: Task marked complete, 4 points awarded
-	•	Simulate: Streak resets from 10 to 1 (missed day)
-	•	Assert: Task not completed, no points awarded
-	•	Simulate: Streak stays same (already opened today)
-	•	Assert: Task not completed, no points awarded
-	•	Simulate: Next day, streak increments from 1 to 2
-	•	Assert: Task completes, 4 points awarded
+	•	Profiles table updates streak value.
+	•	Only award when streak = previous_streak + 1.
 
 ⸻
 
@@ -294,15 +280,17 @@ Canonical Task Keys:
 	•	study_flashcards
 	•	study_15_minutes
 	•	listen_audio_overview
-	•	maintain_streak
+	•	secure_pet
 
 Canonical Trigger Events:
 	•	pet_name_updated
 	•	material_created
 	•	audio_overview_completed
+	•	notebook_chat_message_sent
+	•	audio_feedback_created
 	•	flashcard_completed
 	•	study_session_updated
-	•	audio_playback_started
+	•	podcast_duration_met
 	•	streak_incremented
 
 ⸻
@@ -347,7 +335,7 @@ The engineering guide will map these to functions (File 3).
 Every day, each user receives exactly three daily tasks selected deterministically:
 
 Selection Rules:
-	1.	Always include hero task (maintain_streak) if eligible
+	1.	Always include hero task (secure_pet) if eligible
 		•	Eligible if task exists and user hasn't completed it today
 	2.	Pick 2 additional tasks from pool: [study_15_minutes, study_flashcards, listen_audio_overview]
 		•	Use deterministic rotation seeded by hash(user_id + date)
@@ -360,11 +348,11 @@ Selection Rules:
 		•	If no tasks eligible, show empty daily task list
 
 Example Selection Logic (pseudocode):
-	eligible_tasks = [maintain_streak, study_15_minutes, study_flashcards, listen_audio_overview]
+	eligible_tasks = [secure_pet, study_15_minutes, study_flashcards, listen_audio_overview]
 	selected = []
 	
-	if maintain_streak in eligible_tasks:
-		selected.append(maintain_streak)
+	if secure_pet in eligible_tasks:
+		selected.append(secure_pet)
 	
 	remaining_pool = [study_15_minutes, study_flashcards, listen_audio_overview]
 	seed = hash(user_id + date_string)
@@ -420,7 +408,7 @@ Missing Timezone:
 	•	Log warning for missing timezone data
 
 Task Selection Edge Cases:
-	•	If maintain_streak task is disabled or missing, select 3 tasks from remaining pool
+	•	If secure_pet task is disabled or missing, select 3 tasks from remaining pool
 	•	If fewer than 3 daily tasks exist in database, show all available tasks
 	•	If user completes all daily tasks before reset, show empty list until next day
 
@@ -441,7 +429,7 @@ Daily Tasks with Progress Counters:
 
 Daily Tasks with Binary Display:
 	•	listen_audio_overview: Incomplete or Complete only (no counter)
-	•	maintain_streak: Incomplete or Complete only (no counter)
+	•	secure_pet: Incomplete or Complete only (no counter)
 	•	Both show ✓ when completed, no partial state
 
 Progress Update Frequency:

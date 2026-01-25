@@ -1,12 +1,12 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Alert } from 'react-native';
 import { generateStudioContent } from '@/lib/api/studioApi';
-import { generateAudioOverview } from '@/lib/api/audioOverviewApi';
+import { generatePodcast } from '@/lib/api/podcastApi';
 import { generateExamPrediction } from '@/lib/api/examPredictionApi';
-import { audioService } from '@/lib/services/audioService';
+import { podcastService } from '@/lib/services/podcastService';
 import { storageService } from '@/lib/storage/storageService';
 import { useStore } from '@/lib/store';
-import type { AudioOverview, ExamPrediction } from '@/lib/store/types';
+import type { Podcast, ExamPrediction } from '@/lib/store/types';
 import { useErrorHandler } from './useErrorHandler';
 import { checkQuotaRemaining } from '@/lib/services/subscriptionService';
 import type { LimitReason, SubscriptionData } from '@/lib/services/subscriptionService';
@@ -17,9 +17,9 @@ interface UseStudioGenerationParams {
   notebookId: string;
   flashcardsCount: number;
   quizzesCount: number;
-  audioOverviewsCount: number;
+  podcastsCount: number;
   examPredictionsCount: number;
-  setAudioOverviews: React.Dispatch<React.SetStateAction<AudioOverview[]>>;
+  setPodcasts: React.Dispatch<React.SetStateAction<Podcast[]>>;
   setExamPredictions: React.Dispatch<React.SetStateAction<ExamPrediction[]>>;
   refreshContent: () => Promise<void>;
   // From useAudioGeneration hook
@@ -35,9 +35,9 @@ export const useStudioGeneration = ({
   notebookId,
   flashcardsCount,
   quizzesCount,
-  audioOverviewsCount,
+  podcastsCount,
   examPredictionsCount,
-  setAudioOverviews,
+  setPodcasts,
   setExamPredictions,
   refreshContent,
   setGeneratingType,
@@ -196,13 +196,13 @@ export const useStudioGeneration = ({
   }, [notebookId, quizzesCount, setGeneratingType, refreshContent, checkAndAwardTask, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown, notebookTitle, notify]);
 
   /**
-   * Generate audio overview for the notebook
+   * Generate podcast for the notebook
    */
-  const handleGenerateAudioOverview = useCallback(async () => {
+  const handleGeneratePodcast = useCallback(async () => {
     // Check quota before proceeding with detailed reason
     const quotaCheck = checkQuotaRemaining('audio', subscription);
     if (!quotaCheck.hasQuota) {
-      trackCreateAttemptBlocked('audio_overview');
+      trackCreateAttemptBlocked('podcast');
       trackUpgradeModalShown('create_attempt');
       setUpgradeModalSource('create_attempt');
       setLimitReason(quotaCheck.reason);
@@ -213,10 +213,10 @@ export const useStudioGeneration = ({
       // TODO: Implement confirmation dialog with centralized error handling
       const ok = await new Promise<boolean>((resolve) => {
         Alert.alert(
-          'Generate Audio Overview',
-          audioOverviewsCount > 0
-            ? `You already have ${audioOverviewsCount} audio overviews. Generate another?`
-            : 'Generate an audio overview for this notebook?',
+          'Generate Podcast',
+          podcastsCount > 0
+            ? `You already have ${podcastsCount} podcasts. Generate another?`
+            : 'Generate a podcast for this notebook?',
           [
             { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
             { text: 'Generate', onPress: () => resolve(true) }
@@ -228,7 +228,7 @@ export const useStudioGeneration = ({
 
       setGeneratingType('audio');
 
-      const result = await generateAudioOverview(notebookId);
+      const result = await generatePodcast(notebookId);
       setGeneratingAudioId(result.overview_id);
 
       // Start polling for status updates
@@ -248,7 +248,7 @@ export const useStudioGeneration = ({
 
         // Otherwise, check for pending audio generation
         try {
-          const pendingAudio = await audioService.findPending(notebookId);
+          const pendingAudio = await podcastService.findPending(notebookId);
 
           if (pendingAudio) {
             // Generation actually started! Restore state and continue polling
@@ -271,7 +271,7 @@ export const useStudioGeneration = ({
     }
   }, [
     notebookId,
-    audioOverviewsCount,
+    podcastsCount,
     setGeneratingType,
     setGeneratingAudioId,
     startAudioPolling,
@@ -343,12 +343,12 @@ export const useStudioGeneration = ({
   }, [notebookId, examPredictionsCount, setGeneratingType, startPredictionPolling, refreshContent, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown, notebookTitle, notify]);
 
   /**
-   * Delete an audio overview
+   * Delete a podcast
    */
-  const handleDeleteAudioOverview = useCallback(
-    (overview: AudioOverview) => {
+  const handleDeletePodcast = useCallback(
+    (overview: Podcast) => {
       Alert.alert(
-        'Delete Audio Overview',
+        'Delete Podcast',
         `Are you sure you want to delete "${overview.title}"? This cannot be undone.`,
         [
           { text: 'Cancel', style: 'cancel' },
@@ -363,12 +363,12 @@ export const useStudioGeneration = ({
                 }
 
                 // Delete from database
-                await audioService.delete(overview.id);
+                await podcastService.delete(overview.id);
 
                 // Update local state without refetching everything
-                setAudioOverviews((prev) => prev.filter((a) => a.id !== overview.id));
+                setPodcasts((prev) => prev.filter((a) => a.id !== overview.id));
 
-                Alert.alert('Deleted', 'Audio overview has been deleted.');
+                Alert.alert('Deleted', 'Podcast has been deleted.');
               } catch (error: any) {
                 // Error already handled by services and displayed via ErrorNotificationContext
                 // No need for Alert.alert - error UI will show automatically
@@ -378,7 +378,7 @@ export const useStudioGeneration = ({
         ]
       );
     },
-    [setAudioOverviews, handleError]
+    [setPodcasts, handleError]
   );
 
   /**
@@ -417,9 +417,9 @@ export const useStudioGeneration = ({
   return {
     handleGenerateFlashcards,
     handleGenerateQuiz,
-    handleGenerateAudioOverview,
+    handleGeneratePodcast,
     handleGeneratePrediction,
-    handleDeleteAudioOverview,
+    handleDeletePodcast,
     handleDeletePrediction,
     showUpgradeModal,
     setShowUpgradeModal,

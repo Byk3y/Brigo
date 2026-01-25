@@ -67,16 +67,16 @@ export const formatStudioError = (
   contentType: 'flashcards' | 'quiz' | 'audio'
 ): StudioErrorInfo => {
   const errorMessage = error?.message || `Failed to generate ${contentType}`;
-  
+
   // Quota/trial limit errors
   if (errorMessage.includes('Trial limit reached') || errorMessage.includes('quota')) {
     const limitMessage = contentType === 'audio'
-      ? 'audio overviews'
+      ? 'podcasts'
       : 'Studio jobs';
     const featureMessage = contentType === 'audio'
       ? 'audio summaries'
       : 'flashcards and quizzes';
-    
+
     if (error?.remaining !== undefined && error?.limit !== undefined) {
       return {
         title: 'Limit Reached',
@@ -108,7 +108,7 @@ export const formatStudioError = (
 
   // Content too short
   if (errorMessage.includes('Material content too short')) {
-    const contentName = contentType === 'audio' ? 'an audio overview' : contentType;
+    const contentName = contentType === 'audio' ? 'a podcast' : contentType;
     return {
       title: 'Content Too Short',
       message: `Your material needs at least 500 characters to generate ${contentName}.`,

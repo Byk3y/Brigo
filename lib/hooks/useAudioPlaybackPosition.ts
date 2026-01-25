@@ -19,7 +19,7 @@ interface UseAudioPlaybackPositionReturn {
 /**
  * Hook to manage audio playback position persistence
  *
- * @param audioOverviewId - Unique identifier for the audio overview
+ * @param podcastId - Unique identifier for the podcast
  * @param notebookId - ID of the parent notebook
  * @param audioUrl - URL of the audio file (for validation)
  * @param duration - Total duration of the audio in seconds

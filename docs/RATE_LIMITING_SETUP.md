@@ -10,7 +10,7 @@ Rate limiting has been implemented using Upstash Redis to prevent abuse, control
 |----------|-------|--------|-------------|
 | `process-material` | 10 requests | 5 minutes | Material upload and processing |
 | `generate-studio-content` | 5 requests | 5 minutes | Flashcard/quiz generation |
-| `generate-audio-overview` | 3 requests | 10 minutes | Audio overview generation |
+| `generate-audio-overview` | 3 requests | 10 minutes | Podcast generation |
 
 ## Setup Instructions
 

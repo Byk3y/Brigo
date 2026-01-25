@@ -1,10 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, View, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useStore, type Notebook } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { useStudioContent } from '@/lib/hooks/useStudioContent';
-import { useAudioGeneration } from '@/lib/hooks/useAudioGeneration';
+import { usePodcastGeneration } from '@/lib/hooks/usePodcastGeneration';
 import { useStudioGeneration } from '@/lib/hooks/useStudioGeneration';
 import { useAppState } from '@/lib/hooks/useAppState';
 import { StudioExtractingState } from './studio/StudioExtractingState';
@@ -26,7 +26,7 @@ const StudioTourTrigger = () => {
       const timer = setTimeout(() => {
         start();
         setStudioWalkthroughSeen();
-      }, 1000); // Shorter delay since they've already been the notebook for a bit
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [hasSeenStudioWalkthrough, _hasHydrated]);
@@ -47,47 +47,48 @@ const StudioTourController: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 };
 
-
 interface StudioTabProps {
   notebook: Notebook;
-  onGenerateQuiz?: () => void;
+  onGenerateQuiz?: boolean;
 }
 
-export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }) => {
-  const isExtracting = notebook.status === 'extracting';
-  const isProcessingSources = notebook.materials?.some(m => m.status === 'processing') || false;
-
+export const StudioTab: React.FC<StudioTabProps> = ({
+  notebook,
+  onGenerateQuiz = false,
+}) => {
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
 
   const {
+    podcasts,
     flashcard_sets,
     quizzes,
-    audioOverviews,
-    setAudioOverviews,
     examPredictions,
-    setExamPredictions,
     loading,
     refreshContent,
+    setPodcasts,
+    setExamPredictions,
+    deletePodcast,
+    deleteExamPrediction,
   } = useStudioContent(notebook.id);
 
   const {
     generatingType,
     setGeneratingType,
-    setGeneratingAudioId,
     audioProgress,
+    setGeneratingAudioId,
     checkForPendingAudio,
     startAudioPolling,
     startPredictionPolling,
     checkForPendingPrediction,
-  } = useAudioGeneration(notebook.id, notebook.title, refreshContent);
+  } = usePodcastGeneration(notebook.id, notebook.title, refreshContent);
 
   const {
     handleGenerateFlashcards,
     handleGenerateQuiz,
-    handleGenerateAudioOverview,
+    handleGeneratePodcast,
     handleGeneratePrediction,
-    handleDeleteAudioOverview,
+    handleDeletePodcast,
     handleDeletePrediction,
     showUpgradeModal,
     setShowUpgradeModal,
@@ -97,9 +98,9 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
     notebookId: notebook.id,
     flashcardsCount: flashcard_sets.length,
     quizzesCount: quizzes.length,
-    audioOverviewsCount: audioOverviews.length,
+    podcastsCount: podcasts.length,
     examPredictionsCount: examPredictions.length,
-    setAudioOverviews,
+    setPodcasts,
     setExamPredictions,
     refreshContent,
     setGeneratingType,
@@ -133,7 +134,7 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
     }
   }, [onGenerateQuiz, handleGenerateQuiz]);
 
-  if (isExtracting) {
+  if (notebook.status === 'extracting') {
     return <StudioExtractingState />;
   }
 
@@ -152,11 +153,11 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
           <View style={{ maxWidth: isPad ? 800 : '100%', alignSelf: 'center', width: '100%' }}>
             <GenerateOptionsSection
               generatingType={generatingType}
-              onGenerateAudio={handleGenerateAudioOverview}
+              onGeneratePodcast={handleGeneratePodcast}
               onGenerateFlashcards={handleGenerateFlashcards}
               onGenerateQuiz={handleGenerateQuiz}
               onGeneratePrediction={handleGeneratePrediction}
-              isProcessingSources={isProcessingSources}
+              isProcessingSources={false} // Default for now
             />
 
             <GeneratedMediaSection
@@ -164,13 +165,13 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
               notebookTitle={notebook.title}
               flashcard_sets={flashcard_sets}
               quizzes={quizzes}
-              audioOverviews={audioOverviews}
+              podcasts={podcasts}
               examPredictions={examPredictions}
               loading={loading}
               generatingType={generatingType}
               audioProgressStage={audioProgress.stage}
-              onDeleteAudio={handleDeleteAudioOverview}
-              onDeletePrediction={handleDeletePrediction}
+              onDeletePodcast={deletePodcast}
+              onDeletePrediction={deleteExamPrediction}
               onGeneratePrediction={handleGeneratePrediction}
             />
           </View>
@@ -178,7 +179,6 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
       </StudioTourController>
 
       {upgradeModalSource && (
-
         <UpgradeModal
           visible={showUpgradeModal}
           onDismiss={() => {
@@ -192,5 +192,3 @@ export const StudioTab: React.FC<StudioTabProps> = ({ notebook, onGenerateQuiz }
     </GestureHandlerRootView>
   );
 };
-
-

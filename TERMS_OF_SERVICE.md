@@ -7,7 +7,7 @@ Welcome to **Brigo**! These Terms of Service ("Terms") govern your use of the Br
 ---
 
 ## 1. Description of Service
-Brigo is an AI-powered study platform that allows users to upload materials (PDFs, images, text) to generate study aids such as flashcards, quizzes, and audio overviews. The Service also includes a gamified "Pet Companion" system to track study progress.
+Brigo is an AI-powered study platform that allows users to upload materials (PDFs, images, text) to generate study aids such as flashcards, quizzes, and podcasts. The Service also includes a gamified "Pet Companion" system to track study progress.
 
 ---
 

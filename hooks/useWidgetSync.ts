@@ -54,7 +54,7 @@ export function useWidgetSync() {
 
                 if (activeNotebook) {
                     // 1. Try to find an unfinished podcast
-                    const unfinishedPodcast = activeNotebook.audio_overviews?.find(ao => {
+                    const unfinishedPodcast = activeNotebook.podcasts?.find(ao => {
                         const pos = playbackPositions[ao.id];
                         return pos && pos.percentComplete < 95;
                     });
@@ -78,8 +78,8 @@ export function useWidgetSync() {
                         };
                     }
                     // 3. Fallback to latest podcast
-                    else if (activeNotebook.audio_overviews && activeNotebook.audio_overviews.length > 0) {
-                        const latestPodcast = activeNotebook.audio_overviews[0];
+                    else if (activeNotebook.podcasts && activeNotebook.podcasts.length > 0) {
+                        const latestPodcast = activeNotebook.podcasts[0];
                         suggestedActivity = {
                             type: 'podcast',
                             id: latestPodcast.id,

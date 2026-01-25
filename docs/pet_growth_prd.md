@@ -179,7 +179,7 @@ Add study material	Material row created
 Generate podcast	Podcast completed
 Study flashcards	Flashcard completion count increments
 Study for 15 minutes	Study timer reaches 15m
-Listen to podcast	Audio playback event fired
+Listen to podcast	Podcast playback event fired
 Maintain streak	Streak table increments
 
 When a trigger occurs →

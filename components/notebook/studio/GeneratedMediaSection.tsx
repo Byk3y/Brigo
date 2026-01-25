@@ -1,7 +1,3 @@
-/**
- * GeneratedMediaSection - Displays generated flashcards, quizzes, podcasts, and predictions
- */
-
 import React, { useMemo, useEffect } from 'react';
 import { View, Text, Alert, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -12,7 +8,7 @@ import { StudioMediaItem } from './StudioMediaItem';
 import { StudioEmptyState } from './StudioEmptyState';
 import { formatDuration, getTimeAgo } from '@/lib/utils/studio';
 import { LOADING_MESSAGES } from '@/lib/constants/loadingMessages';
-import type { StudioFlashcard, Quiz, AudioOverview, FlashcardSet, ExamPrediction } from '@/lib/store/types';
+import type { StudioFlashcard, Quiz, Podcast, FlashcardSet, ExamPrediction } from '@/lib/store/types';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -25,7 +21,7 @@ type GeneratingType = 'flashcards' | 'quiz' | 'audio' | 'prediction' | null;
 type MediaItem =
   | { type: 'flashcard_set'; data: FlashcardSet; createdAt: string }
   | { type: 'quiz'; data: Quiz; createdAt: string }
-  | { type: 'audio'; data: AudioOverview; createdAt: string }
+  | { type: 'podcast'; data: Podcast; createdAt: string }
   | { type: 'prediction'; data: ExamPrediction; createdAt: string };
 
 interface GeneratedMediaSectionProps {
@@ -33,12 +29,12 @@ interface GeneratedMediaSectionProps {
   notebookTitle: string;
   flashcard_sets: FlashcardSet[];
   quizzes: Quiz[];
-  audioOverviews: AudioOverview[];
+  podcasts: Podcast[];
   examPredictions: ExamPrediction[];
   loading: boolean;
   generatingType: GeneratingType;
   audioProgressStage: string;
-  onDeleteAudio: (overview: AudioOverview) => void;
+  onDeletePodcast: (podcast: Podcast) => void;
   onDeletePrediction?: (prediction: ExamPrediction) => void;
   onGeneratePrediction?: (retryId?: string) => void;
 }
@@ -48,12 +44,12 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
   notebookTitle,
   flashcard_sets,
   quizzes,
-  audioOverviews,
+  podcasts,
   examPredictions,
   loading,
   generatingType,
   audioProgressStage,
-  onDeleteAudio,
+  onDeletePodcast,
   onDeletePrediction,
   onGeneratePrediction,
 }) => {
@@ -71,7 +67,7 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
   // Smooth layout animation when items are added/removed
   useEffect(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  }, [generatingType, examPredictions.length, audioOverviews.length, flashcard_sets.length, quizzes.length]);
+  }, [generatingType, examPredictions.length, podcasts.length, flashcard_sets.length, quizzes.length]);
 
   const sortedMediaItems = useMemo(() => {
     const items: MediaItem[] = [];
@@ -94,12 +90,12 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
       });
     });
 
-    // Add audio overviews
-    audioOverviews.forEach((overview) => {
+    // Add podcasts
+    podcasts.forEach((podcast) => {
       items.push({
-        type: 'audio',
-        data: overview,
-        createdAt: overview.generated_at,
+        type: 'podcast',
+        data: podcast,
+        createdAt: podcast.generated_at,
       });
     });
 
@@ -118,7 +114,7 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
       const dateB = new Date(b.createdAt).getTime();
       return dateB - dateA;
     });
-  }, [flashcard_sets, quizzes, audioOverviews, examPredictions]);
+  }, [flashcard_sets, quizzes, podcasts, examPredictions]);
 
   const renderMediaItem = (item: MediaItem) => {
     if (item.type === 'flashcard_set') {
@@ -208,7 +204,7 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
         title={item.data.title}
         subtitle={`${formatDuration(item.data.duration)} • ${getTimeAgo(item.createdAt)}`}
         onPress={() => router.push(`/audio-player/${item.data.id}`)}
-        onDelete={() => onDeleteAudio(item.data)}
+        onDelete={() => onDeletePodcast(item.data)}
       />
     );
   };
@@ -273,7 +269,7 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
                   title="Podcast"
                   isGenerating={true}
                   loadingColor="#4f46e5"
-                  loadingText={LOADING_MESSAGES.audio}
+                  loadingText={LOADING_MESSAGES.podcast}
                 />
               </View>
             )}

@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import Purchases, { LOG_LEVEL, PurchasesPackage } from 'react-native-purchases';
+import Constants from 'expo-constants';
 import { REVENUECAT_CONFIG } from '@/lib/constants';
 
 /**
@@ -9,10 +10,23 @@ import { REVENUECAT_CONFIG } from '@/lib/constants';
 let initializationPromise: Promise<void> | null = null;
 
 /**
+ * Check if the app is running inside Expo Go
+ */
+const isExpoGo = Constants.appOwnership === 'expo';
+
+/**
  * Initialize RevenueCat SDK
  * Should be called once at app startup
  */
 export const initializePurchases = async (userId?: string) => {
+    // Skip RevenueCat in Expo Go as it requires a development build for native features
+    if (isExpoGo) {
+        if (__DEV__) {
+            console.log('[RevenueCat] Skipping initialization in Expo Go environment.');
+        }
+        return;
+    }
+
     if (initializationPromise) return initializationPromise;
 
     initializationPromise = (async () => {

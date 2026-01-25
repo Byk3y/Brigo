@@ -138,7 +138,7 @@ export interface QuizQuestion {
   selected?: 'A' | 'B' | 'C' | 'D';
 }
 
-export interface AudioOverview {
+export interface Podcast {
   id: string;
   notebook_id: string;
   title: string;
@@ -192,7 +192,7 @@ export interface ExamPrediction {
 
 
 export interface AudioPlaybackPosition {
-  audioOverviewId: string;
+  podcastId: string;
   notebookId: string;
   position: number; // Playback position in seconds
   duration: number; // Total duration in seconds
@@ -202,7 +202,7 @@ export interface AudioPlaybackPosition {
 }
 
 export interface AudioPositionMap {
-  [audioOverviewId: string]: AudioPlaybackPosition;
+  [podcastId: string]: AudioPlaybackPosition;
 }
 
 export interface ChatMessage {
@@ -240,7 +240,7 @@ export interface Notebook {
   // Studio generated content
   flashcard_sets?: FlashcardSet[];
   quizzes?: Quiz[];
-  audio_overviews?: AudioOverview[];
+  podcasts?: Podcast[];
   chat_messages?: ChatMessage[];
 }
 

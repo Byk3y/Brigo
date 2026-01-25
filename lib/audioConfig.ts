@@ -36,7 +36,7 @@ export async function configureAudioMode(staysActiveInBackground: boolean = fals
 }
 
 /**
- * Configures audio mode for primary media playback (podcasts, audio overviews).
+ * Configures audio mode for primary media playback (podcasts).
  * Uses DoNotMix so iOS Control Center shows our metadata (title, artist).
  * This makes Brigo the "primary" audio app and will pause other audio apps.
  */

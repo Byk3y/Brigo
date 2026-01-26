@@ -109,6 +109,28 @@ export const notificationService = {
     },
 
     /**
+     * Remove the push token from the user profile
+     */
+    clearTokenFromProfile: async (userId: string): Promise<void> => {
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    expo_push_token: null
+                })
+                .eq('id', userId);
+
+            if (error) throw error;
+        } catch (error) {
+            await handleError(error, {
+                operation: 'clear_push_token',
+                component: 'notification-service',
+                metadata: { userId },
+            });
+        }
+    },
+
+    /**
      * Initialize notification listeners
      */
     initListeners: (onNotificationOpened?: (data: any) => void) => {

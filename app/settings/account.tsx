@@ -6,6 +6,7 @@ import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { useStore } from '@/lib/store';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { notificationService } from '@/lib/services/notificationService';
 
 export default function AccountManagementScreen() {
     const { isDarkMode } = useTheme();
@@ -42,6 +43,10 @@ export default function AccountManagementScreen() {
                     style: "destructive",
                     onPress: async () => {
                         try {
+                            // Clear push token before deletion
+                            if (authUser?.id) {
+                                await notificationService.clearTokenFromProfile(authUser.id);
+                            }
                             const { data, error } = await supabase.functions.invoke('delete-user');
                             if (error) throw error;
 

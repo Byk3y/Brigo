@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { APP_URLS, APP_CONFIG } from '@/lib/constants';
 import { restorePurchases } from '@/lib/purchases';
+import { notificationService } from '@/lib/services/notificationService';
 const isPad = Platform.OS === 'ios' && Platform.isPad;
 export default function SettingsScreen() {
     const { isDarkMode } = useTheme();
@@ -63,6 +64,10 @@ export default function SettingsScreen() {
                     style: "destructive",
                     onPress: async () => {
                         try {
+                            // Clear push token before signing out
+                            if (authUser?.id) {
+                                await notificationService.clearTokenFromProfile(authUser.id);
+                            }
                             await supabase.auth.signOut();
                             // Logic for clearing state and redirecting is handled 
                             // centrally by useAuthSetup and useRoutingLogic

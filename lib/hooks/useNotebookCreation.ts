@@ -16,7 +16,7 @@ const getRandomColor = () => COLORS[Math.floor(Math.random() * COLORS.length)];
 
 export const useNotebookCreation = () => {
     const router = useRouter();
-    const { addNotebook, loadNotebooks, user, notebooks, cachedPetState, flashcardsStudied } = useStore();
+    const { addNotebook, addMaterial, loadNotebooks, user, notebooks, cachedPetState, flashcardsStudied } = useStore();
     const { takePhoto } = useCamera();
     const { pickDocument } = useDocumentPicker();
     const [isAddingNotebook, setIsAddingNotebook] = useState(false);
@@ -88,6 +88,7 @@ export const useNotebookCreation = () => {
                         fileUri: result.uri,
                         filename: result.name,
                         processed: false,
+                        status: 'processing',
                     },
                 });
                 // Reload notebooks to show the new one immediately
@@ -144,6 +145,7 @@ export const useNotebookCreation = () => {
                         fileUri: result.uri,
                         filename: result.name,
                         processed: false,
+                        status: 'processing',
                     },
                 });
                 // Reload notebooks to show the new one immediately
@@ -186,28 +188,26 @@ export const useNotebookCreation = () => {
             // Launch image picker
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsMultipleSelection: true,
+                selectionLimit: 5,
                 allowsEditing: false,
                 quality: 1,
                 exif: false,
             });
 
-            if (result.canceled) {
+            if (result.canceled || !result.assets || result.assets.length === 0) {
                 return null;
             }
 
-            const image = result.assets?.[0];
-            if (!image) {
-                return null;
-            }
-
+            const assets = result.assets;
             setIsAddingNotebook(true);
             try {
-                // SECURITY: Sanitize filename and enforce length limits
-                const sanitizedTitle = (image.fileName?.replace(/\.[^/.]+$/, '') || 'Image Notes')
+                // 1. Create notebook with the first image
+                const firstImage = assets[0];
+                const sanitizedTitle = (firstImage.fileName?.replace(/\.[^/.]+$/, '') || 'Image Notes')
                     .substring(0, 100)
                     .trim() || 'Image Notes';
 
-                // Zero-friction: auto-create notebook with image material
                 const notebookId = await addNotebook({
                     title: sanitizedTitle,
                     flashcardCount: 0,
@@ -215,16 +215,36 @@ export const useNotebookCreation = () => {
                     color: getRandomColor(),
                     material: {
                         type: 'image',
-                        uri: image.uri,
-                        title: image.fileName || 'Image',
-                        thumbnail: image.uri,
-                        fileUri: image.uri,
-                        filename: image.fileName || 'image.jpg',
+                        uri: firstImage.uri,
+                        title: firstImage.fileName || 'Image',
+                        thumbnail: firstImage.uri,
+                        fileUri: firstImage.uri,
+                        filename: firstImage.fileName || 'image.jpg',
                         processed: false,
+                        status: 'processing',
                     },
                 });
+
+                // 2. Add remaining images to the same notebook
+                if (assets.length > 1) {
+                    for (let i = 1; i < assets.length; i++) {
+                        const image = assets[i];
+                        await addMaterial(notebookId, {
+                            type: 'image',
+                            uri: image.uri,
+                            title: image.fileName || `Image ${i + 1}`,
+                            thumbnail: image.uri,
+                            fileUri: image.uri,
+                            filename: image.fileName || `image-${i + 1}.jpg`,
+                            processed: false,
+                            status: 'processing',
+                        });
+                    }
+                }
+
                 // Reload notebooks to show the new one immediately
                 await loadNotebooks();
+
                 // Trigger "Add your first study material" task
                 const { checkAndAwardTask } = useStore.getState();
                 if (checkAndAwardTask) {
@@ -273,6 +293,7 @@ export const useNotebookCreation = () => {
                         fileUri: result.uri,
                         filename: `photo-${Date.now()}.jpg`,
                         processed: false,
+                        status: 'processing',
                     },
                 });
                 // Reload notebooks to show the new one immediately
@@ -318,6 +339,7 @@ export const useNotebookCreation = () => {
                         content: content,
                         title: title,
                         processed: false,
+                        status: 'processing',
                     },
                 });
 
@@ -371,6 +393,7 @@ export const useNotebookCreation = () => {
                         uri: cleanUrl,
                         title: 'YouTube Video',
                         processed: false,
+                        status: 'processing',
                     },
                 });
 
@@ -465,6 +488,7 @@ export const useNotebookCreation = () => {
                         uri: cleanUrl,
                         title: 'Website Article',
                         processed: false,
+                        status: 'processing',
                     },
                 });
 

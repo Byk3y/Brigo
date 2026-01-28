@@ -273,7 +273,7 @@ export default function MaterialTypeSelector({
   const materialOptions = [
     { type: 'pdf' as MaterialType, iconName: 'description' as const, iconSet: 'MaterialIcons' as const, label: 'PDF', description: 'Upload notes or past papers' },
     { type: 'audio' as MaterialType, iconName: 'equalizer' as const, iconSet: 'MaterialIcons' as const, label: 'Audio', description: 'Record or upload lectures' },
-    { type: 'image' as MaterialType, iconName: 'image' as const, iconSet: 'MaterialIcons' as const, label: 'Image', description: 'Scan textbooks or exam sheets' },
+    { type: 'image' as MaterialType, iconName: 'image' as const, iconSet: 'MaterialIcons' as const, label: 'Image', description: 'Scan textbooks or exam sheets (Max 5)' },
     { type: 'website' as MaterialType, iconName: 'globe' as const, iconSet: 'Ionicons' as const, label: 'Website', description: 'Import articles or online docs' },
     { type: 'youtube' as MaterialType, iconName: 'logo-youtube' as const, iconSet: 'Ionicons' as const, label: 'YouTube', description: 'Import educational videos' },
     { type: 'copied-text' as MaterialType, iconName: 'assignment' as const, iconSet: 'MaterialIcons' as const, label: 'Copied text', description: 'Paste notes or question text' },

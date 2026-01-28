@@ -160,7 +160,7 @@ export default function HomeScreen() {
                 onPress: async (url: string | undefined) => {
                   if (url) {
                     const id = await handleWebsiteImport(url);
-                    if (id) navigateToNotebook(id);
+                    if (id) navigateToNotebook(id, 'sources');
                   }
                 }
               }
@@ -184,7 +184,7 @@ export default function HomeScreen() {
                 onPress: async (url: string | undefined) => {
                   if (url) {
                     const id = await handleYouTubeImport(url);
-                    if (id) navigateToNotebook(id);
+                    if (id) navigateToNotebook(id, 'sources');
                   }
                 }
               }
@@ -200,7 +200,7 @@ export default function HomeScreen() {
     }
 
     if (newNotebookId) {
-      navigateToNotebook(newNotebookId);
+      navigateToNotebook(newNotebookId, 'sources');
     }
   };
 
@@ -208,14 +208,14 @@ export default function HomeScreen() {
     const newNotebookId = await handleTextSave(title, content, textInputType);
     setShowTextInput(false);
     if (newNotebookId) {
-      navigateToNotebook(newNotebookId);
+      navigateToNotebook(newNotebookId, 'sources');
     }
   };
 
   const onScanNotes = async () => {
     const newNotebookId = await handleCameraUpload();
     if (newNotebookId) {
-      navigateToNotebook(newNotebookId);
+      navigateToNotebook(newNotebookId, 'sources');
     }
   };
 

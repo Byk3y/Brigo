@@ -50,6 +50,7 @@ export const useMaterialAddition = (notebookId: string) => {
                     fileUri: result.uri,
                     filename: result.name,
                     processed: false,
+                    status: 'processing',
                 });
                 return true;
             } finally {
@@ -75,6 +76,7 @@ export const useMaterialAddition = (notebookId: string) => {
                     fileUri: result.uri,
                     filename: result.name,
                     processed: false,
+                    status: 'processing',
                 });
                 return true;
             } finally {
@@ -96,22 +98,26 @@ export const useMaterialAddition = (notebookId: string) => {
 
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsMultipleSelection: true,
+                selectionLimit: 5,
                 quality: 1,
             });
 
-            if (result.canceled || !result.assets?.[0]) return null;
+            if (result.canceled || !result.assets || result.assets.length === 0) return null;
 
-            const image = result.assets[0];
             setIsAddingMaterial(true);
             try {
-                await addMaterial(notebookId, {
-                    type: 'image',
-                    uri: image.uri,
-                    title: image.fileName || 'Image Notes',
-                    fileUri: image.uri,
-                    filename: image.fileName || 'image.jpg',
-                    processed: false,
-                });
+                for (const asset of result.assets) {
+                    await addMaterial(notebookId, {
+                        type: 'image',
+                        uri: asset.uri,
+                        title: asset.fileName || 'Image Notes',
+                        fileUri: asset.uri,
+                        filename: asset.fileName || 'image.jpg',
+                        processed: false,
+                        status: 'processing',
+                    });
+                }
                 return true;
             } finally {
                 setIsAddingMaterial(false);
@@ -136,6 +142,7 @@ export const useMaterialAddition = (notebookId: string) => {
                     fileUri: result.uri,
                     filename: `photo-${Date.now()}.jpg`,
                     processed: false,
+                    status: 'processing',
                 });
                 return true;
             } finally {
@@ -156,6 +163,7 @@ export const useMaterialAddition = (notebookId: string) => {
                     content: content,
                     title: title,
                     processed: false,
+                    status: 'processing',
                 });
                 return true;
             } finally {
@@ -181,6 +189,7 @@ export const useMaterialAddition = (notebookId: string) => {
                     uri: cleanUrl,
                     title: 'YouTube Import',
                     processed: false,
+                    status: 'processing',
                 });
                 return true;
             } finally {
@@ -245,6 +254,7 @@ export const useMaterialAddition = (notebookId: string) => {
                     uri: cleanUrl,
                     title: 'Website Article',
                     processed: false,
+                    status: 'processing',
                 });
                 return true;
             } finally {

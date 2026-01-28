@@ -23,7 +23,7 @@ export function useHomeNavigation() {
     };
   }, []);
 
-  const navigateToNotebook = (notebookId: string | null | undefined) => {
+  const navigateToNotebook = (notebookId: string | null | undefined, tab?: string) => {
     // Validate notebook ID before navigation
     if (!notebookId || typeof notebookId !== 'string' || notebookId.trim() === '') {
       console.warn('Attempted to navigate with invalid notebook ID:', notebookId);
@@ -34,7 +34,8 @@ export function useHomeNavigation() {
     if (isNavigatingRef.current) return;
 
     isNavigatingRef.current = true;
-    router.push(`/notebook/${notebookId}`);
+    const path = tab ? `/notebook/${notebookId}?tab=${tab}` : `/notebook/${notebookId}`;
+    router.push(path);
 
     if (navigationTimeoutRef.current) {
       clearTimeout(navigationTimeoutRef.current);

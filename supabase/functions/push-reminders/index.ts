@@ -291,7 +291,7 @@ Deno.serve(async (req: Request) => {
 
         const notifications: NotificationPayload[] = []
         const now = new Date()
-        const COOLDOWN_HOURS = 12
+        const COOLDOWN_HOURS = 8
 
         for (const profile of profiles as Profile[]) {
             const timezone = profile.timezone || 'UTC'

@@ -146,9 +146,7 @@ export const createNotebookSlice: StateCreator<
       } = await notebookService.createNotebook(authUser.id, notebook as any);
 
       // 2. Optimistic Update (UI transitions here)
-      const materialsArr = newNotebook.materials
-        ? (Array.isArray(newNotebook.materials) ? newNotebook.materials : [newNotebook.materials])
-        : [];
+      const materialsArr = resultMaterial ? [resultMaterial] : [];
 
       const transformedNotebook: Notebook = {
         id: newNotebook.id,
@@ -192,17 +190,19 @@ export const createNotebookSlice: StateCreator<
       });
 
       // 3. Trigger Background Processing (Upload + Edge Function)
-      notebookService.performBackgroundUploadAndProcessing(
-        authUser.id,
-        newNotebook.id,
-        resultMaterial.id,
-        !!isFileUpload,
-        fileUri,
-        filename,
-        storagePath
-      ).catch((err) => {
-        console.error('[Store] Background work failed:', err);
-      });
+      if (resultMaterial) {
+        notebookService.performBackgroundUploadAndProcessing(
+          authUser.id,
+          newNotebook.id,
+          resultMaterial.id,
+          !!isFileUpload,
+          fileUri,
+          filename,
+          storagePath
+        ).catch((err) => {
+          console.error('[Store] Background work failed:', err);
+        });
+      }
 
       // Global side effects
       if ((get() as any).checkAndAwardTask) {
@@ -445,15 +445,25 @@ export const createNotebookSlice: StateCreator<
         }
       );
 
+    let retryCount = 0;
+    const maxRetries = 3;
+
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         console.log('[Store] ✅ Realtime subscription active');
+        retryCount = 0;
       } else if (status === 'CLOSED') {
         console.warn('[Store] ⚠️ Realtime connection closed');
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error('[Store] ❌ Realtime subscription failed');
-      } else if (status === 'TIMED_OUT') {
-        console.warn('[Store] 🕒 Realtime connection timed out');
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.error(`[Store] ❌ Realtime subscription ${status.toLowerCase()} (Attempt ${retryCount + 1}/${maxRetries})`);
+
+        if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(() => {
+            console.log(`[Store] 🔄 Retrying Realtime subscription...`);
+            get().subscribeToNotebookUpdates(userId);
+          }, 2000 * retryCount);
+        }
       }
     });
 

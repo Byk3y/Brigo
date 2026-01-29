@@ -7,7 +7,7 @@ import {
     NOTEBOOK_WALKTHROUGH_STEPS,
     STUDIO_WALKTHROUGH_STEPS,
     type WalkthroughStep
-} from './steps';
+} from './constants';
 import { useStore } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 

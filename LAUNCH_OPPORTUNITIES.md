@@ -39,6 +39,7 @@ Get featured in "App of the Week" sections.
 - **[Keep Productive](https://www.youtube.com/user/KeepProductive)**: (YouTube/Newsletter) The authority on productivity software.
 
 ## 📱 App Store Optimization (ASO) & Submission
-You found some guides on 2025 submission, don't forget:
 - **Apple's "App of the Day"**: You can actually [pitch directly to the App Store editors](https://developer.apple.com/app-store/promote/). This is the highest leverage move if accepted.
+- **The "72-Hour Indexing" Rule**: New apps often don't rank for their exact name immediately due to "did you mean" logic (e.g., Apple suggesting "Bingo" instead of "Brigo"). Use direct links for the first 3 days to build search authority.
+- **Keyword Velocity**: Initial downloads via direct links are the fastest way to "claim" your brand name in search results.
 - **AppAdvice**: A long-running site for "Apps Gone Free" and reviews.

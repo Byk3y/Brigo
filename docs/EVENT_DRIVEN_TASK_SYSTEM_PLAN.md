@@ -56,3 +56,16 @@ To maintain instant feedback in the app:
 
 > [!IMPORTANT]
 > **Rollout Recommendation**: Stabilize the current production build first. Begin Phase 1 (The Foundation) only after verifying the current version is healthy in the App Store.
+
+## 5. Operational Considerations
+
+### Storage Management
+*   **Write Volume**: Every meaningful user action creates a log. Estimate ~1GB per 2.5 million events.
+*   **Retention Policy**: Logs older than 90 days can be archived or deleted via a Supabase Cron job, as core state (points/streaks) is persisted separately.
+*   **Indexing**: Mandatory indexes on `user_id` and `created_at` to maintain performance as the ledger grows.
+
+### Risks & Mitigations
+*   **Database Bloat**: Managed by the retention policy above.
+*   **Hidden Logic**: Processors will be implemented as discrete PL/pgSQL functions rather than deeply nested triggers to ensure maintainability and observability.
+*   **Performance**: Critical paths (Points) remain synchronous; heavy secondary paths (Analytics, non-critical Badges) can be deferred.
+*   **Race Conditions**: Use `SELECT ... FOR UPDATE` in processors to ensure atomic calculations for streaks and point totals.

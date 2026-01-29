@@ -14,6 +14,25 @@ interface AwardTaskPointsResponse {
   task_key?: string;
 }
 
+// Type definition for log_activity RPC response
+interface RewardResult {
+  success: boolean;
+  points_awarded?: number;
+  pet_secured?: boolean;
+  reason?: string;
+}
+
+interface LogActivityResponse {
+  success: boolean;
+  activity_id?: string;
+  rewards?: {
+    study_rewards?: RewardResult;
+    pet_security?: RewardResult;
+  };
+  note?: string;
+  error?: string;
+}
+
 // Type guard for validating RPC response shape
 function isValidAwardResponse(data: unknown): data is AwardTaskPointsResponse {
   return (
@@ -168,6 +187,41 @@ export const taskService = {
         operation: 'award_task_points',
         component: 'task-service',
         metadata: { userId, taskKey, completionDate, timezone },
+      });
+      throw appError;
+    }
+  },
+
+  /**
+   * Log an activity and process rewards (New Event-Driven system)
+   */
+  logActivity: async (
+    activityType: string,
+    metadata: Record<string, any> = {},
+    idempotencyKey?: string
+  ): Promise<LogActivityResponse> => {
+    try {
+      const { data, error } = await supabase.rpc('log_activity', {
+        p_activity_type: activityType,
+        p_metadata: metadata,
+        p_idempotency_key: idempotencyKey,
+      });
+
+      if (error) {
+        await handleError(error, {
+          operation: 'log_activity',
+          component: 'task-service',
+          metadata: { activityType, idempotencyKey },
+        });
+        throw error;
+      }
+
+      return data as LogActivityResponse;
+    } catch (error) {
+      const appError = await handleError(error, {
+        operation: 'log_activity',
+        component: 'task-service',
+        metadata: { activityType, idempotencyKey },
       });
       throw appError;
     }

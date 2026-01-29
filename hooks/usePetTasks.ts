@@ -60,19 +60,26 @@ export function usePetTasks() {
     // Combined task list: Strictly sequenced
     // 1. If any foundational tasks are incomplete: Show ONLY foundational tasks
     // 2. Once all foundational tasks are complete: Show ONLY daily tasks
+    // Combined task list: Strictly sequenced and capped at 3
+    // 1. Prioritize incomplete tasks first
+    // 2. If space remains, show completed foundational tasks (for validation)
+    // 3. Limit to exactly 3 tasks total
     const allTasks = useMemo(() => {
-        // Sort foundational tasks by display_order
-        const sortedFoundational = [...foundationalTasks].sort((a, b) =>
-            (a.display_order || 999) - (b.display_order || 999)
-        );
+        // Sort foundational tasks: incomplete first, then by display_order
+        const sortedFoundational = [...foundationalTasks].sort((a, b) => {
+            if (a.completed !== b.completed) {
+                return a.completed ? 1 : -1;
+            }
+            return (a.display_order || 999) - (b.display_order || 999);
+        });
 
-        // If foundational not yet complete, show ONLY foundational
+        // If foundational not yet complete, show up to 3 foundational tasks
         if (!foundationalCompleted) {
-            return sortedFoundational;
+            return sortedFoundational.slice(0, 3);
         }
 
-        // If foundational complete, show only daily tasks
-        return [...dailyTasks];
+        // If foundational complete, show strictly up to 3 daily tasks
+        return [...dailyTasks].slice(0, 3);
 
     }, [foundationalTasks, dailyTasks, foundationalCompleted]);
 

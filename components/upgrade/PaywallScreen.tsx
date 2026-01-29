@@ -38,6 +38,7 @@ interface PaywallScreenProps {
     onClose: () => void;
     onPurchaseSuccess?: () => void;
     source?: string;
+    initialBillingCycle?: 'semester' | 'weekly';
 }
 
 const FEATURES = [
@@ -70,17 +71,20 @@ const FEATURES = [
 export const PaywallScreen: React.FC<PaywallScreenProps> = ({
     onClose,
     onPurchaseSuccess,
-    source = 'paywall'
+    source = 'paywall',
+    initialBillingCycle = 'weekly'
 }) => {
     const { isDarkMode } = useTheme();
-    const { authUser, loadSubscription } = useStore();
+    const { authUser, loadSubscription, tier, isExpired } = useStore();
     const { trackUpgradeButtonClicked } = useUpgrade();
 
     const [isLoading, setIsLoading] = useState(true);
     const [isPurchasing, setIsPurchasing] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
     const [packages, setPackages] = useState<PurchasesPackage[]>([]);
-    const [billingCycle, setBillingCycle] = useState<'semester' | 'weekly'>('weekly');
+    const [billingCycle, setBillingCycle] = useState<'semester' | 'weekly'>(initialBillingCycle);
+
+    const isPro = tier === 'premium' && !isExpired;
 
     useEffect(() => {
         const fetchOfferings = async () => {
@@ -305,17 +309,26 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                         ) : (
                             <View style={styles.buttonInnerCentric}>
                                 <Text style={[styles.buttonLabel, { color: isDarkMode ? '#000' : '#FFF', fontSize: isPad ? 22 : 18 }]}>
-                                    {billingCycle === 'weekly' ? `Start trial for ${trialPriceString}` : '3 Months of Pro Access'}
+                                    {isPro
+                                        ? (billingCycle === 'weekly' ? 'Weekly Pro Access' : '3 Months of Pro Access')
+                                        : (billingCycle === 'weekly' ? `Start trial for ${trialPriceString}` : '3 Months of Pro Access')
+                                    }
                                 </Text>
                                 <Text style={[styles.buttonPriceInline, { color: '#F97316', fontSize: isPad ? 20 : 16 }]}>
-                                    {billingCycle === 'weekly' ? `then ${totalPriceString}/wk` : totalPriceString}
+                                    {billingCycle === 'weekly'
+                                        ? (isPro ? totalPriceString : `then ${totalPriceString}/wk`)
+                                        : totalPriceString
+                                    }
                                 </Text>
                             </View>
                         )}
                     </TouchableOpacity>
                     <Text style={[styles.legalNote, { color: isDarkMode ? '#71717A' : '#9CA3AF' }]}>
                         {billingCycle === 'weekly'
-                            ? `Billed ${trialPriceString} today for the first week. After that, billed ${totalPriceString} per week. Cancel anytime.`
+                            ? (isPro
+                                ? `Already a subscriber? You can update your plan here. Billed ${totalPriceString} per week.`
+                                : `Billed ${trialPriceString} today for the first week. After that, billed ${totalPriceString} per week. Cancel anytime.`
+                            )
                             : `Billed ${totalPriceString} for 3 months. Plan continues at regular price. Cancel anytime in App Store.`
                         }
                     </Text>

@@ -8,7 +8,7 @@ import PaywallScreen from '@/components/upgrade/PaywallScreen';
 
 export default function PaywallRoute() {
     const router = useRouter();
-    const { source } = useLocalSearchParams<{ source?: string }>();
+    const { source, plan } = useLocalSearchParams<{ source?: string, plan?: string }>();
 
     const handleClose = () => {
         if (router.canGoBack()) {
@@ -28,6 +28,7 @@ export default function PaywallRoute() {
             onClose={handleClose}
             onPurchaseSuccess={handlePurchaseSuccess}
             source={source || 'paywall'}
+            initialBillingCycle={plan === 'semester' || plan === 'weekly' ? plan : 'weekly'}
         />
     );
 }

@@ -100,6 +100,31 @@ export default function SubscriptionScreen() {
                     </View>
                 </LinearGradient>
 
+                {isPro && (
+                    <TouchableOpacity
+                        style={[styles.upgradeCard, {
+                            backgroundColor: isDarkMode ? '#1F2937' : '#EFF6FF',
+                            borderColor: '#3B82F6'
+                        }]}
+                        onPress={() => showPaywall({ plan: 'semester' })}
+                    >
+                        <View style={styles.upgradeCardHeader}>
+                            <View style={styles.savingsBadge}>
+                                <Text style={styles.savingsBadgeText}>65% OFF</Text>
+                            </View>
+                            <Text style={[styles.upgradeCardTitle, { color: isDarkMode ? '#FFF' : '#1E40AF' }]}>
+                                Switch to Semester Plan
+                            </Text>
+                        </View>
+                        <Text style={[styles.upgradeCardDescription, { color: isDarkMode ? '#A1A1AA' : '#1E40AF' }]}>
+                            Lock in Pro for just $1.38/week. Best for long-term study.
+                        </Text>
+                        <View style={styles.upgradeCardArrow}>
+                            <Ionicons name="arrow-forward" size={20} color="#3B82F6" />
+                        </View>
+                    </TouchableOpacity>
+                )}
+
                 {!isPro && (
                     <TouchableOpacity
                         style={[styles.upgradeButton, { backgroundColor: isDarkMode ? '#FFF' : '#000' }]}
@@ -260,6 +285,48 @@ const styles = StyleSheet.create({
         padding: isPad ? 24 : 18,
         borderRadius: isPad ? 24 : 20,
         borderWidth: 1,
+        marginTop: 8,
+    },
+    upgradeCard: {
+        padding: 20,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        marginBottom: 16,
+        position: 'relative',
+    },
+    upgradeCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+        gap: 10,
+    },
+    upgradeCardTitle: {
+        fontSize: 16,
+        fontFamily: 'Nunito-Bold',
+    },
+    upgradeCardDescription: {
+        fontSize: 13,
+        fontFamily: 'Nunito-Medium',
+        opacity: 0.8,
+        paddingRight: 30,
+    },
+    savingsBadge: {
+        backgroundColor: '#10B981',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    savingsBadgeText: {
+        color: '#FFF',
+        fontSize: 10,
+        fontFamily: 'Nunito-Bold',
+    },
+    upgradeCardArrow: {
+        position: 'absolute',
+        right: 20,
+        top: '50%',
+        marginTop: 0,
     },
     manageButtonLeft: {
         flexDirection: 'row',

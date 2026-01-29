@@ -80,7 +80,7 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
     const [isPurchasing, setIsPurchasing] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
     const [packages, setPackages] = useState<PurchasesPackage[]>([]);
-    const [billingCycle, setBillingCycle] = useState<'semester' | 'weekly'>('semester');
+    const [billingCycle, setBillingCycle] = useState<'semester' | 'weekly'>('weekly');
 
     useEffect(() => {
         const fetchOfferings = async () => {
@@ -121,7 +121,7 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
 
     // Total price strings for clarity
     const totalPriceString = selectedPackage?.product.priceString || (
-        billingCycle === 'semester' ? `${currencySymbol}17.99` : `${currencySymbol}4.99`
+        billingCycle === 'semester' ? `${currencySymbol}17.99` : `${currencySymbol}3.99`
     );
 
     // Use RevenueCat's intro price (from App Store Connect) instead of hardcoding
@@ -252,7 +252,7 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                             <View style={styles.toggleLabelRow}>
                                 <Text style={[styles.toggleText, billingCycle === 'semester' && styles.toggleTextActive, isPad && { fontSize: 18 }]}>Semester</Text>
                                 <View style={[styles.savingsBadgeMini, isPad && { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }]}>
-                                    <Text style={[styles.savingsBadgeTextMini, isPad && { fontSize: 12 }]}>72% OFF</Text>
+                                    <Text style={[styles.savingsBadgeTextMini, isPad && { fontSize: 12 }]}>65% OFF</Text>
                                 </View>
                             </View>
                         </TouchableOpacity>
@@ -305,7 +305,7 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                         ) : (
                             <View style={styles.buttonInnerCentric}>
                                 <Text style={[styles.buttonLabel, { color: isDarkMode ? '#000' : '#FFF', fontSize: isPad ? 22 : 18 }]}>
-                                    {billingCycle === 'weekly' ? `Start 7-day trial for ${trialPriceString}` : 'Start Your Semester'}
+                                    {billingCycle === 'weekly' ? `Start trial for ${trialPriceString}` : '3 Months of Pro Access'}
                                 </Text>
                                 <Text style={[styles.buttonPriceInline, { color: '#F97316', fontSize: isPad ? 20 : 16 }]}>
                                     {billingCycle === 'weekly' ? `then ${totalPriceString}/wk` : totalPriceString}
@@ -315,7 +315,7 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                     </TouchableOpacity>
                     <Text style={[styles.legalNote, { color: isDarkMode ? '#71717A' : '#9CA3AF' }]}>
                         {billingCycle === 'weekly'
-                            ? `Billed ${trialPriceString} today. After 7 days, billed ${totalPriceString} per week. Cancel anytime.`
+                            ? `Billed ${trialPriceString} today for the first week. After that, billed ${totalPriceString} per week. Cancel anytime.`
                             : `Billed ${totalPriceString} for 3 months. Plan continues at regular price. Cancel anytime in App Store.`
                         }
                     </Text>
@@ -442,15 +442,20 @@ const styles = StyleSheet.create({
     },
     savingsBadgeMini: {
         backgroundColor: '#10B981',
-        paddingHorizontal: 4,
-        paddingVertical: 1,
-        borderRadius: 4,
-        marginLeft: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        marginLeft: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 1,
     },
     savingsBadgeTextMini: {
         color: '#FFF',
-        fontSize: 8,
-        fontWeight: '800',
+        fontSize: 10,
+        fontWeight: '900',
         fontFamily: 'Nunito-Bold',
     },
     valueProposition: {

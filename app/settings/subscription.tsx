@@ -131,6 +131,7 @@ export default function SubscriptionScreen() {
                     <Text style={[styles.restoreButtonText, { color: isDarkMode ? '#6B7280' : '#4B5563' }]}>RESTORE PURCHASES</Text>
                 </TouchableOpacity>
 
+
                 <View style={styles.footer}>
                     <Text style={[styles.footerText, { color: isDarkMode ? '#71717A' : '#9CA3AF' }]}>
                         Subscription renews automatically unless canceled in settings.

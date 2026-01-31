@@ -82,3 +82,4 @@ supabase/.env.local
 .claude/
 .cursor/
 .gemini/
+antigravity.md

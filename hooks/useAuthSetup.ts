@@ -74,18 +74,25 @@ export function useAuthSetup() {
               identifyPurchaser(session.user.id).catch(() => { });
             }
 
-            // Cleanup/Hydration logic
+            // Cleanup/Hydration logic - Only reset if the user has actually changed
+            // This prevents the "flash" of empty state for returning users
             if (userIdChanged && currentAuthUser) {
+              if (__DEV__) console.log('[Auth] User ID changed, performing clean-up');
               clearPetCache();
               resetPetState();
               resetUserProfile();
               resetNotebookState();
               resetSubscriptionState();
-            } else if (userIdChanged || event === 'SIGNED_IN') {
-              resetPetState();
-              resetUserProfile();
-              resetNotebookState();
-              resetSubscriptionState();
+            } else if (userIdChanged) {
+              // First time loading for this session, but check if we have matching cache
+              const state = useStore.getState();
+              // Safety: Only skip reset if both critical IDs match the incoming user
+              if (state.notebooksUserId !== newUserId || state.userProfileUserId !== newUserId) {
+                resetPetState();
+                resetUserProfile();
+                resetNotebookState();
+                resetSubscriptionState();
+              }
             }
 
             hydratePetStateFromCache();

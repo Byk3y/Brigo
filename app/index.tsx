@@ -121,6 +121,18 @@ export default function HomeScreen() {
   // Refresh state
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Animation state for notebooks
+  // We disable entry animations for the first second to let cached data render statically
+  const [animateEntries, setAnimateEntries] = useState(false);
+
+  useEffect(() => {
+    // Enable animations after initial load (short delay to cover splash screen exit)
+    const timer = setTimeout(() => {
+      setAnimateEntries(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Modal states
   const [showMaterialSelector, setShowMaterialSelector] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
@@ -296,6 +308,7 @@ export default function HomeScreen() {
             await applyStreakFreeze();
           }}
           onDismissStreakRestore={() => setShowStreakRestoreModal(false)}
+          animateEntries={animateEntries}
         />
       )}
 

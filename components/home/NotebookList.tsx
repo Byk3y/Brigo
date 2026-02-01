@@ -31,6 +31,7 @@ interface NotebookListProps {
   freezesLeft?: number;
   onApplyFreeze?: () => Promise<void>;
   onDismissStreakRestore?: () => void;
+  animateEntries?: boolean;
 }
 
 export function NotebookList({
@@ -50,6 +51,7 @@ export function NotebookList({
   freezesLeft = 0,
   onApplyFreeze,
   onDismissStreakRestore,
+  animateEntries = true,
 }: NotebookListProps) {
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
@@ -108,6 +110,7 @@ export function NotebookList({
               key={notebook.id}
               notebook={notebook}
               onPress={() => onNotebookPress(notebook.id)}
+              animateEntry={animateEntries}
             />
           ))}
           {/* Add Notebook Card (Always on iPad at the end, or if empty on mobile) */}

@@ -86,8 +86,15 @@ function RootLayoutInner() {
   // Load fonts
   const fontsLoaded = useAppFonts();
 
-  // Hydration state from store
-  const { _hasHydrated, isInitialized } = useStore();
+  // Hydration and data state from store
+  const {
+    _hasHydrated,
+    isInitialized,
+    user,
+    petStateReady,
+    userProfileSyncedAt,
+    authUser
+  } = useStore();
 
   // Get theme from context
   const { isDarkMode } = useTheme();
@@ -117,7 +124,9 @@ function RootLayoutInner() {
   const isRoutingReady = useRoutingLogic(fontsLoaded);
 
   // High-precision ready check for 2026 UX
-  const isAppReady = fontsLoaded && _hasHydrated && isInitialized && isRoutingReady;
+  // If we have an auth user, we must wait for their profile and pet state to sync from database
+  const isDataReady = !authUser || (user.id !== '' && petStateReady && !!userProfileSyncedAt);
+  const isAppReady = fontsLoaded && _hasHydrated && isInitialized && isRoutingReady && isDataReady;
 
   // Hide splash screen once app is completely ready
   useEffect(() => {
@@ -228,7 +237,7 @@ function RootLayoutTour() {
     <SpotlightTourProvider
       steps={HOME_TOUR_STEPS}
       onBackdropPress="continue"
-      backdropColor={isDarkMode ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.6)'}
+      overlayColor={isDarkMode ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,1,0.6)'}
     >
       <ErrorBoundary component="RootLayout">
         <ErrorNotificationProvider>

@@ -40,8 +40,8 @@ export function useStreakCheck() {
             }
         };
 
-        // 1. Check on mount (initial load)
-        const timer = setTimeout(checkStreak, 1000);
+        // 1. Check on mount (initial load) - run immediately
+        checkStreak();
 
         // 2. Check on AppState change (returns from background)
         const handleAppStateChange = (nextAppState: AppStateStatus) => {
@@ -58,7 +58,6 @@ export function useStreakCheck() {
         const subscription = AppState.addEventListener('change', handleAppStateChange);
 
         return () => {
-            clearTimeout(timer);
             subscription.remove();
         };
     }, [authUser?.id, checkAndAwardTask, loadUserProfile, getUserTimezone]);

@@ -18,11 +18,13 @@ import { useFeedback } from '@/lib/feedback';
 interface NotebookCardProps {
     notebook: Notebook;
     onPress: () => void;
+    animateEntry?: boolean;
 }
 
 export const NotebookCard: React.FC<NotebookCardProps> = ({
     notebook,
     onPress,
+    animateEntry = true,
 }) => {
     const [isRetrying, setIsRetrying] = useState(false);
     const { notebooks, setNotebooks } = useStore();
@@ -157,7 +159,7 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
 
     return (
         <MotiView
-            from={{ opacity: 0, translateX: -20 }}
+            from={animateEntry ? { opacity: 0, translateX: -20 } : { opacity: 1, translateX: 0 }}
             animate={{ opacity: 1, translateX: 0 }}
             transition={{ type: 'timing', duration: 300 }}
             style={{

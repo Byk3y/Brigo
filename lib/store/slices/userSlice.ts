@@ -130,8 +130,12 @@ export const createUserSlice: StateCreator<
   },
   hydrateUserProfileFromCache: () => {
     const { authUser, userProfileUserId, user } = get();
-    if (authUser && userProfileUserId === authUser.id && user.id === authUser.id) {
-      // Cache matches current user, keep it
+    if (authUser && userProfileUserId === authUser.id && user.id === '') {
+      // Cache matches current user and local user is empty, restore it
+      set({
+        user: { ...user, id: authUser.id },
+        userProfileSyncedAt: get().userProfileSyncedAt,
+      });
     }
   },
   resetUserProfile: () => {

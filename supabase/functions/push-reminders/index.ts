@@ -37,6 +37,7 @@ interface NotificationContext {
     petStage: number
     topic: string
     firstName: string
+    hasSpecificSubject: boolean // New flag for smarter templates
 }
 
 type NotificationCategory = 'passive_aggressive' | 'loss_aversion' | 'hype' | 'context_rich' | 'soft' | 'comeback' | 'onboarding'
@@ -103,12 +104,12 @@ const templateLibrary: Record<NotificationCategory, MessageTemplate[]> = {
         { title: `🤔 Still thinking about it?`, body: `{{petName}} is still curious about those {{subject}} notes.` },
         { title: `📖 Ready to dive in?`, body: `Your {{subject}} materials are waiting for you, {{firstName}}. ✨` },
         { title: `📝 Quick check-in!`, body: `You were doing great with {{subject}}. Ready for a quick session?` },
-        { title: `🧩 Brain teaser!`, body: `{{petName}} found a tricky concept in your {{subject}} notes. Can you master it?` },
+        { title: `🧩 Brain teaser!`, body: `{{petName}} found a tricky concept in your {{subject}} materials.` },
         { title: `✅ Focus time!`, body: `Only 5 minutes on {{subject}} to keep your brain sharp today.` },
         { title: `🧠 Save future you—`, body: `Reviewing "{{lastNotebook}}" now means no cramming later. Smart move.` },
         { title: `😤 Growth mindset!`, body: `Level up {{petName}} (Stage {{petStage}}) by mastering {{subject}} today.` },
         { title: `☕ Study break is over!`, body: `How's the {{subject}} progress coming along, {{firstName}}?` },
-        { title: `👥 {{petName}} missed you!`, body: `They're waiting to help you with {{subject}} right now.` },
+        { title: `👥 {{petName}} missed you!`, body: `They're waiting to help you with your {{subject}} right now.` },
         { title: `🛀 Wind down with {{subject}}`, body: `A 2-minute review is the perfect way to finish your day.` },
     ],
 
@@ -116,10 +117,10 @@ const templateLibrary: Record<NotificationCategory, MessageTemplate[]> = {
     // Best for: High-stress periods (Exam weeks)
     soft: [
         { title: `🧘‍♀️ Take a deep breath.`, body: `2 minutes of {{subject}} is enough to stay on track.` },
-        { title: `I know it's a lot.`, body: `But {{petName}} is here to help. Just one quick look at {{subject}}? 🕯️` },
-        { title: `🌸 Small steps lead to big wins.`, body: `Keep going gently with {{subject}}.` },
+        { title: `I know it's a lot.`, body: `But {{petName}} is here to help. Just one quick look at your {{subject}}? 🕯️` },
+        { title: `🌸 Small steps lead to big wins.`, body: `Keep going gently with your {{subject}}.` },
         { title: `☁️ Studying is hard.`, body: `You're doing great. See you in "{{lastNotebook}}"?` },
-        { title: `💖 You're more than your grades.`, body: `But a quick review of {{subject}} won't hurt!` },
+        { title: `💖 You're more than your grades.`, body: `But a quick {{subject}} review won't hurt!` },
         { title: `🏔️ Don't stress about the mountain.`, body: `Just focus on one small {{subject}} concept.` },
         { title: `📣 {{petName}} is cheering for you quietly.`, body: `(Shhh, keep studying!)` },
         { title: `💌 Your future self will thank you`, body: `for those 5 minutes in "{{lastNotebook}}" today.` },
@@ -132,12 +133,12 @@ const templateLibrary: Record<NotificationCategory, MessageTemplate[]> = {
     comeback: [
         { title: `👋 Hey stranger!`, body: `{{petName}} has been waiting for you. Ready to pick up {{subject}} again?` },
         { title: `🌱 Fresh start?`, body: `Today is a perfect day to begin a new streak. {{petName}} believes in you!` },
-        { title: `🎯 No streak? No problem.`, body: `Everyone starts somewhere. Let's go review {{subject}}!` },
-        { title: `🦋 Welcome back!`, body: `{{petName}} missed you. Ready to pick up where you left off with {{subject}}?` },
+        { title: `🎯 No streak? No problem.`, body: `Everyone starts somewhere. Let's do a quick {{subject}} review!` },
+        { title: `🦋 Welcome back!`, body: `{{petName}} missed you. Ready to pick up where you left off?` },
         { title: `🔄 Time for a comeback?`, body: `"{{lastNotebook}}" is waiting. Let's start fresh!` },
         { title: `☀️ New day, new you.`, body: `{{petName}} is ready when you are. No judgment here.` },
         { title: `🚀 Ready to restart?`, body: `One session today = Day 1 of your new streak!` },
-        { title: `💪 You've got this.`, body: `{{petName}} is cheering for your comeback. Start with {{subject}}?` },
+        { title: `💪 You've got this.`, body: `{{petName}} is cheering for your comeback. Start with a {{subject}} session?` },
         { title: `🌈 Every expert was once a beginner.`, body: `Let's build something great together, starting now.` },
         { title: `🎬 Plot twist incoming!`, body: `{{petName}} senses a comeback arc. Prove them right?` },
     ],
@@ -351,7 +352,9 @@ Deno.serve(async (req: Request) => {
 
             // Extract subject from notebook metadata
             const contentClassification = notebook?.meta?.content_classification
-            const subject = contentClassification?.subject_area || 'your studies'
+            const rawSubject = contentClassification?.subject_area
+            const hasSpecificSubject = !!rawSubject
+            const subject = rawSubject || 'study' // Default to 'study' instead of 'your studies'
 
             // Personalized Persona Names for users without first_name
             const personas: Record<'supportive' | 'playful' | 'urgent', string[]> = {
@@ -384,6 +387,7 @@ Deno.serve(async (req: Request) => {
                 petStage: pet?.current_stage || 1,
                 topic: subject, // Use subject as topic fallback
                 firstName: '', // Will be set after category selection
+                hasSpecificSubject,
             }
 
             // Get pet bubble image

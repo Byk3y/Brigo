@@ -211,8 +211,8 @@ export const PetDisplay = memo(({
                         <Image
                             source={stage3Source}
                             style={{
-                                width: isUnlocked ? ((isDying && currentStage === 3) ? 280 : 360) : 280,
-                                height: isUnlocked ? ((isDying && currentStage === 3) ? 280 : 360) : 280
+                                width: isUnlocked ? ((isDying && currentStage === 3) ? 280 : 300) : 280,
+                                height: isUnlocked ? ((isDying && currentStage === 3) ? 280 : 300) : 280
                             }}
                             resizeMode="contain"
                             fadeDuration={0}

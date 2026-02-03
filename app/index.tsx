@@ -224,6 +224,14 @@ export default function HomeScreen() {
     }
   };
 
+  const handleConvertToWebsite = async (url: string) => {
+    setShowTextInput(false);
+    const newNotebookId = await handleWebsiteImport(url);
+    if (newNotebookId) {
+      navigateToNotebook(newNotebookId, 'sources');
+    }
+  };
+
   const onScanNotes = async () => {
     const newNotebookId = await handleCameraUpload();
     if (newNotebookId) {
@@ -367,6 +375,7 @@ export default function HomeScreen() {
         type={textInputType}
         onClose={() => setShowTextInput(false)}
         onSave={onTextSave}
+        onConvertToWebsite={handleConvertToWebsite}
       />
 
       {/* Upgrade Modal (subscription expired on first app open) */}

@@ -25,6 +25,7 @@ interface TextInputModalProps {
   type: 'text' | 'note';
   onClose: () => void;
   onSave: (title: string, content: string) => void;
+  onConvertToWebsite?: (url: string) => void;
 }
 
 export default function TextInputModal({
@@ -32,11 +33,34 @@ export default function TextInputModal({
   type,
   onClose,
   onSave,
+  onConvertToWebsite,
 }: TextInputModalProps) {
   const [content, setContent] = useState('');
 
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
+
+  /**
+   * Check if input looks like a URL
+   */
+  const isUrl = (text: string): boolean => {
+    const trimmed = text.trim();
+    // No spaces allowed in a bare URL check for this context
+    if (trimmed.includes(' ')) return false;
+
+    return (
+      trimmed.startsWith('http://') ||
+      trimmed.startsWith('https://') ||
+      trimmed.includes('.com') ||
+      trimmed.includes('.org') ||
+      trimmed.includes('.edu') ||
+      trimmed.includes('.net') ||
+      trimmed.includes('.io') ||
+      trimmed.includes('.co') ||
+      trimmed.includes('www.')
+    );
+  };
+
 
   // Clear inputs when opening/closing
   useEffect(() => {
@@ -48,13 +72,44 @@ export default function TextInputModal({
   const handleSave = () => {
     if (!content.trim()) return;
 
+    const trimmedContent = content.trim();
+
+    // URL Detection and Conversion Prompt
+    if (onConvertToWebsite && isUrl(trimmedContent)) {
+      const { Alert } = require('react-native');
+      Alert.alert(
+        'Import as Website?',
+        'It looks like you\'re pasting a URL. Would you like to import the full article text instead of just saving the link?',
+        [
+          {
+            text: 'Keep as Text',
+            style: 'cancel',
+            onPress: () => {
+              proceedWithSave(trimmedContent);
+            }
+          },
+          {
+            text: 'Import as Website',
+            onPress: () => {
+              onConvertToWebsite(trimmedContent);
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    proceedWithSave(trimmedContent);
+  };
+
+  const proceedWithSave = (text: string) => {
     // Generate title from first line or first 30 characters
-    const firstLine = content.trim().split('\n')[0];
+    const firstLine = text.split('\n')[0];
     const finalTitle = firstLine.length > 30
       ? firstLine.substring(0, 30).trim() + '...'
       : firstLine.trim() || 'Untitled';
 
-    onSave(finalTitle, content.trim());
+    onSave(finalTitle, text);
     onClose();
   };
 

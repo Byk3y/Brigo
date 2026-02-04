@@ -88,7 +88,7 @@ export function useQuizState({
             5,
             async () => {
               const res = await checkAndAwardTask('quiz_5_questions');
-              if (res.success) {
+              if (res.success && (res.newPoints ?? 0) > 0) {
                 triggerCelebration();
               }
               return res;

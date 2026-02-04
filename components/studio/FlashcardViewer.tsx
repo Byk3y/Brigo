@@ -111,7 +111,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
         5,
         async () => {
           const res = await checkAndAwardTask('study_flashcards');
-          if (res.success) {
+          if (res.success && (res.newPoints ?? 0) > 0) {
             triggerCelebration();
           }
           return res;

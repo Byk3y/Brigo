@@ -5,8 +5,14 @@
 import type { StateCreator } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { notebookService } from '@/lib/services/notebookService';
-import { getFilenameFromPath } from '@/lib/utils';
+import { materialService } from '@/lib/services/materialService';
+import { processingService } from '@/lib/services/processingService';
+import { chatService } from '@/lib/services/chatService';
 import { track } from '@/lib/services/analyticsService';
+import {
+  mapSupabaseNotebookToModel,
+  mapSupabaseMaterialToModel,
+} from '@/lib/utils/notebookTransform';
 import type { Notebook, Material, SupabaseUser, ChatMessage } from '../types';
 
 export interface NotebookSlice {
@@ -148,32 +154,11 @@ export const createNotebookSlice: StateCreator<
       // 2. Optimistic Update (UI transitions here)
       const materialsArr = resultMaterial ? [resultMaterial] : [];
 
-      const transformedNotebook: Notebook = {
-        id: newNotebook.id,
-        title: newNotebook.title,
-        emoji: (newNotebook as any).emoji,
-        flashcardCount: (newNotebook as any).flashcard_count || 0,
-        lastStudied: (newNotebook as any).last_studied || undefined,
-        progress: (newNotebook as any).progress || 0,
-        createdAt: newNotebook.created_at || new Date().toISOString(),
-        color: (newNotebook as any).color as Notebook['color'],
-        status: newNotebook.status as Notebook['status'],
-        meta: (newNotebook.meta as any) || {},
-        materials: materialsArr.map((m: any) => ({
-          id: m.id,
-          type: m.kind as Material['type'],
-          uri: m.storage_path || m.external_url || undefined,
-          filename: m.meta?.filename || getFilenameFromPath(m.storage_path || undefined),
-          content: m.content || undefined,
-          preview_text: m.preview_text || undefined,
-          title: m.meta?.title || newNotebook.title,
-          createdAt: m.created_at || new Date().toISOString(),
-          processed: !!m.processed,
-          status: m.status || 'processing',
-          thumbnail: m.thumbnail || undefined,
-          meta: m.meta,
-        })),
-      };
+      // Use centralized mapper for transformation
+      const transformedNotebook: Notebook = mapSupabaseNotebookToModel(
+        newNotebook,
+        materialsArr.map((m: any) => mapSupabaseMaterialToModel(m, newNotebook.title))
+      );
 
       set((state) => {
         const exists = state.notebooks.some((n) => n.id === transformedNotebook.id);
@@ -191,7 +176,7 @@ export const createNotebookSlice: StateCreator<
 
       // 3. Trigger Background Processing (Upload + Edge Function)
       if (resultMaterial) {
-        notebookService.performBackgroundUploadAndProcessing(
+        processingService.performBackgroundUploadAndProcessing(
           authUser.id,
           newNotebook.id,
           resultMaterial.id,
@@ -262,27 +247,14 @@ export const createNotebookSlice: StateCreator<
         storagePath,
         fileUri,
         filename
-      } = await notebookService.addMaterialToNotebook(
+      } = await materialService.addMaterialToNotebook(
         authUser.id,
         notebookId,
         material as any
       );
 
-      // 2. Optimistic/Local Update
-      const materialObj: Material = {
-        id: (newMaterial as any).id,
-        type: (newMaterial as any).kind as Material['type'],
-        uri: (newMaterial as any).storage_path || (newMaterial as any).external_url || undefined,
-        filename: (newMaterial as any).meta?.filename || getFilenameFromPath((newMaterial as any).storage_path || undefined),
-        content: (newMaterial as any).content || undefined,
-        preview_text: (newMaterial as any).preview_text || undefined,
-        title: (newMaterial as any).meta?.title || material.title || 'New Source',
-        createdAt: (newMaterial as any).created_at || new Date().toISOString(),
-        thumbnail: (newMaterial as any).thumbnail || undefined,
-        processed: (newMaterial as any).processed || false,
-        status: (newMaterial as any).status || 'processing',
-        meta: (newMaterial as any).meta,
-      };
+      // 2. Optimistic/Local Update - Use centralized mapper
+      const materialObj: Material = mapSupabaseMaterialToModel(newMaterial, material.title || 'New Source');
 
       set((state) => ({
         notebooks: state.notebooks.map((n) =>
@@ -299,7 +271,7 @@ export const createNotebookSlice: StateCreator<
       }));
 
       // 3. Trigger Background Processing
-      notebookService.performBackgroundUploadAndProcessing(
+      processingService.performBackgroundUploadAndProcessing(
         authUser.id,
         notebookId,
         newMaterial.id,
@@ -338,7 +310,7 @@ export const createNotebookSlice: StateCreator<
 
   loadChatMessages: async (notebookId) => {
     try {
-      const messages = await notebookService.fetchChatMessages(notebookId);
+      const messages = await chatService.fetchChatMessages(notebookId);
       set((state) => ({
         notebooks: state.notebooks.map((n) =>
           n.id === notebookId ? { ...n, chat_messages: messages } : n

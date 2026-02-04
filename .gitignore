@@ -69,9 +69,10 @@ yarn-error.*
 # Typescript
 *.tsbuildinfo
 
-# Test coverage
+# Test coverage & Jest
 coverage/
 *.lcov
+.jest/
 destinations.txt
 
 # Supabase

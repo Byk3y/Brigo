@@ -265,11 +265,11 @@ export const useMaterialAddition = (notebookId: string) => {
     }, [checkCanAdd, addMaterial, notebookId, withErrorHandling]);
 
     const handleRetryMaterial = useCallback(async (materialId: string) => {
-        const { notebookService } = await import('@/lib/services/notebookService');
+        const { materialService } = await import('@/lib/services/materialService');
         const wrapped = withErrorHandling(async () => {
             setIsAddingMaterial(true);
             try {
-                await notebookService.retryProcessing(notebookId, materialId);
+                await materialService.retryProcessing(notebookId, materialId);
                 // Refresh notebooks to get the new status
                 await loadNotebooks();
                 return true;

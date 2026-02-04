@@ -23,6 +23,7 @@ export interface UserSlice {
   setShowStreakRestoreModal: (show: boolean) => void;
   previousStreakForRestore: number;
   setPreviousStreakForRestore: (streak: number) => void;
+  dismissStreakRestore: () => void;
   getUserTimezone?: () => Promise<string>; // Access from TaskSlice
 }
 
@@ -117,13 +118,20 @@ export const createUserSlice: StateCreator<
     const timezone = typeof getUserTimezone === 'function' ? await getUserTimezone() : 'UTC';
     const result = await userService.checkStreakStatus(authUser.id, timezone);
 
-    if (result.success && result.was_reset) {
-      // Update local streak to 0 and store previous streak for modal
-      setUser({ streak: 0 });
-      set({
-        previousStreakForRestore: result.previous_streak || 0,
-        showStreakRestoreModal: true
-      });
+    if (result.success) {
+      // Sync streak freezes if returned (handles monthly refill)
+      if (result.streak_freezes !== undefined) {
+        setUser({ streak_freezes: result.streak_freezes });
+      }
+
+      if (result.was_reset) {
+        // Update local streak to 0 and store previous streak for modal
+        setUser({ streak: 0 });
+        set({
+          previousStreakForRestore: result.previous_streak || 0,
+          showStreakRestoreModal: true
+        });
+      }
     }
 
     return result;
@@ -162,4 +170,5 @@ export const createUserSlice: StateCreator<
   setShowStreakRestoreModal: (show) => set({ showStreakRestoreModal: show }),
   previousStreakForRestore: 0,
   setPreviousStreakForRestore: (streak) => set({ previousStreakForRestore: streak }),
+  dismissStreakRestore: () => set({ showStreakRestoreModal: false }),
 });

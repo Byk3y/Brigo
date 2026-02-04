@@ -233,6 +233,7 @@ export const userService = {
     success: boolean;
     was_reset?: boolean;
     previous_streak?: number;
+    streak_freezes?: number;
     error?: string;
   }> {
     try {

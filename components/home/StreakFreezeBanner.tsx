@@ -61,7 +61,7 @@ export function StreakFreezeBanner({
                     <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
                         {freezesLeft === 0
                             ? (previousStreak > 0 ? `You lost your ${previousStreak}-day streak` : 'Streak lost')
-                            : (previousStreak > 0 ? `Protect your ${previousStreak}-day streak` : 'Recover your streak')}
+                            : (previousStreak > 0 ? `Recover your ${previousStreak}-day streak` : 'Recover your streak')}
                     </Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                         {freezesLeft === 0

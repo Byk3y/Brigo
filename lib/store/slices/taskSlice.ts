@@ -210,6 +210,12 @@ export const createTaskSlice: StateCreator<
                         points_awarded: totalAwarded,
                         activity_id: response.activity_id
                     });
+
+                    // Smart Dismissal: If a study task was completed (triggering pet security/streak),
+                    // auto-dismiss the "Recover" banner as the user has now started a new streak.
+                    if (response.rewards?.pet_security?.success) {
+                        (get() as any).dismissStreakRestore?.();
+                    }
                 } else if (response.note === 'Already processed') {
                     return { success: true, newPoints: 0 };
                 }

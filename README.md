@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/images/brigo-icon.png" width="120" alt="Brigo Logo" />
+  <img src="assets/icon.png" width="120" alt="Brigo Logo" />
 </p>
 
 <h1 align="center">Brigo</h1>

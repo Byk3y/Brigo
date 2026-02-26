@@ -1,0 +1,14 @@
+appId: "com.brigo.ai"
+---
+- launchApp:
+    clearState: false
+# Example flow for creating a notebook
+# - tapOn: "Create Notebook"
+# - tapOn: "Upload File"
+# Maestro can mock file picking or just assert the UI
+# - tapOn: "Submit"
+# - assertVisible: "Processing..."
+# Wait for processing to complete or fail
+# - extendedWaitUntil:
+#     visible: "Success"
+#     timeout: 30000

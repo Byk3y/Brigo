@@ -1,0 +1,55 @@
+name: Brigo Test Suite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --passWithNoTests
+
+  # Database tests configuration
+  supabase-tests:
+    name: Supabase Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Setup Supabase CLI
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Run db tests
+        run: supabase test db
+
+  # Placeholders for Maestro tests (typically requires building the app first)
+  # maestro-tests:
+  #   name: Maestro E2E
+  #   needs: build-app
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: mobile-dev-inc/action-maestro-cloud@v1
+  #       with:
+  #         api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
+  #         app-file: path/to/app.apk

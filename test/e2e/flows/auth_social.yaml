@@ -1,0 +1,16 @@
+appId: "com.brigo.ai"
+---
+- launchApp:
+    clearState: false
+# Ideally we'd navigate to the Auth screen if not already there
+# - tapOn: "Sign In"
+
+# Verify Apple and Google buttons exist
+# - assertVisible: "Continue with Apple"
+# - assertVisible: "Continue with Google"
+
+# We won't complete the full OAuth loop as that requires leaving the app,
+# but we can verify the UI responds:
+# - tapOn: "Continue with Google"
+# - assertVisible: "accounts.google.com" # Checks if webview/safari opens
+# - back

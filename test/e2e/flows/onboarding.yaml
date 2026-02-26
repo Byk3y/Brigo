@@ -1,0 +1,12 @@
+appId: "com.brigo.ai"
+---
+- launchApp:
+    clearState: true
+# Wait for the app to settle
+- extendedWaitUntil:
+    visible:
+      id: ".*" # A regex to wait for any view to appear
+    timeout: 10000
+# Example interaction (update string matches based on actual app UI text)
+# - tapOn: "Continue"
+# - assertVisible: "Sign In"

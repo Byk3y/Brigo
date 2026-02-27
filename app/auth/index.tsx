@@ -1,17 +1,11 @@
-/**
- * Auth Landing Screen
- * Clean, modern design with social login options
- */
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   Image,
-  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -24,8 +18,7 @@ import { useErrorHandler } from '@/lib/hooks/useErrorHandler';
 import { signInWithGoogle } from '@/lib/auth/googleSignIn';
 import { signInWithApple, isAppleAuthAvailable } from '@/lib/auth/appleSignIn';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { OAuthConfig } from '@/lib/auth/config';
-import { useState, useEffect } from 'react';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 // Colorful Google G icon
 const GoogleIcon = () => (
@@ -75,8 +68,6 @@ export default function AuthScreen() {
     isAppleAuthAvailable().then(setIsAppleAvailable);
   }, []);
 
-
-
   // Helper to save Apple user name to profile
   const saveAppleUserName = async (userId: string, fullName: string) => {
     try {
@@ -105,18 +96,17 @@ export default function AuthScreen() {
 
         if (session && user) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-          // Let the onAuthStateChange listener handle setAuthUser() call automatically
-          // This prevents duplicate state updates and racing routing effects
-          // The useAuthSetup hook will process the session and trigger routing
-          // via the onAuthStateChange callback, ensuring single source of truth
+          // DELIBERATELY NOT CLEARING LOADING STATE HERE
+          // This keeps the overlay visible while the background fetch finishes
+          // and the layout router transitions us to the home screen.
+          return;
         }
       } else {
         // Use native Apple sign-in
         const { data, userInfo, canceled } = await signInWithApple();
 
         if (canceled) {
-          // User cancelled - don't show error, just return
+          // User cancelled - don't show error, just clear loading
           setLoading(false);
           return;
         }
@@ -130,13 +120,14 @@ export default function AuthScreen() {
             await saveAppleUserName(data.user.id, userInfo.fullName);
           }
 
-          // Navigation handled by auth state listener
+          // DELIBERATELY NOT CLEARING LOADING STATE HERE
+          // Same rationale as Google success above.
+          return;
         }
       }
     } catch (error: any) {
       // Handle cancellation gracefully (user cancelled sign-in)
       if (error.message?.includes('cancelled') || error.message?.includes('Sign in was cancelled')) {
-        // User cancelled - don't show error, just return
         setLoading(false);
         return;
       }
@@ -146,12 +137,10 @@ export default function AuthScreen() {
         component: 'auth-index',
         metadata: { provider }
       });
-    } finally {
+      // Only clear loading on actual errors, not success
       setLoading(false);
     }
   };
-
-
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -219,13 +208,25 @@ export default function AuthScreen() {
                 Continue with Google
               </Text>
             </TouchableOpacity>
-
-
           </View>
-
-          {/* Note: No separate login link needed - magic link works for both signup and login */}
         </View>
       </View>
+
+      {/* Loading Overlay */}
+      {loading && (
+        <Animated.View
+          entering={FadeIn.duration(300)}
+          exiting={FadeOut.duration(300)}
+          style={[styles.overlay, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)' }]}
+        >
+          <View style={[styles.overlayBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text style={[styles.overlayText, { color: colors.text }]}>
+              Signing you in...
+            </Text>
+          </View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -253,7 +254,6 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 24,
     backgroundColor: 'transparent',
-    // Ensure transparency is preserved
     tintColor: undefined,
     overflow: 'hidden',
   },
@@ -284,7 +284,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 12,
     borderWidth: 1,
-    // backgroundColor will be set inline based on theme
     gap: 8,
   },
   appleButton: {
@@ -296,5 +295,29 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontFamily: 'SpaceGrotesk-Medium',
     textAlign: 'left',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+  },
+  overlayBox: {
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  overlayText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'SpaceGrotesk-Medium',
   },
 });

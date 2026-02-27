@@ -9,6 +9,7 @@ import { useStore } from '@/lib/store';
 import { identify, clearUser, track, setUserProperties } from '@/lib/services/analyticsService';
 import { identifyPurchaser, logoutPurchaser } from '@/lib/purchases';
 import { isOnboardingComplete } from '@/lib/auth/onboardingStatus';
+import { performAuthHousekeeping } from '@/lib/auth/housekeeping';
 
 export function useAuthSetup() {
   const {
@@ -98,6 +99,9 @@ export function useAuthSetup() {
             hydratePetStateFromCache();
             hydrateUserProfileFromCache();
 
+            // Perform post-sign-in housekeeping (names, pet names, etc.)
+            await performAuthHousekeeping(session.user.id, session.user.user_metadata);
+
             // Fetch profile and other data in background
             const [profileResult] = await Promise.all([
               supabase.from('profiles').select('meta').eq('id', session.user.id).single(),
@@ -143,9 +147,9 @@ export function useAuthSetup() {
 
         fetchData();
 
-        // If we already have a session, we can consider auth "initialized" 
-        // for the sake of showing the UI, trusting the cached onboarding flag first.
-        if (mounted) setIsInitialized(true);
+        // Note: isInitialized is intentionally NOT set here anymore.
+        // It will be set to true at the end of fetchData() (Line 136/140)
+        // This ensures the AuthScreen loading overlay stays visible until all data is ready.
       } else {
         // Logged out state - ATOMIC RESET
         if (mounted) {

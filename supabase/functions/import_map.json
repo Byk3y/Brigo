@@ -1,7 +1,9 @@
 {
   "imports": {
     "supabase": "https://esm.sh/@supabase/supabase-js@2.39.0",
-    "pdfjs-dist": "https://esm.sh/pdfjs-dist@4.0.379",
-    "@sentry/deno": "https://esm.sh/@sentry/deno@8.51.0"
+    "pdfjs-dist": "https://esm.sh/pdfjs-dist@4.0.379?external=canvas",
+    "@sentry/deno": "https://esm.sh/@sentry/deno@8.51.0",
+    "@upstash/redis": "https://esm.sh/@upstash/redis@1.34.3",
+    "@upstash/ratelimit": "https://esm.sh/@upstash/ratelimit@2.0.5"
   }
 }

@@ -38,7 +38,7 @@ interface PaywallScreenProps {
     onClose: () => void;
     onPurchaseSuccess?: () => void;
     source?: string;
-    initialBillingCycle?: 'semester' | 'weekly';
+    initialBillingCycle?: 'monthly' | 'yearly';
 }
 
 const FEATURES = [
@@ -72,7 +72,7 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
     onClose,
     onPurchaseSuccess,
     source = 'paywall',
-    initialBillingCycle = 'weekly'
+    initialBillingCycle = 'monthly'
 }) => {
     const { isDarkMode } = useTheme();
     const { authUser, loadSubscription, tier, isExpired } = useStore();
@@ -82,7 +82,7 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
     const [isPurchasing, setIsPurchasing] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
     const [packages, setPackages] = useState<PurchasesPackage[]>([]);
-    const [billingCycle, setBillingCycle] = useState<'semester' | 'weekly'>(initialBillingCycle);
+    const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>(initialBillingCycle);
 
     const isPro = tier === 'premium' && !isExpired;
 
@@ -112,28 +112,28 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
 
 
     const selectedPackage = packages.find(pkg => {
-        if (billingCycle === 'semester') return pkg.packageType === 'THREE_MONTH';
-        if (billingCycle === 'weekly') return pkg.packageType === 'WEEKLY';
+        if (billingCycle === 'yearly') return pkg.packageType === 'ANNUAL';
+        if (billingCycle === 'monthly') return pkg.packageType === 'MONTHLY';
         return false;
     }) || packages[0];
 
-    // Monthly equivalent for semester (~$6.67/mo for $19.99/3mo)
-    const monthlyEquivalent = selectedPackage ? (selectedPackage.product.price / 3).toFixed(2) : '6.67';
+    // Monthly equivalent for yearly (~$2.50/mo for $29.99/yr)
+    const monthlyEquivalent = selectedPackage ? (selectedPackage.product.price / 12).toFixed(2) : '2.50';
 
     // Extract currency symbol from priceString (e.g., "$19.99" -> "$")
     const currencySymbol = selectedPackage?.product.priceString?.replace(/[0-9.,\s]/g, '') || '$';
 
     // Total price strings for clarity
     const totalPriceString = selectedPackage?.product.priceString || (
-        billingCycle === 'semester' ? `${currencySymbol}17.99` : `${currencySymbol}3.99`
+        billingCycle === 'yearly' ? `${currencySymbol}29.99` : `${currencySymbol}4.99`
     );
 
-    // Use RevenueCat's intro price (from App Store Connect) instead of hardcoding
-    // This ensures proper localization for all currencies (USD, NGN, EUR, etc.)
-    const trialPriceString = selectedPackage?.product.introPrice?.priceString || `${currencySymbol}1.99`;
-    const hasIntroOffer = !!selectedPackage?.product.introPrice;
+    // Detect free trial from App Store Connect via RevenueCat
+    const introPrice = selectedPackage?.product.introPrice;
+    const hasIntroOffer = !!introPrice;
+    const isFreeTrial = hasIntroOffer && introPrice?.price === 0;
 
-    const durationText = billingCycle === 'semester' ? 'every 3 months' : 'per week';
+    const durationText = billingCycle === 'yearly' ? 'per year' : 'per month';
 
     const handlePurchase = async () => {
         if (!selectedPackage) return;
@@ -236,27 +236,27 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
 
                     <View style={[styles.toggleContainer, { backgroundColor: isDarkMode ? '#1F2937' : '#F3F4F6', height: isPad ? 64 : 48, borderRadius: isPad ? 32 : 24 }]}>
                         <TouchableOpacity
-                            style={[styles.toggleHalf, billingCycle === 'weekly' && styles.toggleActive, isPad && { borderRadius: 32 }]}
+                            style={[styles.toggleHalf, billingCycle === 'monthly' && styles.toggleActive, isPad && { borderRadius: 32 }]}
                             onPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                setBillingCycle('weekly');
-                                track('paywall_plan_changed', { plan: 'weekly' });
+                                setBillingCycle('monthly');
+                                track('paywall_plan_changed', { plan: 'monthly' });
                             }}
                         >
-                            <Text style={[styles.toggleText, billingCycle === 'weekly' && styles.toggleTextActive, isPad && { fontSize: 18 }]}>Weekly</Text>
+                            <Text style={[styles.toggleText, billingCycle === 'monthly' && styles.toggleTextActive, isPad && { fontSize: 18 }]}>Monthly</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.toggleHalf, billingCycle === 'semester' && styles.toggleActive, isPad && { borderRadius: 32 }]}
+                            style={[styles.toggleHalf, billingCycle === 'yearly' && styles.toggleActive, isPad && { borderRadius: 32 }]}
                             onPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                setBillingCycle('semester');
-                                track('paywall_plan_changed', { plan: 'semester' });
+                                setBillingCycle('yearly');
+                                track('paywall_plan_changed', { plan: 'yearly' });
                             }}
                         >
                             <View style={styles.toggleLabelRow}>
-                                <Text style={[styles.toggleText, billingCycle === 'semester' && styles.toggleTextActive, isPad && { fontSize: 18 }]}>Semester</Text>
+                                <Text style={[styles.toggleText, billingCycle === 'yearly' && styles.toggleTextActive, isPad && { fontSize: 18 }]}>Yearly</Text>
                                 <View style={[styles.savingsBadgeMini, isPad && { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }]}>
-                                    <Text style={[styles.savingsBadgeTextMini, isPad && { fontSize: 12 }]}>65% OFF</Text>
+                                    <Text style={[styles.savingsBadgeTextMini, isPad && { fontSize: 12 }]}>50% OFF</Text>
                                 </View>
                             </View>
                         </TouchableOpacity>
@@ -290,11 +290,11 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                 </ScrollView>
 
                 <View style={styles.footer}>
-                    {billingCycle === 'semester' && (
+                    {billingCycle === 'yearly' && (
                         <View style={styles.valuePropositionFooter}>
                             <Ionicons name="sparkles" size={16} color="#10B981" />
                             <Text style={[styles.valueText, { color: isDarkMode ? '#10B981' : '#059669' }]}>
-                                3 months for just {currencySymbol}1.38/week
+                                Just {currencySymbol}{monthlyEquivalent}/mo — save 50%
                             </Text>
                         </View>
                     )}
@@ -310,26 +310,25 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                             <View style={styles.buttonInnerCentric}>
                                 <Text style={[styles.buttonLabel, { color: isDarkMode ? '#000' : '#FFF', fontSize: isPad ? 22 : 18 }]}>
                                     {isPro
-                                        ? (billingCycle === 'weekly' ? 'Weekly Pro Access' : '3 Months of Pro Access')
-                                        : (billingCycle === 'weekly' ? `Start trial for ${trialPriceString}` : '3 Months of Pro Access')
+                                        ? (billingCycle === 'monthly' ? 'Monthly Pro Access' : 'Yearly Pro Access')
+                                        : (isFreeTrial ? 'Start 7-Day Free Trial' : (billingCycle === 'monthly' ? 'Subscribe Monthly' : 'Subscribe Yearly'))
                                     }
                                 </Text>
                                 <Text style={[styles.buttonPriceInline, { color: '#F97316', fontSize: isPad ? 20 : 16 }]}>
-                                    {billingCycle === 'weekly'
-                                        ? (isPro ? totalPriceString : `then ${totalPriceString}/wk`)
-                                        : totalPriceString
+                                    {isPro
+                                        ? totalPriceString
+                                        : (isFreeTrial ? `then ${totalPriceString}/${billingCycle === 'monthly' ? 'mo' : 'yr'}` : `${totalPriceString}/${billingCycle === 'monthly' ? 'mo' : 'yr'}`)
                                     }
                                 </Text>
                             </View>
                         )}
                     </TouchableOpacity>
                     <Text style={[styles.legalNote, { color: isDarkMode ? '#71717A' : '#9CA3AF' }]}>
-                        {billingCycle === 'weekly'
-                            ? (isPro
-                                ? `Already a subscriber? You can update your plan here. Billed ${totalPriceString} per week.`
-                                : `Billed ${trialPriceString} today for the first week. After that, billed ${totalPriceString} per week. Cancel anytime.`
-                            )
-                            : `Billed ${totalPriceString} for 3 months. Plan continues at regular price. Cancel anytime in App Store.`
+                        {isPro
+                            ? `Already a subscriber. Billed ${totalPriceString} ${durationText}. Manage in App Store.`
+                            : isFreeTrial
+                                ? `Free for 7 days, then ${totalPriceString} ${durationText}. Cancel anytime.`
+                                : `Billed ${totalPriceString} ${durationText}. Cancel anytime.`
                         }
                     </Text>
 

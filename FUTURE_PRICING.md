@@ -1,58 +1,28 @@
-# What I Would Actually Do (If This Were My App)
+# Brigo Pricing Model (Current)
 
-## Recommended Pricing Structure
+## Active Plans
 
-### Weekly "Trial Plan"
-- **Price:** $1.99 first week → $2.99/week after
-- **Positioning:** "Perfect for trying Brigo or short-term exam prep"
-- **Limit:** Maybe limit to 2-3 notebooks or courses
+### Monthly Plan
+- **Price:** $4.99/month
+- **Free Trial:** 7-day free trial
+- **Product ID:** `brigo_premium_monthly`
+- **RevenueCat Package:** `$rc_monthly`
 
-### Semester "Student Plan" (FEATURED - Most Popular Badge)
-- **Price:** $17.99 for 3 months
-- **Positioning:** "One payment, whole semester. Best value."
-- **Privilege:** Unlimited everything
+### Yearly Plan (Featured — 50% OFF)
+- **Price:** $29.99/year ($2.50/month equivalent)
+- **Free Trial:** 7-day free trial
+- **Product ID:** `brigo_premium_yearly`
+- **RevenueCat Package:** `$rc_annual`
 
-### Optional: Annual "Year Plan"
-- **Price:** $49.99/year ($4.16/month)
-- **Positioning:** "Save 30% - covers full academic year"
-- **Target:** For overachievers who plan ahead
+## Legacy Plans (not shown to new users)
+- Weekly: `brigo_premium_weekly` — $3.99/week (with $1.99 intro)
+- Semester: `brigo_premium_annual` — $17.99/3 months
 
----
+## Access Model: Library vs Factory
+- **Free (Library):** View all notebooks, access existing flashcards/quizzes/podcasts, 5 chat messages/day
+- **Premium (Factory):** Create notebooks, generate content (Studio, Audio, Quizzes), unlimited chat
 
-## How to Present This in the App
-
-### In-App Subscription Screen:
-
-#### Choose Your Plan
-
-━━━━━━━━━━━━━━━━━━━━━━━
-🎓 **MOST POPULAR**
-
-**Semester Plan**
-$17.99 for 3 months
-- One payment, whole semester covered
-- All Premium features
-- Save $18 vs weekly
-- Cancel anytime
-
-**[Select Semester Plan]**
-━━━━━━━━━━━━━━━━━━━━━━━
-
-**Weekly Plan**
-$1.99 first week, then $2.99/week
-- Perfect for trying Brigo
-- All Premium features
-- Flexible week-to-week
-- Cancel anytime
-
-**[Start $1.99 Trial]**
-━━━━━━━━━━━━━━━━━━━━━━━
-
-**Annual Plan**
-$49.99/year ($4.16/month)
-- Best value - save 30%
-- Covers full academic year
-- All Premium features
-- Cancel anytime
-
-**[Select Annual Plan]**
+## Future Considerations
+- Regional pricing for price-sensitive markets (Nigeria, India, Southeast Asia)
+- Student discount via .edu verification (50% off like Gizmo)
+- Annual plan is already competitively positioned vs Quizlet ($3/mo) and Knowt Ultra ($9.99/mo)

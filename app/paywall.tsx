@@ -28,7 +28,7 @@ export default function PaywallRoute() {
             onClose={handleClose}
             onPurchaseSuccess={handlePurchaseSuccess}
             source={source || 'paywall'}
-            initialBillingCycle={plan === 'semester' || plan === 'weekly' ? plan : 'weekly'}
+            initialBillingCycle={plan === 'monthly' || plan === 'yearly' ? plan : 'monthly'}
         />
     );
 }

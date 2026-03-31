@@ -63,6 +63,13 @@ yarn-error.*
 # Allow .env.example to be committed (it's a template)
 !.env.example
 
+# Google service account key (sensitive)
+google-service-account.json
+
+# Play Store checklist (internal tracking)
+PLAYSTORE_CHECKLIST.md
+COMPETITOR_PRICING_RESEARCH.md
+
 # Documentation (keep in repo but organized)
 # docs/ folder is tracked
 

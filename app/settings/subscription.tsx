@@ -106,18 +106,18 @@ export default function SubscriptionScreen() {
                             backgroundColor: isDarkMode ? '#1F2937' : '#EFF6FF',
                             borderColor: '#3B82F6'
                         }]}
-                        onPress={() => showPaywall({ plan: 'semester' })}
+                        onPress={() => showPaywall({ plan: 'yearly' })}
                     >
                         <View style={styles.upgradeCardHeader}>
                             <View style={styles.savingsBadge}>
-                                <Text style={styles.savingsBadgeText}>65% OFF</Text>
+                                <Text style={styles.savingsBadgeText}>50% OFF</Text>
                             </View>
                             <Text style={[styles.upgradeCardTitle, { color: isDarkMode ? '#FFF' : '#1E40AF' }]}>
-                                Switch to Semester Plan
+                                Switch to Yearly Plan
                             </Text>
                         </View>
                         <Text style={[styles.upgradeCardDescription, { color: isDarkMode ? '#A1A1AA' : '#1E40AF' }]}>
-                            Lock in Pro for just $1.38/week. Best for long-term study.
+                            Just $2.50/mo — best value, save 50%.
                         </Text>
                         <View style={styles.upgradeCardArrow}>
                             <Ionicons name="arrow-forward" size={20} color="#3B82F6" />

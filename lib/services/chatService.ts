@@ -114,4 +114,36 @@ export const chatService = {
             });
         }
     },
+
+    /**
+     * Check if a user has any chat messages across all notebooks
+     */
+    hasUserMessages: async (userId: string): Promise<boolean> => {
+        try {
+            const { data, error } = await supabase
+                .from('notebook_chat_messages')
+                .select('id')
+                .eq('user_id', userId)
+                .limit(1)
+                .maybeSingle();
+
+            if (error) {
+                await handleError(error, {
+                    operation: 'check_user_messages',
+                    component: 'chat-service',
+                    metadata: { userId },
+                });
+                return false;
+            }
+
+            return !!data;
+        } catch (error) {
+            await handleError(error, {
+                operation: 'check_user_messages',
+                component: 'chat-service',
+                metadata: { userId },
+            });
+            return false;
+        }
+    },
 };

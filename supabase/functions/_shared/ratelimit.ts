@@ -32,16 +32,14 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
   const redisUrl = getOptionalEnv('UPSTASH_REDIS_REST_URL', '');
   const redisToken = getOptionalEnv('UPSTASH_REDIS_REST_TOKEN', '');
 
-  // SECURITY FIX: Fail-closed instead of fail-open
-  // If Redis not configured, REJECT request to prevent abuse
+  // Fail-open: If Redis not configured, allow request to avoid blocking users
   if (!redisUrl || !redisToken) {
-    console.error('Rate limiting unavailable: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN not configured');
-    console.error('REJECTING request due to missing rate limit configuration (fail-closed security policy)');
+    console.warn('Rate limiting unavailable: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN not configured');
+    console.warn('ALLOWING request due to missing rate limit configuration (fail-open policy)');
     return {
-      allowed: false,
-      remaining: 0,
+      allowed: true,
+      remaining: limit,
       resetAt: Math.floor(Date.now() / 1000) + window,
-      retryAfter: 60, // Retry in 1 minute
     };
   }
 
@@ -115,16 +113,14 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
     };
 
   } catch (error) {
-    // SECURITY FIX: Fail-closed instead of fail-open
-    // If Redis fails, REJECT request to prevent abuse during outages
+    // Fail-open: If Redis fails, allow request to avoid blocking users
     console.error(`Rate limit check failed for ${endpoint}:`, error);
-    console.error('REJECTING request due to rate limit service failure (fail-closed security policy)');
+    console.warn('ALLOWING request due to rate limit service failure (fail-open policy)');
 
     return {
-      allowed: false,
-      remaining: 0,
+      allowed: true,
+      remaining: limit,
       resetAt: Math.floor(Date.now() / 1000) + window,
-      retryAfter: 30, // Retry in 30 seconds
     };
   }
 }

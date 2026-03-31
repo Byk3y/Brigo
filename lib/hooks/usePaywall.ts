@@ -8,11 +8,11 @@ import { useRouter } from 'expo-router';
 
 interface UsePaywallOptions {
     source?: string;
-    plan?: 'semester' | 'weekly';
+    plan?: 'monthly' | 'yearly';
 }
 
 interface UsePaywallReturn {
-    showPaywall: (overrideOptions?: { plan?: 'semester' | 'weekly' }) => void;
+    showPaywall: (overrideOptions?: { plan?: 'monthly' | 'yearly' }) => void;
     isPaywallVisible: boolean;
 }
 
@@ -31,9 +31,9 @@ export function usePaywall(options: UsePaywallOptions = {}): UsePaywallReturn {
     const [isPaywallVisible, setIsPaywallVisible] = useState(false);
     const { source = 'paywall' } = options;
 
-    const showPaywall = useCallback((overrideOptions?: { plan?: 'semester' | 'weekly' }) => {
+    const showPaywall = useCallback((overrideOptions?: { plan?: 'monthly' | 'yearly' }) => {
         setIsPaywallVisible(true);
-        const targetPlan = overrideOptions?.plan || options.plan || 'weekly';
+        const targetPlan = overrideOptions?.plan || options.plan || 'monthly';
 
         router.push({
             pathname: '/paywall',

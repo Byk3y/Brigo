@@ -9,6 +9,9 @@
 
 import type { StateCreator } from 'zustand';
 import { taskService } from '@/lib/services/taskService';
+import { podcastService } from '@/lib/services/podcastService';
+import { chatService } from '@/lib/services/chatService';
+import { studioService } from '@/lib/services/studioService';
 import { userService } from '@/lib/services/userService';
 import { track } from '@/lib/services/analyticsService';
 import type { SupabaseUser, DailyTask, TaskProgress } from '../types';
@@ -117,29 +120,36 @@ export const createTaskSlice: StateCreator<
                 get().checkAndAwardTask('create_notebook', true);
             }
 
-            // 2. Generate Audio Recovery
+            // 2-5: Run lightweight DB checks in parallel for remaining tasks
             const generateAudioTask = tasks.find((t: any) => t.task_key === 'generate_audio_overview');
-            if (generateAudioTask && !generateAudioTask.completed) {
+            const firstChatTask = tasks.find((t: any) => t.task_key === 'first_notebook_chat');
+            const studioFlashcardTask = tasks.find((t: any) => t.task_key === 'generate_flashcards');
+            const studioQuizTask = tasks.find((t: any) => t.task_key === 'generate_quiz');
+
+            const userId = authUser.id;
+            const [hasAudio, hasChat, hasFlashcards, hasQuizzes] = await Promise.all([
+                generateAudioTask && !generateAudioTask.completed ? podcastService.hasCompleted(userId) : Promise.resolve(false),
+                firstChatTask && !firstChatTask.completed ? chatService.hasUserMessages(userId) : Promise.resolve(false),
+                studioFlashcardTask && !studioFlashcardTask.completed ? studioService.hasUserFlashcards(userId) : Promise.resolve(false),
+                studioQuizTask && !studioQuizTask.completed ? studioService.hasUserQuizzes(userId) : Promise.resolve(false),
+            ]);
+
+            // 2. Generate Audio Recovery
+            if (generateAudioTask && !generateAudioTask.completed && hasAudio) {
                 get().checkAndAwardTask('generate_audio_overview', true);
             }
 
             // 3. First Chat Recovery
-            const firstChatTask = tasks.find((t: any) => t.task_key === 'first_notebook_chat');
-            const hasChat = notebooks.some((n: any) => n.chat_messages && n.chat_messages.length > 0);
             if (firstChatTask && !firstChatTask.completed && hasChat) {
                 get().checkAndAwardTask('first_notebook_chat', true);
             }
 
             // 4. Studio Flashcard Recovery
-            const studioFlashcardTask = tasks.find((t: any) => t.task_key === 'generate_flashcards');
-            const hasFlashcards = notebooks.some((n: any) => n.flashcard_sets && n.flashcard_sets.length > 0);
             if (studioFlashcardTask && !studioFlashcardTask.completed && hasFlashcards) {
                 get().checkAndAwardTask('generate_flashcards', true);
             }
 
             // 5. Studio Quiz Recovery
-            const studioQuizTask = tasks.find((t: any) => t.task_key === 'generate_quiz');
-            const hasQuizzes = notebooks.some((n: any) => n.quizzes && n.quizzes.length > 0);
             if (studioQuizTask && !studioQuizTask.completed && hasQuizzes) {
                 get().checkAndAwardTask('generate_quiz', true);
             }

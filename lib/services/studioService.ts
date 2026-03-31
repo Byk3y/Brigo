@@ -217,6 +217,70 @@ export const studioService = {
       throw appError;
     }
   },
+
+  /**
+   * Check if a user has any flashcard sets across all notebooks
+   */
+  hasUserFlashcards: async (userId: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('studio_flashcard_sets')
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        await handleError(error, {
+          operation: 'check_user_flashcards',
+          component: 'studio-service',
+          metadata: { userId },
+        });
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      await handleError(error, {
+        operation: 'check_user_flashcards',
+        component: 'studio-service',
+        metadata: { userId },
+      });
+      return false;
+    }
+  },
+
+  /**
+   * Check if a user has any quizzes across all notebooks
+   */
+  hasUserQuizzes: async (userId: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('studio_quizzes')
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        await handleError(error, {
+          operation: 'check_user_quizzes',
+          component: 'studio-service',
+          metadata: { userId },
+        });
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      await handleError(error, {
+        operation: 'check_user_quizzes',
+        component: 'studio-service',
+        metadata: { userId },
+      });
+      return false;
+    }
+  },
 };
 
 

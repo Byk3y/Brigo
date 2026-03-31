@@ -159,7 +159,7 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
 
   const renderContent = () => {
     // Initial extraction state (no materials yet)
-    if (notebook.status === 'extracting' && (!notebook.materials || notebook.materials.length === 0)) {
+    if ((notebook.status === 'extracting' || notebook.status === 'pending') && (!notebook.materials || notebook.materials.length === 0)) {
       return (
         <View style={{ flex: 1, paddingHorizontal: isPad ? 48 : 20, paddingTop: isPad ? 32 : 20 }}>
           <View style={{ maxWidth: isPad ? 800 : '100%', alignSelf: 'center', width: '100%' }}>
@@ -253,8 +253,8 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({
 
             {/* Phase B Loading: Backend Processing (DB State) */}
             {notebook.materials && notebook.materials.map((mat, index) => {
-              const isImage = mat.type === 'image' || mat.type === 'photo';
-              const isProcessing = mat.processed === false || mat.status === 'processing';
+            const isImage = mat.type === 'image' || mat.type === 'photo';
+            const isProcessing = mat.processed === false || mat.status === 'processing' || mat.status === 'pending';
               // Only show as failed if status is 'failed' AND material wasn't actually processed
               // This handles race conditions where processing succeeded but status wasn't updated correctly
               const isFailed = mat.status === 'failed' && !mat.processed;

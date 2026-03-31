@@ -261,7 +261,7 @@ export const createNotebookSlice: StateCreator<
           n.id === notebookId
             ? {
               ...n,
-              status: 'extracting',
+              status: 'pending',
               materials: n.materials.some(m => m.id === materialObj.id)
                 ? n.materials.map(m => m.id === materialObj.id ? materialObj : m)
                 : [materialObj, ...n.materials],
@@ -379,7 +379,7 @@ export const createNotebookSlice: StateCreator<
           try {
             // Optimization: Only fetch full notebook when status is NOT extracting (i.e. processed/failed)
             // or if it's an update to a previously processed notebook (e.g. title/meta change)
-            if (updatedNb.status !== 'extracting') {
+            if (updatedNb.status !== 'extracting' && updatedNb.status !== 'pending') {
               // Fetch full notebook data 
               const fullNotebook = await notebookService.getNotebookById(updatedNb.id);
 
@@ -398,7 +398,7 @@ export const createNotebookSlice: StateCreator<
                 }));
               }
             } else {
-              // For status-only updates while still extracting, update record optimistically
+              // For status-only updates while still extracting or pending, update record optimistically
               set((state) => ({
                 notebooks: state.notebooks.map((n) =>
                   n.id === updatedNb.id ? { ...n, ...updatedNb } : n

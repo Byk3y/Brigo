@@ -21,12 +21,13 @@ export type MaterialKind =
  */
 export interface Material {
   id: string;
+  notebook_id?: string;
   kind: MaterialKind;
   storage_path: string | null;
   external_url: string | null;
   content: string | null;
   processed: boolean;
-  status?: 'processing' | 'processed' | 'failed';
+  status?: 'pending' | 'processing' | 'processed' | 'failed';
   meta?: Record<string, any>;
 }
 

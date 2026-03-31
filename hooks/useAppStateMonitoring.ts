@@ -30,7 +30,7 @@ export function useAppStateMonitoring() {
         // If we have ANY notebooks effectively "in progress", we re-fetch the list
         // when foregrounded to catch any missed Realtime events.
         const { notebooks, loadNotebooks } = useStore.getState();
-        const hasWorkInProgress = notebooks.some(n => n.status === 'extracting');
+        const hasWorkInProgress = notebooks.some(n => n.status === 'extracting' || n.status === 'pending');
         if (hasWorkInProgress) {
           console.log('[AppState] Re-syncing notebooks on foreground...');
           loadNotebooks(currentAuthUser.id).catch(() => { });
@@ -43,7 +43,7 @@ export function useAppStateMonitoring() {
             .from('notebooks')
             .select('id')
             .eq('user_id', currentAuthUser.id)
-            .eq('status', 'extracting')
+            .in('status', ['extracting', 'pending'])
             .lt('updated_at', threeMinutesAgo);
 
           if (error) {
@@ -54,71 +54,48 @@ export function useAppStateMonitoring() {
           if (stuckNotebooks && stuckNotebooks.length > 0) {
             // Retry Edge Function for each stuck notebook
             for (const notebook of stuckNotebooks) {
-              // Find the first unprocessed material for this notebook (multi-material aware)
-              const { data: unprocessedMaterial } = await supabase
+              // Find ALL unprocessed materials for this notebook (multi-material aware)
+              const { data: unprocessedMaterials } = await supabase
                 .from('materials')
                 .select('id')
                 .eq('notebook_id', notebook.id)
                 .neq('status', 'processed')
-                .order('created_at', { ascending: true })
-                .limit(1)
-                .single();
+                .order('created_at', { ascending: true });
 
-              // Skip if no unprocessed materials found (notebook might be in weird state)
-              if (!unprocessedMaterial) {
-                console.warn('[AppState] No unprocessed material found for stuck notebook:', notebook.id);
+              if (!unprocessedMaterials || unprocessedMaterials.length === 0) {
+                console.warn('[AppState] No unprocessed materials found for stuck notebook:', notebook.id);
                 continue;
               }
 
-              // Create timeout promise
-              const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Retry timeout after 60s')), 60000)
-              );
+              console.log(`[AppState] Retrying ${unprocessedMaterials.length} materials for notebook: ${notebook.id}`);
 
-              // Retry Edge Function invocation
-              Promise.race([
-                supabase.functions.invoke('process-material', {
-                  body: { material_id: unprocessedMaterial.id },
-                }),
-                timeoutPromise,
-              ])
-                .then(async (result: any) => {
-                  const { data, error } = result;
-                  if (error) {
-                    // Error already handled by centralized system
-                    // Mark as failed
-                    const { error: updateError } = await supabase
-                      .from('notebooks')
-                      .update({ status: 'failed' })
-                      .eq('id', notebook.id);
-                    if (updateError) {
-                      // Non-critical error, just log
-                      if (__DEV__) {
-                        console.warn(`Failed to update notebook ${notebook.id} status:`, updateError);
-                      }
-                    }
-                  }
-                })
-                .catch(async (err) => {
-                  // Error already handled by centralized system
-                  // Don't mark as failed on timeout/network errors - will retry on next foreground
-                  const isTimeout = err.message?.includes('timeout');
-                  const isNetworkError =
-                    err.message?.includes('fetch') || err.message?.includes('network');
+              // Invoke Edge Function for each material
+              // We don't await each one sequentially to avoid blocking the main loop
+              for (const material of unprocessedMaterials) {
+                // Create timeout promise
+                const timeoutPromise = new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error('Retry timeout after 60s')), 60000)
+                );
 
-                  if (!isTimeout && !isNetworkError) {
-                    // Permanent error, mark as failed
-                    const { error: updateError } = await supabase
-                      .from('notebooks')
-                      .update({ status: 'failed' })
-                      .eq('id', notebook.id);
-                    if (updateError) {
-                      if (__DEV__) {
-                        console.warn(`Failed to update notebook ${notebook.id} status:`, updateError);
-                      }
-                    }
+                // Retry Edge Function invocation
+                Promise.race([
+                  supabase.functions.invoke('process-material', {
+                    body: { material_id: material.id },
+                  }),
+                  timeoutPromise,
+                ]).catch(async (err) => {
+                  console.error(`[AppState] Failed to retry material ${material.id}:`, err);
+
+                  // Mark as failed for permanent errors so we don't retry infinitely
+                  const isTransient = err.message?.includes('timeout') || err.message?.includes('fetch') || err.message?.includes('network');
+                  if (!isTransient) {
+                    await supabase
+                      .from('materials')
+                      .update({ status: 'failed', meta: { error: `Recovery failed: ${err.message}` } })
+                      .eq('id', material.id);
                   }
                 });
+              }
             }
           }
         } catch (err) {

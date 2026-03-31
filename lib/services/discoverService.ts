@@ -88,7 +88,7 @@ export async function importDiscoveredSources(
             .insert({
                 user_id: userId,
                 title,
-                status: 'extracting',
+                status: 'pending',
                 meta: {
                     source_type: 'discover_sources',
                     sources_count: sources.length,
@@ -106,7 +106,7 @@ export async function importDiscoveredSources(
         // Update existing notebook status
         await supabase
             .from('notebooks')
-            .update({ status: 'extracting' })
+            .update({ status: 'pending' })
             .eq('id', targetNotebookId);
     }
 
@@ -116,7 +116,7 @@ export async function importDiscoveredSources(
         user_id: userId,
         kind: 'website',
         external_url: source.url,
-        status: 'processing',
+        status: 'pending',
         meta: {
             title: source.title,
             filename: source.title,

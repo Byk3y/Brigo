@@ -50,7 +50,7 @@ export const notebookService = {
                 user_id: userId,
                 title: notebook.title,
                 color: notebook.color,
-                status: 'extracting', // Initially extracting if material is present
+                status: 'pending', // Initially pending if material is present
                 meta: {},
                 flashcard_count: notebook.flashcardCount || 0,
                 progress: notebook.progress || 0,
@@ -91,7 +91,7 @@ export const notebookService = {
                         : null,
                     content: isFileUpload ? null : notebook.material.content,
                     processed: false,
-                    status: 'processing',
+                    status: 'pending',
                     processed_at: null,
                 };
 
@@ -115,9 +115,6 @@ export const notebookService = {
                     .from('notebooks')
                     .update({ material_id: material.id })
                     .eq('id', newNotebook.id);
-            } else {
-                // If no material, set status to 'ready' or similar if applicable
-                // For now, keep as 'extracting' if the intention is to add materials later
             }
 
             // Step 5: Optimization - Return early so UI can navigate

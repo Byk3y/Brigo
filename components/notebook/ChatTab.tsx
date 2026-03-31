@@ -247,7 +247,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz, onRetryM
   }, []);
 
   const handleTakeQuiz = () => {
-    if (notebook.status === 'extracting') return;
+    if (notebook.status === 'extracting' || notebook.status === 'pending') return;
     if (onTakeQuiz) onTakeQuiz();
   };
 
@@ -295,7 +295,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz, onRetryM
     }
   };
 
-  const isExtracting = notebook.status === 'extracting';
+  const isExtracting = notebook.status === 'extracting' || notebook.status === 'pending';
   const isBackgroundProcessing = (notebook.meta as any)?.background_processing === true;
   const hasExistingContent = !!briefing;
 

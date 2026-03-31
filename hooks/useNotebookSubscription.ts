@@ -67,7 +67,7 @@ export function useNotebookSubscription(
 
             // If status changed to preview_ready, reload notebook with materials
             // to get the updated preview_text from materials table
-            if (newStatus === 'preview_ready' && oldStatusFromState === 'extracting') {
+            if (newStatus === 'preview_ready' && (oldStatusFromState === 'extracting' || oldStatusFromState === 'pending')) {
               // Prevent multiple simultaneous reloads
               if (isReloadingRef.current) {
                 return transformNotebook(updated, currentNotebook.materials);

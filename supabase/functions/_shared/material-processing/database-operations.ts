@@ -133,7 +133,7 @@ export class MaterialRepository {
       .from('materials')
       .select('id', { count: 'exact', head: true })
       .eq('notebook_id', notebookId)
-      .eq('status', 'processing');
+      .in('status', ['processing', 'pending']);
 
     if (excludeMaterialId) {
       query = query.neq('id', excludeMaterialId);

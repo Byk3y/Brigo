@@ -74,13 +74,13 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
             // Update notebook status to 'extracting' in database
             await supabase
                 .from('notebooks')
-                .update({ status: 'extracting' })
+                .update({ status: 'pending' })
                 .eq('id', notebook.id);
 
             // Update local state
             setNotebooks(
                 notebooks.map((n) =>
-                    n.id === notebook.id ? { ...n, status: 'extracting' as const } : n
+                    n.id === notebook.id ? { ...n, status: 'pending' as const } : n
                 )
             );
 
@@ -228,8 +228,8 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
                     )}
                 </View>
 
-                {/* Right side - loader only when extracting */}
-                {notebook.status === 'extracting' && (
+                {/* Right side - loader only when extracting or pending */}
+                {(notebook.status === 'extracting' || notebook.status === 'pending') && (
                     <View style={{ marginLeft: 12 }}>
                         <TikTokLoader size={10} color="#6366f1" containerWidth={50} />
                     </View>

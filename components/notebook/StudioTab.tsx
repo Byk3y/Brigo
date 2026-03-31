@@ -134,7 +134,7 @@ export const StudioTab: React.FC<StudioTabProps> = ({
     }
   }, [onGenerateQuiz, handleGenerateQuiz]);
 
-  if (notebook.status === 'extracting') {
+  if (notebook.status === 'extracting' || notebook.status === 'pending') {
     return <StudioExtractingState />;
   }
 

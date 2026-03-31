@@ -118,6 +118,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Material not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // IDEMPOTENCY: If material is already processed or actively being processed, return early
+    if (material.status === 'processed' || material.status === 'processing') {
+      console.log(`[Idempotency] Material ${materialId} is already ${material.status}. Returning success.`);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Material already ${material.status}`,
+          materialId,
+          notebook_id: material.notebook_id,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Get notebook from the new notebook_id column
     notebookId = material.notebook_id;
 

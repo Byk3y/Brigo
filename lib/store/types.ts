@@ -82,7 +82,7 @@ export interface Material {
   filename?: string; // Extracted from storage_path for display
   createdAt: string;
   processed: boolean; // True if backend extraction/analysis is complete
-  status: 'processing' | 'processed' | 'failed';
+  status: 'pending' | 'processing' | 'processed' | 'failed';
   thumbnail?: string; // Optional preview image
   meta?: {
     ocr_quality?: {
@@ -223,7 +223,7 @@ export interface Notebook {
   progress: number; // 0-100 percentage
   createdAt: string;
   color?: 'blue' | 'green' | 'orange' | 'purple' | 'pink';
-  status?: 'extracting' | 'preview_ready' | 'ready_for_studio' | 'failed'; // Processing status
+  status?: 'pending' | 'extracting' | 'preview_ready' | 'ready_for_studio' | 'failed'; // Processing status
   materials: Material[]; // Track source materials (for backward compatibility, but MVP is 1:1)
   meta?: {
     preview?: {

@@ -51,7 +51,7 @@ export const materialService = {
                 content: isFileUpload ? null : material.content,
                 preview_text: null,
                 processed: false,
-                status: 'processing',
+                status: 'pending',
                 processed_at: null,
                 meta: {
                     title: material.title || material.filename || 'Source',
@@ -69,10 +69,10 @@ export const materialService = {
                 throw materialError;
             }
 
-            // Step 3: Update notebook status to extracting
+            // Step 3: Update notebook status to pending
             await supabase
                 .from('notebooks')
-                .update({ status: 'extracting' })
+                .update({ status: 'pending' })
                 .eq('id', notebookId);
 
             // Step 4: Return for instant UI update
@@ -102,16 +102,16 @@ export const materialService = {
      */
     retryProcessing: async (notebookId: string, materialId: string) => {
         try {
-            // Re-mark material as processing
+            // Re-mark material as pending
             await supabase
                 .from('materials')
-                .update({ status: 'processing', processed: false })
+                .update({ status: 'pending', processed: false })
                 .eq('id', materialId);
 
-            // Re-mark notebook as extracting
+            // Re-mark notebook as pending
             await supabase
                 .from('notebooks')
-                .update({ status: 'extracting' })
+                .update({ status: 'pending' })
                 .eq('id', notebookId);
 
             // Trigger processing again

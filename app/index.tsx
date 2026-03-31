@@ -47,7 +47,8 @@ export default function HomeScreen() {
     flashcardsStudied,
     showStreakRestoreModal,
     previousStreakForRestore,
-    setShowStreakRestoreModal,
+    streakRestoreDismissed,
+    dismissStreakRestore,
     applyStreakFreeze,
     hasSeenHomeWalkthrough,
     setHomeWalkthroughSeen,
@@ -306,6 +307,9 @@ export default function HomeScreen() {
             // If the modal state is explicitly triggered (e.g. from a fresh reset detection)
             if (showStreakRestoreModal) return true;
 
+            // If user already dismissed this session, don't re-show
+            if (streakRestoreDismissed) return false;
+
             // Only show when the streak is actually 0 and there is something to recover
             const hasRecoverable = (user.meta?.last_recoverable_streak || 0) > 0;
             return user.streak === 0 && hasRecoverable;
@@ -315,7 +319,7 @@ export default function HomeScreen() {
           onApplyFreeze={async () => {
             await applyStreakFreeze();
           }}
-          onDismissStreakRestore={() => setShowStreakRestoreModal(false)}
+          onDismissStreakRestore={() => dismissStreakRestore()}
           animateEntries={animateEntries}
         />
       )}

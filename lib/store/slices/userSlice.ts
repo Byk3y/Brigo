@@ -23,6 +23,7 @@ export interface UserSlice {
   setShowStreakRestoreModal: (show: boolean) => void;
   previousStreakForRestore: number;
   setPreviousStreakForRestore: (streak: number) => void;
+  streakRestoreDismissed: boolean;
   dismissStreakRestore: () => void;
   getUserTimezone?: () => Promise<string>; // Access from TaskSlice
 }
@@ -129,7 +130,8 @@ export const createUserSlice: StateCreator<
         setUser({ streak: 0 });
         set({
           previousStreakForRestore: result.previous_streak || 0,
-          showStreakRestoreModal: true
+          showStreakRestoreModal: true,
+          streakRestoreDismissed: false,
         });
       }
     }
@@ -162,6 +164,7 @@ export const createUserSlice: StateCreator<
       userProfileSyncedAt: null,
       userProfileUserId: null,
       flashcardsStudied: 0,
+      streakRestoreDismissed: false,
     });
   },
   hasCreatedNotebook: false,
@@ -170,5 +173,6 @@ export const createUserSlice: StateCreator<
   setShowStreakRestoreModal: (show) => set({ showStreakRestoreModal: show }),
   previousStreakForRestore: 0,
   setPreviousStreakForRestore: (streak) => set({ previousStreakForRestore: streak }),
-  dismissStreakRestore: () => set({ showStreakRestoreModal: false }),
+  streakRestoreDismissed: false,
+  dismissStreakRestore: () => set({ showStreakRestoreModal: false, streakRestoreDismissed: true }),
 });

@@ -101,6 +101,198 @@ describe('materialService', () => {
             expect(result.fileUri).toBe('file:///path/to/test.pdf');
         });
 
+        it('should create an audio material with storage path', async () => {
+            const mockMaterial = {
+                id: 'mat-3',
+                user_id: 'user-1',
+                notebook_id: 'nb-1',
+                kind: 'audio',
+                storage_path: 'user-1/mat-3/lecture.mp3',
+                status: 'processing',
+                processed: false,
+                meta: { title: 'Lecture Recording', filename: 'lecture.mp3' },
+                created_at: '2024-01-01T00:00:00Z',
+            };
+
+            const mockFrom = jest.fn().mockReturnValue({
+                insert: jest.fn().mockReturnValue({
+                    select: jest.fn().mockReturnValue({
+                        single: jest.fn().mockResolvedValue({
+                            data: mockMaterial,
+                            error: null,
+                        }),
+                    }),
+                }),
+                update: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+            });
+            (supabase.from as jest.Mock) = mockFrom;
+
+            const result = await materialService.addMaterialToNotebook('user-1', 'nb-1', {
+                type: 'audio',
+                fileUri: 'file:///path/to/lecture.mp3',
+                filename: 'lecture.mp3',
+                title: 'Lecture Recording',
+            } as any);
+
+            expect(result.newMaterial).toBeDefined();
+            expect(result.newMaterial.kind).toBe('audio');
+            expect(result.isFileUpload).toBe(true);
+            expect(result.storagePath).toContain('lecture.mp3');
+        });
+
+        it('should create an image material with storage path', async () => {
+            const mockMaterial = {
+                id: 'mat-4',
+                user_id: 'user-1',
+                notebook_id: 'nb-1',
+                kind: 'image',
+                storage_path: 'user-1/mat-4/photo.jpg',
+                status: 'processing',
+                processed: false,
+                meta: { title: 'Textbook Scan', filename: 'photo.jpg' },
+                created_at: '2024-01-01T00:00:00Z',
+            };
+
+            const mockFrom = jest.fn().mockReturnValue({
+                insert: jest.fn().mockReturnValue({
+                    select: jest.fn().mockReturnValue({
+                        single: jest.fn().mockResolvedValue({
+                            data: mockMaterial,
+                            error: null,
+                        }),
+                    }),
+                }),
+                update: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+            });
+            (supabase.from as jest.Mock) = mockFrom;
+
+            const result = await materialService.addMaterialToNotebook('user-1', 'nb-1', {
+                type: 'image',
+                fileUri: 'file:///path/to/photo.jpg',
+                filename: 'photo.jpg',
+                title: 'Textbook Scan',
+            } as any);
+
+            expect(result.newMaterial).toBeDefined();
+            expect(result.newMaterial.kind).toBe('image');
+            expect(result.isFileUpload).toBe(true);
+        });
+
+        it('should create a website material with external_url', async () => {
+            const mockMaterial = {
+                id: 'mat-5',
+                user_id: 'user-1',
+                notebook_id: 'nb-1',
+                kind: 'website',
+                storage_path: null,
+                external_url: 'https://example.com/article',
+                status: 'processing',
+                processed: false,
+                meta: { title: 'Website Article' },
+                created_at: '2024-01-01T00:00:00Z',
+            };
+
+            const mockFrom = jest.fn().mockReturnValue({
+                insert: jest.fn().mockReturnValue({
+                    select: jest.fn().mockReturnValue({
+                        single: jest.fn().mockResolvedValue({
+                            data: mockMaterial,
+                            error: null,
+                        }),
+                    }),
+                }),
+                update: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+            });
+            (supabase.from as jest.Mock) = mockFrom;
+
+            const result = await materialService.addMaterialToNotebook('user-1', 'nb-1', {
+                type: 'website',
+                uri: 'https://example.com/article',
+                title: 'Website Article',
+            } as any);
+
+            expect(result.newMaterial).toBeDefined();
+            expect(result.newMaterial.kind).toBe('website');
+            expect(result.isFileUpload).toBe(false);
+            expect(result.newMaterial.external_url).toBe('https://example.com/article');
+        });
+
+        it('should create a YouTube material with external_url', async () => {
+            const mockMaterial = {
+                id: 'mat-6',
+                user_id: 'user-1',
+                notebook_id: 'nb-1',
+                kind: 'youtube',
+                storage_path: null,
+                external_url: 'https://www.youtube.com/watch?v=abc123',
+                status: 'processing',
+                processed: false,
+                meta: { title: 'YouTube Import' },
+                created_at: '2024-01-01T00:00:00Z',
+            };
+
+            const mockFrom = jest.fn().mockReturnValue({
+                insert: jest.fn().mockReturnValue({
+                    select: jest.fn().mockReturnValue({
+                        single: jest.fn().mockResolvedValue({
+                            data: mockMaterial,
+                            error: null,
+                        }),
+                    }),
+                }),
+                update: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+            });
+            (supabase.from as jest.Mock) = mockFrom;
+
+            const result = await materialService.addMaterialToNotebook('user-1', 'nb-1', {
+                type: 'youtube',
+                uri: 'https://www.youtube.com/watch?v=abc123',
+                title: 'YouTube Import',
+            } as any);
+
+            expect(result.newMaterial).toBeDefined();
+            expect(result.newMaterial.kind).toBe('youtube');
+            expect(result.isFileUpload).toBe(false);
+            expect(result.newMaterial.external_url).toBe('https://www.youtube.com/watch?v=abc123');
+        });
+
+        it('should set content to null for file uploads', async () => {
+            const mockInsert = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    single: jest.fn().mockResolvedValue({
+                        data: { id: 'mat-7', kind: 'pdf', content: null },
+                        error: null,
+                    }),
+                }),
+            });
+            const mockFrom = jest.fn().mockReturnValue({
+                insert: mockInsert,
+                update: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+            });
+            (supabase.from as jest.Mock) = mockFrom;
+
+            await materialService.addMaterialToNotebook('user-1', 'nb-1', {
+                type: 'pdf',
+                content: 'This should be ignored',
+                fileUri: 'file:///path/to/doc.pdf',
+                filename: 'doc.pdf',
+                title: 'Document',
+            } as any);
+
+            const insertedData = mockInsert.mock.calls[0][0];
+            expect(insertedData.content).toBeNull();
+        });
+
         it('should throw error on database failure', async () => {
             const mockFrom = jest.fn().mockReturnValue({
                 insert: jest.fn().mockReturnValue({

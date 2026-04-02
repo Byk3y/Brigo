@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.brigo.ai",
-      "buildNumber": "49",
+      "buildNumber": "50",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -37,7 +37,7 @@
         "backgroundColor": "#FF9500"
       },
       "package": "com.brigo.ai",
-      "versionCode": 2,
+      "versionCode": 5,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",

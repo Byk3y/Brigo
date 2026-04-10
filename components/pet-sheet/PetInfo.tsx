@@ -33,9 +33,6 @@ export function PetInfo({ name, points, onNameChange }: PetInfoProps) {
     return (
         <View style={styles.container}>
             <View style={styles.characterContainer}>
-                {/* Pet Name with Edit Icon */}
-                <PetNameEditor name={name} onNameChange={onNameChange} />
-
                 {/* XP Progress Bar */}
                 <View style={styles.xpContainer}>
                     <View style={[

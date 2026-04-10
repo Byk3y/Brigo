@@ -1,9 +1,10 @@
 /**
- * Pet Name Editor - Editable pet name with inline editing
+ * Pet Name Editor - Frosted glass pill with inline editing
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/lib/ThemeContext';
 
 interface PetNameEditorProps {
@@ -38,15 +39,15 @@ export function PetNameEditor({ name, onNameChange }: PetNameEditorProps) {
         setIsEditing(true);
     };
 
-    // White text in dark mode, dark text in light mode
-    const textColor = isDarkMode ? '#FFFFFF' : '#000000';
-    const inputBorderColor = isDarkMode ? '#FBBF24' : '#9370DB';
+    const textColor = isDarkMode ? '#FFFFFF' : '#1a1a1a';
+    const pillBg = isDarkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)';
+    const iconColor = isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)';
 
     if (isEditing) {
         return (
-            <View style={styles.container}>
+            <View style={[styles.pill, { backgroundColor: pillBg }]}>
                 <TextInput
-                    style={[styles.input, { color: textColor, borderBottomColor: inputBorderColor }]}
+                    style={[styles.input, { color: textColor }]}
                     value={inputValue}
                     onChangeText={setInputValue}
                     onBlur={handleSave}
@@ -60,43 +61,38 @@ export function PetNameEditor({ name, onNameChange }: PetNameEditorProps) {
     }
 
     return (
-        <View style={styles.container}>
-            <Text style={[styles.name, { color: textColor }]}>{name}</Text>
-            <TouchableOpacity
-                onPress={handleEdit}
-                style={styles.editButton}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-                <Text style={styles.editIcon}>✏️</Text>
-            </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+            onPress={handleEdit}
+            activeOpacity={0.7}
+            style={[styles.pill, { backgroundColor: pillBg }]}
+        >
+            <Text style={[styles.name, { color: textColor }]} numberOfLines={1}>{name}</Text>
+            <Ionicons name="pencil" size={13} color={iconColor} style={styles.editIcon} />
+        </TouchableOpacity>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    pill: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
     },
     name: {
-        fontSize: 26,
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontFamily: 'Outfit-Bold',
     },
     input: {
-        fontSize: 26,
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontFamily: 'Outfit-Bold',
         textAlign: 'center',
-        borderBottomWidth: 2,
-        paddingVertical: 4,
-        minWidth: 100,
-    },
-    editButton: {
-        padding: 4,
-        marginLeft: 8,
+        paddingVertical: Platform.OS === 'ios' ? 0 : 0,
+        minWidth: 80,
     },
     editIcon: {
-        fontSize: 18,
+        marginLeft: 6,
     },
 });

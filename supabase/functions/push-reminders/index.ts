@@ -12,6 +12,12 @@ interface Profile {
     streak: number
     last_notification_sent_at: string | null
     first_name: string | null
+    meta: {
+        notification_settings?: {
+            study_reminders?: boolean
+            streak_alerts?: boolean
+        }
+    } | null
 }
 
 interface NotificationPayload {
@@ -271,7 +277,7 @@ Deno.serve(async (req: Request) => {
         // 1. Get users with push tokens
         const { data: profiles, error: profileError } = await supabase
             .from('profiles')
-            .select('id, expo_push_token, timezone, last_streak_date, streak, last_notification_sent_at, first_name')
+            .select('id, expo_push_token, timezone, last_streak_date, streak, last_notification_sent_at, first_name, meta')
             .not('expo_push_token', 'is', null)
 
         if (profileError) throw profileError
@@ -290,6 +296,13 @@ Deno.serve(async (req: Request) => {
                 if (hoursSinceLastNotification < COOLDOWN_HOURS) {
                     continue
                 }
+            }
+
+            // === USER PREFERENCE: study_reminders (master kill switch) ===
+            // Defaults to true for users who haven't toggled it
+            const studyRemindersEnabled = profile.meta?.notification_settings?.study_reminders ?? true
+            if (!studyRemindersEnabled && !debug) {
+                continue
             }
 
             // Get current hour in user's timezone
@@ -407,6 +420,14 @@ Deno.serve(async (req: Request) => {
                 context.streak,
                 !!notebook
             )
+
+            // === USER PREFERENCE: streak_alerts ===
+            // If user disabled streak alerts, skip the loss_aversion category
+            // (the "your streak is dying" notification)
+            const streakAlertsEnabled = profile.meta?.notification_settings?.streak_alerts ?? true
+            if (category === 'loss_aversion' && !streakAlertsEnabled && !debug) {
+                continue
+            }
 
             // Finalize firstName based on category
             context.firstName = getPersonalizedName(category, profile.first_name)

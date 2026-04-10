@@ -16,7 +16,6 @@ export default function NotificationsSettingsScreen() {
     const [isMasterEnabled, setIsMasterEnabled] = React.useState(false);
     const [studyReminders, setStudyReminders] = React.useState(true);
     const [streakAlerts, setStreakAlerts] = React.useState(true);
-    const [contentUpdates, setContentUpdates] = React.useState(true);
     const [friendNudges, setFriendNudges] = React.useState(true);
     const [isUpdating, setIsUpdating] = React.useState(false);
 
@@ -31,7 +30,6 @@ export default function NotificationsSettingsScreen() {
                 const settings = user.meta.notification_settings;
                 setStudyReminders(settings.study_reminders ?? true);
                 setStreakAlerts(settings.streak_alerts ?? true);
-                setContentUpdates(settings.content_updates ?? true);
                 setFriendNudges(settings.friend_nudges ?? true);
             }
         };
@@ -215,17 +213,6 @@ export default function NotificationsSettingsScreen() {
                             saveSettings({ streak_alerts: val });
                         }}
                         icon="flame"
-                        disabled={!isMasterEnabled}
-                    />
-                    <OptionRow
-                        label="Study Updates"
-                        description="When new podcasts or sets are ready"
-                        value={contentUpdates}
-                        onValueChange={(val: boolean) => {
-                            setContentUpdates(val);
-                            saveSettings({ content_updates: val });
-                        }}
-                        icon="sparkles"
                         disabled={!isMasterEnabled}
                     />
                 </View>

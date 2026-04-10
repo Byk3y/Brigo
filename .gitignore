@@ -91,6 +91,8 @@ supabase/.temp/
 supabase/.env.local
 
 # AI Assistant Config (contains local permissions and potentially sensitive tokens)
+.mcp.json
+CLAUDE.md
 .claude/
 .cursor/
 .gemini/

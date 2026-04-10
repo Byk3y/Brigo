@@ -1,33 +1,26 @@
 /**
- * Pet Half-Sheet Modal - TikTok style
+ * Pet Sheet - Full-screen page (slides in from left)
  * Shows pet with gradient background, streak, XP, and missions
- * 
- * REFACTORED: Now uses modular components for better maintainability
- * Updated: Dark mode support
  */
 
 import React, { useRef, useState } from 'react';
 import {
   View,
   ScrollView,
-  Modal,
   Pressable,
-  Animated,
   StyleSheet,
-  Dimensions,
   Text,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getLocalDateString } from '@/lib/utils/time';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '@/lib/store';
-import { usePetSheetGestures } from '@/hooks/usePetSheetGestures';
 import {
-  PetSheetHeader,
   PetDisplay,
   PetInfo,
+  PetNameEditor,
   MissionsList,
   StreakBadges,
 } from '@/components/pet-sheet';
@@ -38,15 +31,12 @@ import { track } from '@/lib/services/analyticsService';
 import { useCelebration } from '@/lib/contexts/CelebrationContext';
 import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 
-const SCREEN_HEIGHT = Dimensions.get('window').height;
-
 export default function PetSheetScreen() {
   const router = useRouter();
-  const { user, petState, dailyTasks, updatePetName, applyStreakFreeze } = useStore();
+  const { user, petState, dailyTasks, updatePetName, applyStreakFreeze, friends, loadFriendStreaks } = useStore();
 
   // Check if secure_pet task is already completed today
   const isSecureTaskCompleted = dailyTasks?.find(t => t.task_key === 'secure_pet')?.completed;
-  const scrollY = useRef(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const [hasJustRestored, setHasJustRestored] = useState(false);
 
@@ -54,6 +44,12 @@ export default function PetSheetScreen() {
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
   const { triggerCelebration } = useCelebration();
+
+  // Load friend streaks
+  React.useEffect(() => {
+    loadFriendStreaks();
+  }, []);
+
 
   // Pet growth missions - includes both foundational and daily tasks
   const { allTasks, taskProgress, foundationalTasks, loadDailyTasks, loadFoundationalTasks, checkAndAwardTask } = usePetTasks();
@@ -87,10 +83,6 @@ export default function PetSheetScreen() {
   const isStreakLost = user.streak === 0 && recoverableStreak > 0;
 
   // Pet is dying if streak is at risk (not secured today) or streak was lost
-  // Note: Previously had an onboarding exemption here, but removed because:
-  // - Users with an active streak should see dying state regardless of foundational task completion
-  // - New users (streak=0) won't trigger isAtRisk anyway
-  // - This matches PetBubble.tsx behavior for consistency
   const isDying = isAtRisk || isStreakLost;
   const canRestore = isStreakLost && user.streak_freezes > 0;
 
@@ -116,15 +108,7 @@ export default function PetSheetScreen() {
     }
   };
 
-  // Gestures and loading are handled by hooks.
-  const { translateY, handleBarPanResponder, contentPanResponder, dismiss } = usePetSheetGestures({
-    onDismiss: () => router.back(),
-    scrollY,
-  });
-  // usePetTasks already triggers loadDailyTasks and loadFoundationalTasks on mount if authUser exists.
-
   const handleNameChange = async (newName: string) => {
-    // Use updatePetName instead of setPetState to trigger task completion check
     await updatePetName(newName);
     track('pet_name_changed', {
       pet_stage: currentStage,
@@ -155,175 +139,139 @@ export default function PetSheetScreen() {
   };
 
   return (
-    <Modal
-      visible={true}
-      transparent={true}
-      animationType="none"
-      onRequestClose={dismiss}
-      statusBarTranslucent={true}
+    <LinearGradient
+      colors={getGradientColors()}
+      style={styles.gradient}
     >
-      <View style={styles.container} pointerEvents="box-none">
-        {/* Backdrop */}
-        <Pressable
-          style={styles.backdrop}
-          onPress={dismiss}
-        />
-
-        {/* Sheet - 85% of screen height */}
-        <Animated.View
-          style={[
-            styles.sheet,
-            {
-              height: SCREEN_HEIGHT * 0.88,
-              transform: [{ translateY }],
-            },
-          ]}
-        >
-          <LinearGradient
-            colors={getGradientColors()}
-            style={styles.gradient}
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Header: Close button + Pet name centered */}
+        <View style={styles.headerRow}>
+          <Pressable
+            onPress={() => router.back()}
+            style={[
+              styles.closeButton,
+              { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' },
+            ]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <View style={styles.safeArea}>
-              <ScrollView
-                ref={scrollViewRef}
-                style={styles.scrollView}
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-                alwaysBounceVertical={false}
-                contentContainerStyle={styles.scrollContent}
-                scrollEventThrottle={16}
-                nestedScrollEnabled={false}
-                removeClippedSubviews={false}
-                onScroll={(event) => {
-                  scrollY.current = event.nativeEvent.contentOffset.y;
-                }}
-                onScrollEndDrag={(event) => {
-                  scrollY.current = event.nativeEvent.contentOffset.y;
-                }}
-                onMomentumScrollEnd={(event) => {
-                  scrollY.current = event.nativeEvent.contentOffset.y;
-                }}
-              >
-                {/* Handle bar - Swipe down enabled */}
-                <PetSheetHeader panHandlers={handleBarPanResponder.panHandlers} />
+            <Ionicons
+              name="close"
+              size={18}
+              color={isDarkMode ? '#FFFFFF' : '#333333'}
+            />
+          </Pressable>
 
-                <View style={styles.topSection}>
-                  <PetDisplay
-                    streak={user.streak}
-                    freezes={user.streak_freezes}
-                    stage={previewStage}
-                    currentStage={currentStage}
-                    onNextStage={previewStage < 3 ? () => setPreviewStage((prev) => (prev + 1) as 1 | 2 | 3) : undefined}
-                    onPrevStage={previewStage > 1 ? () => setPreviewStage((prev) => (prev - 1) as 1 | 2 | 3) : undefined}
-                    canRestore={canRestore}
-                    isDying={isDying}
-                    onRestore={handleRestore}
-                    showBalance={hasJustRestored}
-                  />
-                </View>
+          <View style={styles.headerNameContainer}>
+            <PetNameEditor name={petState.name} onNameChange={handleNameChange} />
+          </View>
 
-                {/* Bottom Section - Swipeable (includes pet name, XP, missions, and stats) */}
-                <View style={styles.bottomSection} {...contentPanResponder.panHandlers}>
-                  <ResponsiveContainer>
-                    <PetInfo
-                      name={petState.name}
-                      points={petState.points}
-                      onNameChange={handleNameChange}
-                    />
-                  </ResponsiveContainer>
+          {/* Spacer to balance the close button for centering */}
+          <View style={styles.headerSpacer} />
+        </View>
 
-                  <ResponsiveContainer>
-                    <MissionsList
-                      missions={allTasks}
-                      taskProgress={taskProgress}
-                      activeColor={
-                        previewStage === 1 ? '#FBBF24' :
-                          previewStage === 2 ? '#FB923C' :
-                            '#EC4899' // Vibrant pink for Stage 3
-                      }
-                    />
-                  </ResponsiveContainer>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.topSection}>
+            <PetDisplay
+              streak={user.streak}
+              freezes={user.streak_freezes}
+              stage={previewStage}
+              currentStage={currentStage}
+              onNextStage={previewStage < 3 ? () => setPreviewStage((prev) => (prev + 1) as 1 | 2 | 3) : undefined}
+              onPrevStage={previewStage > 1 ? () => setPreviewStage((prev) => (prev - 1) as 1 | 2 | 3) : undefined}
+              canRestore={canRestore}
+              isDying={isDying}
+              onRestore={handleRestore}
+              showBalance={hasJustRestored}
+              friends={friends}
+              onFriendsPress={() => router.push('/friends')}
+              userAvatar={user.avatar}
+              userId={user.id}
+            />
+          </View>
 
-                  <ResponsiveContainer>
-                    <StreakBadges
-                      streak={user.streak}
-                      showSafetyNet={isStreakLost || hasJustRestored}
-                    />
-                  </ResponsiveContainer>
+          <View style={styles.bottomSection}>
+            <ResponsiveContainer>
+              <PetInfo
+                name={petState.name}
+                points={petState.points}
+                onNameChange={handleNameChange}
+              />
+            </ResponsiveContainer>
 
-                  {/* Powered by Brigo footer */}
-                  <View style={styles.poweredByContainer}>
-                    <Text style={[styles.poweredByText, { color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(120, 80, 40, 0.5)' }]}>
-                      Powered by
-                    </Text>
-                    <BrigoLogo size={16} textColor={isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(120, 80, 40, 0.5)'} />
-                  </View>
-                </View>
-              </ScrollView>
-              <SafeAreaView style={styles.bottomSafeArea} edges={['bottom']} />
+            <ResponsiveContainer>
+              <MissionsList
+                missions={allTasks}
+                taskProgress={taskProgress}
+                activeColor={
+                  previewStage === 1 ? '#FBBF24' :
+                    previewStage === 2 ? '#FB923C' :
+                      '#EC4899' // Vibrant pink for Stage 3
+                }
+              />
+            </ResponsiveContainer>
+
+            <ResponsiveContainer>
+              <StreakBadges
+                streak={user.streak}
+                showSafetyNet={isStreakLost || hasJustRestored}
+              />
+            </ResponsiveContainer>
+
+            {/* Powered by Brigo footer */}
+            <View style={styles.poweredByContainer}>
+              <Text style={[styles.poweredByText, { color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(120, 80, 40, 0.5)' }]}>
+                Powered by
+              </Text>
+              <BrigoLogo size={16} textColor={isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(120, 80, 40, 0.5)'} />
             </View>
-          </LinearGradient>
-        </Animated.View>
-      </View>
-    </Modal>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'transparent',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
   gradient: {
     flex: 1,
   },
-  bottomSafeArea: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 0,
+  safeArea: {
+    flex: 1,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerNameContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerSpacer: {
+    width: 32,
   },
   scrollView: {
     flex: 1,
-    backgroundColor: 'transparent',
-    overflow: 'visible',
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 100, // Extra padding for home indicator on iOS + Android nav bar
   },
-  topSection: {
-    // Only streak and pet emoji - not swipeable
-  },
-  bottomSection: {
-    // Swipeable area - includes pet name, XP, missions, and stats
-  },
+  topSection: {},
+  bottomSection: {},
   poweredByContainer: {
     flexDirection: 'row',
     alignItems: 'center',

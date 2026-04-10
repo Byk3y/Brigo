@@ -3,14 +3,14 @@
  */
 
 import React, { memo, useMemo } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ImageSourcePropType } from 'react-native';
-import LottieView from 'lottie-react-native';
+import { View, Text, StyleSheet, Image as RNImage, TouchableOpacity, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { MotiViewCompat as MotiView } from '@/components/MotiViewCompat';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Easing } from 'react-native-reanimated';
-import { useTheme, getThemeColors } from '@/lib/ThemeContext';
-import { StreakFreezeIcon } from '@/components/icons/StreakFreezeIcon';
+import { useTheme } from '@/lib/ThemeContext';
+import type { FriendStreak } from '@/lib/services/friendService';
+import { getAvatarUrl } from '@/lib/utils/avatarGradient';
+import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 
 // Pet full-view images by stage - require() needs static strings
 const STAGE_1_FULL = require('@/assets/pets/stage-1/full-view.png');
@@ -35,35 +35,28 @@ interface PetDisplayProps {
     isDying?: boolean;
     onRestore?: () => void;
     showBalance?: boolean;
+    friends?: FriendStreak[];
+    onFriendsPress?: () => void;
+    userAvatar?: string | null;
+    userId?: string;
 }
 
 /**
  * FieryStreakNumber - Memoized sub-component to handle heavy fire animations
  * isolated from the pet's mounting logic.
  */
-const FieryStreakNumber = memo(({ streak, isDying }: { streak: number, isDying: boolean }) => {
+const StreakNumber = memo(({ streak, isDying, textColor }: { streak: number, isDying: boolean, textColor: string }) => {
     return (
-        <View style={styles.fieryTextContainer}>
-            <LottieView
-                source={require('@/assets/animations/fire.json')}
-                autoPlay
-                loop
-                style={[
-                    styles.lottieIcon,
-                    isDying && { opacity: 0.3 } // Dim the fire when dying/lost
-                ]}
-            />
-            <Text
-                style={[
-                    styles.streakValue,
-                    { color: isDying ? '#9CA3AF' : '#FF5F06' } // Gray out the number when dying/lost
-                ]}
-                adjustsFontSizeToFit
-                numberOfLines={1}
-            >
-                {streak}
-            </Text>
-        </View>
+        <Text
+            style={[
+                styles.streakValue,
+                { color: isDying ? '#9CA3AF' : textColor }
+            ]}
+            adjustsFontSizeToFit
+            numberOfLines={1}
+        >
+            {streak}
+        </Text>
     );
 });
 
@@ -77,7 +70,11 @@ export const PetDisplay = memo(({
     canRestore,
     isDying,
     onRestore,
-    showBalance = false
+    showBalance = false,
+    friends = [],
+    onFriendsPress,
+    userAvatar,
+    userId,
 }: PetDisplayProps) => {
     const { isDarkMode } = useTheme();
 
@@ -107,55 +104,61 @@ export const PetDisplay = memo(({
 
     return (
         <View style={styles.container}>
-            <View
-                style={styles.streakContainer}
-                accessibilityLabel={`Your current streak is ${streak} days`}
-                accessibilityRole="text"
-            >
-                <View style={styles.labelRow}>
-                    <Text style={[styles.streakLabel, { color: textSecondaryOnGradient }]}>
-                        {streak === 0 && (canRestore || freezes === 0) ? 'Streak lost' : 'Streak days'}
-                    </Text>
+            <ResponsiveContainer maxWidth={560}>
+                <View
+                    style={styles.streakContainer}
+                    accessibilityLabel={`Your current streak is ${streak} days`}
+                    accessibilityRole="text"
+                >
+                    <View style={styles.labelRow}>
+                        <Text style={[styles.streakLabel, { color: textSecondaryOnGradient }]}>
+                            {streak === 0 && (canRestore || freezes === 0) ? 'Streak lost' : 'Streak days'}
+                        </Text>
+                        <Text style={[styles.streakLabel, { color: textSecondaryOnGradient }]}>
+                            Study Pals
+                        </Text>
+                    </View>
 
-                    {/* Restore Action or Balance Badge */}
-                    {canRestore ? (
-                        <TouchableOpacity
-                            onPress={onRestore}
-                            activeOpacity={0.7}
-                            style={styles.restoreButton}
-                        >
-                            <LinearGradient
-                                colors={['#38BDF8', '#0284C7']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.restoreButtonGradient}
-                            >
-                                <StreakFreezeIcon size={16} />
-                                <Text style={styles.restoreButtonText}>{streak === 0 ? 'Restore' : 'Protect'}</Text>
-                            </LinearGradient>
-                        </TouchableOpacity>
-                    ) : (
-                        showBalance && freezes > 0 ? (
-                            <MotiView
-                                from={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                style={styles.restoreBadge}
-                            >
-                                <View style={styles.shieldBackground}>
-                                    <StreakFreezeIcon size={16} />
-                                    <Text style={styles.restoreCountText}>{freezes} {freezes === 1 ? 'Freeze' : 'Freezes'}</Text>
+                    <View style={styles.streakRow}>
+                        <StreakNumber streak={streak} isDying={Boolean(isDying)} textColor={textSecondaryOnGradient} />
+
+                        {/* Avatars — user's own + study pal (or invite placeholder) */}
+                        <Pressable onPress={onFriendsPress} style={styles.friendAvatarsContainer}>
+                            {/* User's own avatar — always visible */}
+                            <Image
+                                source={getAvatarUrl(userAvatar || userId)}
+                                style={styles.friendAvatar}
+                                contentFit="cover"
+                                cachePolicy="memory-disk"
+                            />
+
+                            {/* Second circle: study pal or "+" invite */}
+                            {friends.length > 0 ? (
+                                <>
+                                    <Image
+                                        source={getAvatarUrl(friends[0].friend.avatar_url || friends[0].friend.id)}
+                                        style={[styles.friendAvatar, { marginLeft: -18 }]}
+                                        contentFit="cover"
+                                        cachePolicy="memory-disk"
+                                    />
+                                    {friends.length > 1 && (
+                                        <View style={[styles.friendAvatarMore, { marginLeft: -18 }]}>
+                                            <Text style={styles.friendAvatarMoreText}>+{friends.length - 1}</Text>
+                                        </View>
+                                    )}
+                                </>
+                            ) : (
+                                <View style={[
+                                    styles.addPalCircle,
+                                    { backgroundColor: isDarkMode ? '#3B3B4F' : '#E5E7EB' },
+                                ]}>
+                                    <Ionicons name="add" size={22} color={isDarkMode ? 'rgba(255,255,255,0.6)' : '#9CA3AF'} />
                                 </View>
-                            </MotiView>
-                        ) : streak === 0 && freezes === 0 && (
-                            <View style={styles.noRestoresBadge}>
-                                <Text style={styles.noRestoresText}>0 freezes left</Text>
-                            </View>
-                        )
-                    )}
+                            )}
+                        </Pressable>
+                    </View>
                 </View>
-
-                <FieryStreakNumber streak={streak} isDying={Boolean(isDying)} />
-            </View>
+            </ResponsiveContainer>
 
             <View style={styles.petCharacterContainer}>
                 <MotiView
@@ -170,7 +173,7 @@ export const PetDisplay = memo(({
                 >
                     {/* Stage 1 Render - Always mounted, toggle opacity */}
                     <View style={[styles.imageWrapper, { opacity: stage === 1 ? 1 : 0 }]}>
-                        <Image
+                        <RNImage
                             source={(isDying && currentStage === 1) ? STAGE_1_DYING : STAGE_1_FULL}
                             style={{
                                 width: (isDying && currentStage === 1) ? 280 : 250,
@@ -189,7 +192,7 @@ export const PetDisplay = memo(({
                             { opacity: stage === 2 ? 1 : 0 }
                         ]}
                     >
-                        <Image
+                        <RNImage
                             source={stage2Source}
                             style={{
                                 width: isUnlocked ? ((isDying && currentStage === 2) ? 260 : 340) : 280,
@@ -208,7 +211,7 @@ export const PetDisplay = memo(({
                             { opacity: stage === 3 ? 1 : 0 }
                         ]}
                     >
-                        <Image
+                        <RNImage
                             source={stage3Source}
                             style={{
                                 width: isUnlocked ? ((isDying && currentStage === 3) ? 280 : 300) : 280,
@@ -248,87 +251,72 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: 'transparent',
         paddingHorizontal: 16,
-        paddingTop: 8,
-        paddingBottom: 8,
-        marginBottom: 6,
+        paddingTop: 10,
+        paddingBottom: 4,
+        marginBottom: 2,
         position: 'relative',
     },
     streakContainer: {
-        marginBottom: 12,
+        marginBottom: 0,
     },
     labelRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 4,
+        marginBottom: 0,
     },
     streakLabel: {
         fontSize: 15,
         fontWeight: '500',
     },
-    restoreBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    shieldBackground: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(56, 189, 248, 0.1)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(56, 189, 248, 0.2)',
-        gap: 4,
-    },
-    restoreCountText: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#38BDF8',
-    },
-    restoreButton: {
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
-    restoreButtonGradient: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        gap: 6,
-    },
-    restoreButtonText: {
-        color: 'white',
-        fontSize: 14,
-        fontWeight: '700',
-    },
-    noRestoresBadge: {
-        backgroundColor: 'rgba(0, 0, 0, 0.05)',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    noRestoresText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: 'rgba(0, 0, 0, 0.4)',
-    },
     streakValue: {
-        fontSize: 72,
+        fontSize: 56,
         fontFamily: 'Nunito-Bold',
-        letterSpacing: -3,
-        marginLeft: -15, // Pull tight to the large flame
-        paddingBottom: 0, // Lowered to the absolute baseline
+        letterSpacing: -2,
+        lineHeight: 62,
+        marginTop: 4,
     },
-    fieryTextContainer: {
+    streakRow: {
         flexDirection: 'row',
-        alignItems: 'flex-end',
-        height: 100,
-        marginLeft: -15,
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
-    lottieIcon: {
-        width: 100,
-        height: 100,
+    friendAvatarsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    friendAvatar: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        borderWidth: 3,
+        borderColor: 'white',
+        backgroundColor: '#E5E7EB',
+    },
+    friendAvatarMore: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        borderWidth: 3,
+        borderColor: 'white',
+        backgroundColor: '#9CA3AF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    friendAvatarMoreText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: 'white',
+    },
+    addPalCircle: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        borderWidth: 3,
+        borderColor: 'white',
+        marginLeft: -18,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     petCharacterContainer: {
         alignItems: 'center',

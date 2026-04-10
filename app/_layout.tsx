@@ -63,6 +63,7 @@ import { useGlobalErrorHandler } from '@/hooks/useGlobalErrorHandler';
 import { useThemeSync } from '@/hooks/useThemeSync';
 import { useAuthSetup } from '@/hooks/useAuthSetup';
 import { useDeepLinks } from '@/hooks/useDeepLinks';
+import { useInviteHandler } from '@/hooks/useInviteHandler';
 import { useAssetPreloading } from '@/hooks/useAssetPreloading';
 import { useAppStateMonitoring } from '@/hooks/useAppStateMonitoring';
 import { useRoutingLogic } from '@/hooks/useRoutingLogic';
@@ -105,6 +106,7 @@ function RootLayoutInner() {
   useThemeSync();
   useAuthSetup();
   useDeepLinks();
+  useInviteHandler();
   useAssetPreloading();
   useAppStateMonitoring();
   useStreakCheck();
@@ -165,9 +167,20 @@ function RootLayoutInner() {
         <Stack.Screen
           name="pet-sheet"
           options={{
-            presentation: 'transparentModal',
-            animation: 'none',
-            contentStyle: { backgroundColor: 'transparent' },
+            animation: 'slide_from_right',
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+          }}
+        />
+        <Stack.Screen
+          name="friends"
+          options={{
+            presentation: 'formSheet',
+            animation: 'slide_from_bottom',
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+            sheetInitialDetentIndex: 0,
+            sheetAllowedDetents: 'fitToContents',
           }}
         />
         <Stack.Screen

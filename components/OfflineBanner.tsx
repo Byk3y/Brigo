@@ -1,7 +1,7 @@
 /**
- * Offline Banner Component - Redesigned for minimal footprint
- * Compact floating pill that appears when offline
- * Best Practice 2025: Subtle but clear connectivity context
+ * Offline Banner Component - Minimal, non-alarming indicator
+ * Best Practice 2026: Show briefly, then auto-dismiss.
+ * Only resurface when user attempts a network action.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -9,19 +9,21 @@ import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNetwork } from '@/lib/contexts/NetworkContext';
-import { useTheme, getThemeColors } from '@/lib/ThemeContext';
+import { useTheme } from '@/lib/ThemeContext';
 
 export function OfflineBanner() {
     const { isOffline } = useNetwork();
     const { isDarkMode } = useTheme();
-    const colors = getThemeColors(isDarkMode);
     const insets = useSafeAreaInsets();
 
     const slideAnim = useRef(new Animated.Value(-100)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
     const [isRendered, setIsRendered] = useState(false);
+    const dismissTimer = useRef<ReturnType<typeof setTimeout>>();
 
     useEffect(() => {
+        if (dismissTimer.current) clearTimeout(dismissTimer.current);
+
         if (isOffline) {
             setIsRendered(true);
             Animated.parallel([
@@ -37,6 +39,22 @@ export function OfflineBanner() {
                     useNativeDriver: true,
                 }),
             ]).start();
+
+            // Auto-dismiss after 3 seconds — user got the message
+            dismissTimer.current = setTimeout(() => {
+                Animated.parallel([
+                    Animated.timing(slideAnim, {
+                        toValue: -100,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(opacityAnim, {
+                        toValue: 0,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }),
+                ]).start(() => setIsRendered(false));
+            }, 3000);
         } else {
             Animated.parallel([
                 Animated.timing(slideAnim, {
@@ -49,13 +67,21 @@ export function OfflineBanner() {
                     duration: 300,
                     useNativeDriver: true,
                 }),
-            ]).start(() => {
-                setIsRendered(false);
-            });
+            ]).start(() => setIsRendered(false));
         }
+
+        return () => {
+            if (dismissTimer.current) clearTimeout(dismissTimer.current);
+        };
     }, [isOffline, slideAnim, opacityAnim]);
 
     if (!isOffline && !isRendered) return null;
+
+    const pillBg = isDarkMode
+        ? 'rgba(255, 255, 255, 0.12)'
+        : 'rgba(0, 0, 0, 0.06)';
+    const textColor = isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)';
+    const iconColor = isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)';
 
     return (
         <Animated.View
@@ -69,9 +95,9 @@ export function OfflineBanner() {
             ]}
             pointerEvents="none"
         >
-            <View style={styles.pill}>
-                <Ionicons name="cloud-offline" size={14} color="#FFFFFF" />
-                <Text style={styles.text}>Looks like you're offline</Text>
+            <View style={[styles.pill, { backgroundColor: pillBg }]}>
+                <Ionicons name="cloud-offline-outline" size={13} color={iconColor} />
+                <Text style={[styles.text, { color: textColor }]}>Offline</Text>
             </View>
         </Animated.View>
     );
@@ -89,25 +115,14 @@ const styles = StyleSheet.create({
     pill: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(239, 68, 68, 0.95)', // Subtle Glassmorphic Red
-        paddingHorizontal: 14,
-        paddingVertical: 7,
-        borderRadius: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 6,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
     },
     text: {
-        color: '#FFFFFF',
         fontSize: 12,
-        fontWeight: '700',
-        marginLeft: 6,
-        fontFamily: 'Nunito-Bold',
-        letterSpacing: -0.2,
+        fontWeight: '600',
+        marginLeft: 5,
+        fontFamily: 'Outfit-Medium',
     },
 });
-

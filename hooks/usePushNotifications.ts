@@ -14,8 +14,9 @@ export const usePushNotifications = () => {
             console.log('Notification opened with data:', data);
 
             // Handle deep linking/navigation here based on notification data
-            // Example: if (data.url) router.push(data.url);
-            if (data?.notebookId) {
+            if (data?.type === 'friend_nudge') {
+                router.push('/friends');
+            } else if (data?.notebookId) {
                 router.push(`/notebook/${data.notebookId}`);
             } else if (data?.screen) {
                 router.push(data.screen);

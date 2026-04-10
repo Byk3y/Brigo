@@ -19,7 +19,7 @@ export function OfflineBanner() {
     const slideAnim = useRef(new Animated.Value(-100)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
     const [isRendered, setIsRendered] = useState(false);
-    const dismissTimer = useRef<ReturnType<typeof setTimeout>>();
+    const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         if (dismissTimer.current) clearTimeout(dismissTimer.current);

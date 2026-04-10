@@ -20,6 +20,7 @@ import { createSubscriptionSlice, type SubscriptionSlice } from './slices/subscr
 import { createNotificationSlice, type NotificationSlice } from './slices/notificationSlice';
 import { createAudioSettingsSlice, type AudioSettingsSlice } from './slices/audioSettingsSlice';
 import { createWalkthroughSlice, type WalkthroughSlice } from './slices/walkthroughSlice';
+import { createFriendSlice, type FriendSlice } from './slices/friendSlice';
 
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -40,7 +41,8 @@ type AppState = AuthSlice &
   SubscriptionSlice &
   NotificationSlice &
   AudioSettingsSlice &
-  WalkthroughSlice;
+  WalkthroughSlice &
+  FriendSlice;
 
 // Add hydration state (not persisted)
 type StoreWithHydration = AppState & {
@@ -68,6 +70,7 @@ export const useStore = create<StoreWithHydration>()(
       ...createNotificationSlice(...a),
       ...createAudioSettingsSlice(...a),
       ...createWalkthroughSlice(...a),
+      ...createFriendSlice(...a),
       _hasHydrated: false,
       _setHasHydrated: (hydrated: boolean) => {
         a[0]({ _hasHydrated: hydrated });
@@ -105,6 +108,9 @@ export const useStore = create<StoreWithHydration>()(
         hasSeenHomeWalkthrough: state.hasSeenHomeWalkthrough,
         hasSeenNotebookWalkthrough: state.hasSeenNotebookWalkthrough,
         hasSeenStudioWalkthrough: state.hasSeenStudioWalkthrough,
+        // Friend streaks cache
+        friends: state.friends,
+        friendsUserId: state.friendsUserId,
         // Add other persistent state here as needed
       }),
       migrate: (persistedState: any, version: number) => {

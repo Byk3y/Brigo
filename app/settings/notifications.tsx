@@ -17,6 +17,7 @@ export default function NotificationsSettingsScreen() {
     const [studyReminders, setStudyReminders] = React.useState(true);
     const [streakAlerts, setStreakAlerts] = React.useState(true);
     const [contentUpdates, setContentUpdates] = React.useState(true);
+    const [friendNudges, setFriendNudges] = React.useState(true);
     const [isUpdating, setIsUpdating] = React.useState(false);
 
     React.useEffect(() => {
@@ -31,6 +32,7 @@ export default function NotificationsSettingsScreen() {
                 setStudyReminders(settings.study_reminders ?? true);
                 setStreakAlerts(settings.streak_alerts ?? true);
                 setContentUpdates(settings.content_updates ?? true);
+                setFriendNudges(settings.friend_nudges ?? true);
             }
         };
         checkStatus();
@@ -41,9 +43,9 @@ export default function NotificationsSettingsScreen() {
 
         try {
             const updatedMeta = {
-                ...user.meta,
+                ...(user?.meta || {}),
                 notification_settings: {
-                    ...(user.meta?.notification_settings || {}),
+                    ...(user?.meta?.notification_settings || {}),
                     ...newSettings
                 }
             };
@@ -51,10 +53,28 @@ export default function NotificationsSettingsScreen() {
             // Optimistic update
             setUser({ meta: updatedMeta });
 
+            // Fetch fresh meta from DB to avoid overwriting concurrent changes
+            const { data: fresh, error: fetchError } = await supabase
+                .from('profiles')
+                .select('meta')
+                .eq('id', authUser.id)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            const freshMeta = (fresh?.meta as Record<string, any>) || {};
+            const mergedMeta = {
+                ...freshMeta,
+                notification_settings: {
+                    ...(freshMeta.notification_settings || {}),
+                    ...newSettings
+                }
+            };
+
             const { error } = await supabase
                 .from('profiles')
-                .update({ meta: updatedMeta })
-                .eq('id', user.id);
+                .update({ meta: mergedMeta })
+                .eq('id', authUser.id);
 
             if (error) throw error;
         } catch (error) {
@@ -208,6 +228,23 @@ export default function NotificationsSettingsScreen() {
                         icon="sparkles"
                         disabled={!isMasterEnabled}
                     />
+                </View>
+
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 32 }]}>STUDY PALS</Text>
+                <View style={styles.optionsList}>
+                    <OptionRow
+                        label="Friend Nudges"
+                        description="When a pal reminds you to study"
+                        value={friendNudges}
+                        onValueChange={(val: boolean) => {
+                            setFriendNudges(val);
+                            saveSettings({ friend_nudges: val });
+                        }}
+                        icon="notifications"
+                        disabled={!isMasterEnabled}
+                    />
+                    {/* Friend Activity — toggle is saved but currently unused.
+                        Will be wired up for shared streak milestones in a future update. */}
                 </View>
 
                 <View style={[styles.infoBox, { backgroundColor: colors.surfaceAlt, marginTop: 40 }]}>

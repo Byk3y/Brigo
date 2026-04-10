@@ -31,6 +31,8 @@ export interface ProfileMeta {
     study_reminders?: boolean;
     streak_alerts?: boolean;
     content_updates?: boolean;
+    friend_nudges?: boolean;
+    friend_activity?: boolean;
   };
 }
 

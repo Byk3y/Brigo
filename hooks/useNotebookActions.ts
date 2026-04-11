@@ -146,10 +146,19 @@ export function useNotebookActions(
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            // IMPORTANT: navigate AWAY from this screen BEFORE deleting the
+            // notebook. If we delete first and then navigate, Zustand removes
+            // the notebook from the store and React re-renders this screen with
+            // `notebook === undefined`, which paints blank (the sub-tab's render
+            // guard returns null). On some Expo Router stack states `router.back()`
+            // then silently no-ops, leaving the user stuck on a blank screen.
+            //
+            // `router.replace('/')` unconditionally leaves the detail route and
+            // drops it from the stack, so the screen unmounts cleanly before the
+            // store mutation propagates.
+            router.replace('/');
             try {
               await deleteNotebook(id);
-              // Navigate back after successful deletion
-              router.back();
             } catch (error) {
               await handleError(error, {
                 operation: 'delete_notebook',

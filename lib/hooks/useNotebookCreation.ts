@@ -9,6 +9,7 @@ import { useErrorHandler } from './useErrorHandler';
 import { checkCanCreateContent } from '@/lib/services/subscriptionService';
 import type { LimitReason } from '@/lib/services/subscriptionService';
 import { useUpgrade } from '@/lib/hooks/useUpgrade';
+import { enforcePdfSizeGuard } from '@/lib/pdfGuard';
 
 const COLORS: Array<'blue' | 'green' | 'orange' | 'purple' | 'pink'> = ['blue', 'green', 'orange', 'purple', 'pink'];
 
@@ -123,6 +124,16 @@ export const useNotebookCreation = () => {
             if (!result || result.cancelled) {
                 return null;
             }
+
+            // Enforce the 14 MB client-side guard. Anything larger would be
+            // rejected server-side anyway (wasting bandwidth + UX) because the
+            // current extraction pipeline can't handle it.
+            const guardResult = await enforcePdfSizeGuard({
+                uri: result.uri,
+                name: result.name,
+                pickerSize: result.size,
+            });
+            if (!guardResult.ok) return null;
 
             setIsAddingNotebook(true);
             try {

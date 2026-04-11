@@ -51,6 +51,48 @@ export const processingService = {
 
                 const { data, error } = result;
                 if (error) {
+                    // supabase-js wraps many conditions into a generic `FunctionsHttpError`
+                    // with message "Edge Function returned a non-2xx status code". Before we
+                    // fire scary logs / error toasts, re-read the material so we can tell
+                    // what actually happened server-side:
+                    //
+                    //   (a) Server wrote a real user-facing failure (e.g. PDFTooLarge 400
+                    //       rejection) — respect it quietly, don't fire the red error modal.
+                    //   (b) Server actually succeeded and we're just seeing a dropped
+                    //       connection on iOS/Expo — trust Realtime, return network_interrupted.
+                    //   (c) Unknown real error — log loudly and let the global handler fire.
+                    const { data: material } = await supabase
+                        .from('materials')
+                        .select('status, meta')
+                        .eq('id', materialId)
+                        .single();
+
+                    // (a) Server wrote a user-facing failure
+                    if (material?.status === 'failed' && (material as any)?.meta?.user_facing) {
+                        console.warn(
+                            '[ProcessingService] Processing rejected by server:',
+                            (material as any).meta.error
+                        );
+                        return {
+                            status: 'failed',
+                            error: { message: (material as any).meta.error, userFacing: true }
+                        };
+                    }
+
+                    // (b) Transient connection drop — let Realtime report the real status
+                    const errMsg = String(error?.message || error || '');
+                    const isLikelyTransientConnection =
+                        errMsg.includes('non-2xx') ||
+                        errMsg.includes('Failed to send a request');
+                    if (isLikelyTransientConnection) {
+                        console.warn(
+                            '[ProcessingService] Transient invoke error, deferring to Realtime sync:',
+                            errMsg
+                        );
+                        return { status: 'network_interrupted', error };
+                    }
+
+                    // (c) Unknown error — log loudly
                     await handleError(error, {
                         operation: 'trigger_processing',
                         component: 'processing-service',

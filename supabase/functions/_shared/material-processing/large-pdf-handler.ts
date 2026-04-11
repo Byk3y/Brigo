@@ -13,6 +13,21 @@ import type { Material, LargePDFCheckResult } from './types.ts';
 type SupabaseClient = any;
 
 /**
+ * Absolute hard ceiling above which we reject the PDF outright.
+ *
+ * Why 14 MB:
+ * - Gemini 2.0 Flash inline_data payload cap is 20 MB
+ * - Base64 encoding adds ~33% overhead (14 MB raw ≈ 19 MB base64)
+ * - The chunked-extraction path (which would otherwise handle larger files)
+ *   is currently broken due to pdfjs-dist@4 worker setup issues in Deno
+ *   edge functions. Files routed there fail with "Setting up fake worker failed".
+ *
+ * Phase 2 will switch to the Gemini File API and remove this ceiling.
+ * Until then: any PDF above this size is rejected BEFORE we enqueue a job.
+ */
+const HARD_MAX_PDF_BYTES = 14 * 1024 * 1024;
+
+/**
  * LargePDFHandler class
  * Handles detection of large PDFs and background job queueing
  */
@@ -53,6 +68,25 @@ export class LargePDFHandler {
       let fileSizeBytes = 0;
       if (fileList && fileList.length > 0) {
         fileSizeBytes = fileList[0].metadata?.size || 0;
+      }
+
+      // Hard ceiling check — files above this size cannot be processed by the
+      // current extraction pipeline (see HARD_MAX_PDF_BYTES comment). Reject
+      // cleanly so we don't enqueue a job that's guaranteed to fail and leave
+      // the user staring at a spinning "Queued for processing" card.
+      if (fileSizeBytes > HARD_MAX_PDF_BYTES) {
+        const sizeMB = (fileSizeBytes / (1024 * 1024)).toFixed(1);
+        const limitMB = (HARD_MAX_PDF_BYTES / (1024 * 1024)).toFixed(0);
+        console.warn(
+          `[LargePDFHandler] Rejecting oversized PDF: ${sizeMB}MB > ${limitMB}MB ceiling`
+        );
+        return {
+          shouldProcessInBackground: false,
+          fileSizeBytes,
+          rejectedReason:
+            `This PDF is ${sizeMB} MB. We currently support PDFs up to ${limitMB} MB — ` +
+            `please split the document into smaller sections and upload each part separately.`,
+        };
       }
 
       // Check if large by size

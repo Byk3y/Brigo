@@ -8,6 +8,7 @@ import { useErrorHandler } from './useErrorHandler';
 import { checkCanCreateContent } from '@/lib/services/subscriptionService';
 import type { LimitReason } from '@/lib/services/subscriptionService';
 import { useUpgrade } from '@/lib/hooks/useUpgrade';
+import { enforcePdfSizeGuard } from '@/lib/pdfGuard';
 
 export const useMaterialAddition = (notebookId: string) => {
     const { addMaterial, loadNotebooks, user, notebooks, cachedPetState, flashcardsStudied } = useStore();
@@ -66,6 +67,16 @@ export const useMaterialAddition = (notebookId: string) => {
         const wrapped = withErrorHandling(async () => {
             const result = await pickDocument({ type: 'application/pdf' });
             if (!result || result.cancelled) return null;
+
+            // Enforce the 14 MB client-side guard (shared with useNotebookCreation
+            // so both "create new notebook from PDF" and "add PDF to existing
+            // notebook" paths use the same logic and limit).
+            const guardResult = await enforcePdfSizeGuard({
+                uri: result.uri,
+                name: result.name,
+                pickerSize: result.size,
+            });
+            if (!guardResult.ok) return null;
 
             setIsAddingMaterial(true);
             try {

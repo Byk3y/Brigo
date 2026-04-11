@@ -102,4 +102,10 @@ export interface LargePDFCheckResult {
   estimatedPages?: number;
   fileSizeBytes?: number;
   message?: string;
+  /**
+   * If set, the PDF was rejected outright (e.g. over the hard ceiling the
+   * current extraction pipeline can handle). Callers MUST persist this as
+   * a user-facing error and return a clean response without enqueueing work.
+   */
+  rejectedReason?: string;
 }

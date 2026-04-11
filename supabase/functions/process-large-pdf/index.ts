@@ -21,7 +21,9 @@ import { estimatePageCount } from '../_shared/pdf/utils.ts';
 import { PreviewGenerator } from '../_shared/material-processing/preview-generator.ts';
 
 // Constants
-const MAX_PROCESSING_TIME_MS = 280000; // 4.5 minutes (leave buffer for Edge Function limit)
+// Free-tier edge functions have a 150s wall-clock hard cap. Leave a 20s buffer.
+// (Paid tier allows 400s — bump this when we upgrade.)
+const MAX_PROCESSING_TIME_MS = 130000;
 const PROGRESS_UPDATE_INTERVAL = 5000; // Update progress every 5 seconds
 const LARGE_PDF_THRESHOLD_PAGES = 50; // PDFs with more pages use background processing
 const LARGE_PDF_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
@@ -36,6 +38,103 @@ interface ProcessingJob {
     p_file_size_bytes: number | null;
 }
 
+/**
+ * Module-level in-flight context for the currently-executing job. The
+ * `beforeunload` / `unhandledrejection` handlers read this so we can write a
+ * forensic breadcrumb to `materials.meta` even when the function is killed by
+ * WORKER_LIMIT / 150s wall-clock before the catch block runs.
+ *
+ * See: https://supabase.com/docs/guides/functions/background-tasks
+ */
+interface InFlightCtx {
+    supabase: any | null;
+    jobId: string | null;
+    materialId: string | null;
+    notebookId: string | null;
+    phase: string;
+    startedAt: number;
+    failurePersisted: boolean;
+}
+const inflight: InFlightCtx = {
+    supabase: null,
+    jobId: null,
+    materialId: null,
+    notebookId: null,
+    phase: 'idle',
+    startedAt: 0,
+    failurePersisted: false,
+};
+
+const setPhase = (p: string) => {
+    inflight.phase = p;
+    console.log(`[process-large-pdf] phase=${p} job=${inflight.jobId} t=${Date.now() - inflight.startedAt}ms`);
+};
+
+addEventListener('beforeunload', (ev: any) => {
+    const reason = ev?.detail?.reason || 'unknown';
+    console.error(`[process-large-pdf] beforeunload phase=${inflight.phase} reason=${reason}`);
+    if (!inflight.supabase || !inflight.materialId) return;
+    try {
+        inflight.supabase
+            .from('materials')
+            .update({
+                status: 'failed',
+                meta: {
+                    error: `edge_function_shutdown: ${reason}`,
+                    error_type: 'WORKER_SHUTDOWN',
+                    shutdown_reason: reason,
+                    last_phase: inflight.phase,
+                    duration_ms: Date.now() - inflight.startedAt,
+                    failed_at: new Date().toISOString(),
+                    job_id: inflight.jobId,
+                },
+            })
+            .eq('id', inflight.materialId)
+            .then(() => {})
+            .catch((e: any) => console.error('[process-large-pdf] beforeunload write failed:', e));
+        // Also try to fail the job row so it doesn't sit in "processing" forever.
+        if (inflight.jobId) {
+            inflight.supabase
+                .rpc('fail_job', {
+                    p_job_id: inflight.jobId,
+                    p_error_message: `edge_function_shutdown: ${reason}`,
+                    p_error_details: { phase: inflight.phase, shutdown_reason: reason },
+                    p_should_retry: true,
+                })
+                .then(() => {})
+                .catch(() => {});
+        }
+    } catch (e) {
+        console.error('[process-large-pdf] beforeunload threw:', e);
+    }
+});
+
+addEventListener('unhandledrejection', (ev: any) => {
+    const reason = ev?.reason;
+    const message = reason?.message || String(reason);
+    console.error(`[process-large-pdf] unhandledrejection phase=${inflight.phase}:`, message);
+    if (!inflight.supabase || !inflight.materialId) return;
+    try {
+        inflight.supabase
+            .from('materials')
+            .update({
+                status: 'failed',
+                meta: {
+                    error: `unhandled_rejection: ${message}`,
+                    error_type: reason?.name || 'UnhandledRejection',
+                    error_stack: (reason?.stack || '').slice(0, 2000),
+                    last_phase: inflight.phase,
+                    duration_ms: Date.now() - inflight.startedAt,
+                    failed_at: new Date().toISOString(),
+                },
+            })
+            .eq('id', inflight.materialId)
+            .then(() => {})
+            .catch(() => {});
+    } catch {}
+    ev?.preventDefault?.();
+});
+
 
 /**
  * Process a single job from the queue
@@ -46,9 +145,19 @@ async function processJob(
 ): Promise<{ success: boolean; error?: string }> {
     const startTime = Date.now();
 
+    // Publish job to in-flight context for the shutdown handlers.
+    inflight.supabase = supabase;
+    inflight.jobId = job.job_id;
+    inflight.materialId = job.p_material_id;
+    inflight.notebookId = job.p_notebook_id;
+    inflight.phase = 'job_start';
+    inflight.startedAt = startTime;
+    inflight.failurePersisted = false;
+
     console.log(`[process-large-pdf] Starting job ${job.job_id} for material ${job.p_material_id}`);
 
     try {
+        setPhase('update_progress_start');
         // Update progress: Starting
         await supabase.rpc('update_job_progress', {
             p_job_id: job.job_id,
@@ -56,6 +165,7 @@ async function processJob(
             p_message: 'Downloading PDF from storage...',
         });
 
+        setPhase('fetch_material');
         const { data: material, error: materialError } = await supabase
             .from('materials')
             .select('*')
@@ -87,6 +197,7 @@ async function processJob(
             p_message: 'PDF downloaded, starting extraction...',
         });
 
+        setPhase('downloading');
         // Download PDF from storage
         const { data: fileData, error: downloadError } = await supabase.storage
             .from('uploads')
@@ -124,6 +235,7 @@ async function processJob(
             }
         };
 
+        setPhase('extracting');
         // Extract PDF content
         const extractedContent = await extractPDF(fileBuffer);
 
@@ -136,6 +248,7 @@ async function processJob(
             p_message: 'Text extracted, saving content...',
         });
 
+        setPhase('saving_content');
         // Save extracted content
         await supabase
             .from('materials')
@@ -154,6 +267,7 @@ async function processJob(
             p_message: 'Generating AI title and summary...',
         });
 
+        setPhase('generating_preview');
         // Generate AI title and preview
         const previewGenerator = new PreviewGenerator();
         const llmResult = await previewGenerator.generate(extractedContent, notebook.title);
@@ -198,6 +312,7 @@ async function processJob(
             status: 'success',
         });
 
+        setPhase('completing_job');
         // Mark job as complete
         const processingTime = Date.now() - startTime;
         await supabase.rpc('complete_job', {
@@ -210,11 +325,12 @@ async function processJob(
             },
         });
 
+        setPhase('done');
         console.log(`[process-large-pdf] Job ${job.job_id} completed in ${processingTime}ms`);
 
         return { success: true };
     } catch (error: any) {
-        console.error(`[process-large-pdf] Job ${job.job_id} failed:`, error.message);
+        console.error(`[process-large-pdf] Job ${job.job_id} failed in phase=${inflight.phase}:`, error.message);
 
         // Determine if error is retryable
         const isRetryable = !error.message.includes('not found') &&
@@ -225,21 +341,40 @@ async function processJob(
         await supabase.rpc('fail_job', {
             p_job_id: job.job_id,
             p_error_message: error.message,
-            p_error_details: { stack: error.stack },
+            p_error_details: {
+                stack: String(error?.stack || '').slice(0, 2000),
+                phase: inflight.phase,
+                duration_ms: Date.now() - startTime,
+            },
             p_should_retry: isRetryable,
         });
 
-        // Update material status to failed
+        // Read existing meta so we don't stomp extraction breadcrumbs from earlier attempts.
+        const { data: existingMaterial } = await supabase
+            .from('materials')
+            .select('meta')
+            .eq('id', job.p_material_id)
+            .single();
+        const existingMeta = existingMaterial?.meta || {};
+
+        // Update material status to failed with forensic extras.
         await supabase
             .from('materials')
             .update({
                 status: 'failed',
                 meta: {
+                    ...existingMeta,
                     error: error.message,
+                    error_type: error?.name || 'Error',
+                    error_stack: String(error?.stack || '').slice(0, 2000),
+                    last_phase: inflight.phase,
+                    duration_ms: Date.now() - startTime,
                     failed_at: new Date().toISOString(),
+                    job_id: job.job_id,
                 },
             })
             .eq('id', job.p_material_id);
+        inflight.failurePersisted = true;
 
         // Update notebook status (prevent global lockout, but mark that a job failed)
         await supabase

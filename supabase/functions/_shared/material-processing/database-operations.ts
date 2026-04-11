@@ -89,9 +89,16 @@ export class MaterialRepository {
   }
 
   /**
-   * Update material status to failed with error message
+   * Update material status to failed with error message.
+   * `extras` is merged into meta for richer forensics (error_type, error_stack,
+   * last_phase, duration_ms, shutdown_reason, etc.) so post-mortems don't rely
+   * on log scraping.
    */
-  async updateWithError(materialId: string, errorMessage: string): Promise<void> {
+  async updateWithError(
+    materialId: string,
+    errorMessage: string,
+    extras: Record<string, any> = {}
+  ): Promise<void> {
     const { data: existing } = await this.findById(materialId);
     const existingMeta = existing?.meta || {};
 
@@ -103,6 +110,7 @@ export class MaterialRepository {
           ...existingMeta,
           error: errorMessage,
           failed_at: new Date().toISOString(),
+          ...extras,
         },
       })
       .eq('id', materialId);

@@ -29,6 +29,93 @@ import { initSentry, captureException, setUser } from '../_shared/sentry.ts';
 // Initialize Sentry once when the isolate starts
 initSentry();
 
+/**
+ * Module-level in-flight context. The `beforeunload` and `unhandledrejection`
+ * handlers read from this so we can write a forensic breadcrumb to
+ * `materials.meta` even when the function is killed by WORKER_LIMIT / timeout
+ * before any catch block runs.
+ *
+ * See: https://supabase.com/docs/guides/functions/background-tasks
+ */
+interface InFlightCtx {
+  supabase: any | null;
+  materialId: string | null;
+  notebookId: string | null;
+  userId: string | null;
+  phase: string;
+  startedAt: number;
+  failurePersisted: boolean;
+}
+const inflight: InFlightCtx = {
+  supabase: null,
+  materialId: null,
+  notebookId: null,
+  userId: null,
+  phase: 'idle',
+  startedAt: 0,
+  failurePersisted: false,
+};
+
+const setPhase = (p: string) => {
+  inflight.phase = p;
+  console.log(`[process-material] phase=${p} t=${Date.now() - inflight.startedAt}ms`);
+};
+
+// Forensic breadcrumb on runtime shutdown (OOM / wall-clock / boot error).
+// We can't await here reliably, so fire-and-forget a best-effort update.
+addEventListener('beforeunload', (ev: any) => {
+  const reason = ev?.detail?.reason || 'unknown';
+  console.error(`[process-material] beforeunload phase=${inflight.phase} reason=${reason}`);
+  if (!inflight.supabase || !inflight.materialId) return;
+  try {
+    inflight.supabase
+      .from('materials')
+      .update({
+        status: 'failed',
+        meta: {
+          error: `edge_function_shutdown: ${reason}`,
+          error_type: 'WORKER_SHUTDOWN',
+          shutdown_reason: reason,
+          last_phase: inflight.phase,
+          duration_ms: Date.now() - inflight.startedAt,
+          failed_at: new Date().toISOString(),
+        },
+      })
+      .eq('id', inflight.materialId)
+      .then(() => {})
+      .catch((e: any) => console.error('[process-material] beforeunload write failed:', e));
+  } catch (e) {
+    console.error('[process-material] beforeunload threw:', e);
+  }
+});
+
+// Catch floating promise rejections so they also land in materials.meta.
+addEventListener('unhandledrejection', (ev: any) => {
+  const reason = ev?.reason;
+  const message = reason?.message || String(reason);
+  console.error(`[process-material] unhandledrejection phase=${inflight.phase}:`, message);
+  if (!inflight.supabase || !inflight.materialId) return;
+  try {
+    inflight.supabase
+      .from('materials')
+      .update({
+        status: 'failed',
+        meta: {
+          error: `unhandled_rejection: ${message}`,
+          error_type: reason?.name || 'UnhandledRejection',
+          error_stack: (reason?.stack || '').slice(0, 2000),
+          last_phase: inflight.phase,
+          duration_ms: Date.now() - inflight.startedAt,
+          failed_at: new Date().toISOString(),
+        },
+      })
+      .eq('id', inflight.materialId)
+      .then(() => {})
+      .catch(() => {});
+  } catch {}
+  ev?.preventDefault?.();
+});
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -37,12 +124,28 @@ Deno.serve(async (req) => {
 
   const corsHeaders = getCorsHeaders(req);
   let notebookId: string | undefined;
+  // Hoisted so the outer catch block can reference user.id without a
+  // block-scope ReferenceError (which was previously causing the platform
+  // to return a plain-text "Internal Server Error" instead of our JSON body).
+  let user: any = null;
+
+  // Reset in-flight context for this invocation so the shutdown handler has
+  // the current material to write a breadcrumb against.
+  inflight.supabase = null;
+  inflight.materialId = null;
+  inflight.notebookId = null;
+  inflight.userId = null;
+  inflight.phase = 'init';
+  inflight.startedAt = Date.now();
+  inflight.failurePersisted = false;
 
   try {
+    setPhase('init');
     // Initialize Supabase client (service role)
     const supabaseUrl = getRequiredEnv('SUPABASE_URL');
     const supabaseServiceKey = getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    inflight.supabase = supabase;
 
     // Initialize repositories
     const materialRepo = new MaterialRepository(supabase);
@@ -54,7 +157,7 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('authorization');
     const isInternalWebhook = req.headers.get('x-internal-webhook') === 'true';
 
-    let user = null;
+    // `user` is hoisted above — do not re-declare here.
     let isServiceBackdoor = false;
 
     if (isInternalWebhook) {
@@ -83,6 +186,7 @@ Deno.serve(async (req) => {
       setUser(user.id);
     }
 
+    setPhase('parsing_request');
     // Parse request body
     const body = await req.json();
     let materialId = body.material_id;
@@ -111,6 +215,10 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Publish materialId to in-flight context so shutdown handlers can record it
+    inflight.materialId = materialId;
+
+    setPhase('fetching_material');
     // Fetch material and verify ownership (if not service backdoor)
     const { data: material, error: materialError } = await materialRepo.findById(materialId);
 
@@ -134,6 +242,7 @@ Deno.serve(async (req) => {
 
     // Get notebook from the new notebook_id column
     notebookId = material.notebook_id;
+    inflight.notebookId = notebookId ?? null;
 
     if (!notebookId) {
       return new Response(JSON.stringify({ error: 'Material is not associated with a notebook' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -158,6 +267,7 @@ Deno.serve(async (req) => {
     }
 
     const userId = notebook.user_id;
+    inflight.userId = userId;
     const originalTitle = notebook.title; // Store original title for error recovery
 
     // RATE LIMITING: Check if user is making too many requests
@@ -196,9 +306,37 @@ Deno.serve(async (req) => {
     //   - Audio jobs (podcast generation) - 3 for trial
     // Quota check will be added in Phase 3 (Studio) and Phase 4 (Audio)
 
+    setPhase('checking_large_pdf');
     // LARGE PDF DETECTION: Route large PDFs to background processing
     const largePDFHandler = new LargePDFHandler(supabase);
     const largePDFCheck = await largePDFHandler.checkAndQueue(material, notebookId, userId);
+
+    // If the PDF was rejected outright (over the hard ceiling), persist a
+    // user-facing error and return cleanly. This catches retry / webhook /
+    // any path that bypasses the client-side guard.
+    if (largePDFCheck.rejectedReason) {
+      console.warn(`[process-material] Rejected: ${largePDFCheck.rejectedReason}`);
+      await materialRepo.updateWithError(materialId, largePDFCheck.rejectedReason, {
+        error_type: 'PDFTooLarge',
+        user_facing: true,
+        file_size_bytes: largePDFCheck.fileSizeBytes,
+        last_phase: 'checking_large_pdf',
+        duration_ms: Date.now() - inflight.startedAt,
+      });
+      inflight.failurePersisted = true;
+      await notebookRepo.updateWithError(notebookId, originalTitle, largePDFCheck.rejectedReason);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          materialId,
+          notebook_id: notebookId,
+          rejected: true,
+          reason: largePDFCheck.rejectedReason,
+          file_size_bytes: largePDFCheck.fileSizeBytes,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (largePDFCheck.shouldProcessInBackground) {
       return new Response(
@@ -222,6 +360,7 @@ Deno.serve(async (req) => {
       // Mark as processing
       await supabase.from('materials').update({ status: 'processing' }).eq('id', materialId);
 
+      setPhase('extracting');
       // STEP 1: Extract content
       console.log(`Extracting content from ${material.kind}: ${materialId}`);
       const contentExtractor = new ContentExtractor(supabase);
@@ -229,6 +368,7 @@ Deno.serve(async (req) => {
 
       console.log(`Extracted ${extractedContent.length} characters`);
 
+      setPhase('saving_content');
       // STEP 2: Save extracted content
       await materialRepo.updateWithExtractedContent(
         materialId,
@@ -237,6 +377,7 @@ Deno.serve(async (req) => {
         extractMetadata || {}
       );
 
+      setPhase('checking_pending_materials');
       // STEP 3: Check if other materials are still processing
       // Only generate preview when ALL materials are done (Last Material Triggers Preview pattern)
       const pendingCount = await materialRepo.countPendingMaterials(notebookId, materialId);
@@ -279,6 +420,7 @@ Deno.serve(async (req) => {
         combinedContent = extractedContent; // Fallback to current
       }
 
+      setPhase('generating_preview');
       // STEP 5: Generate AI title and preview based on COMBINED content
       console.log(`Generating AI title and preview from ${allMaterials?.length || 1} combined sources...`);
       const previewStartTime = Date.now();
@@ -319,6 +461,7 @@ Deno.serve(async (req) => {
 
       console.log(`Content summary: ${contentSummary.material_count} materials, has_past_paper: ${contentSummary.has_past_paper}, has_notes: ${contentSummary.has_notes}`);
 
+      setPhase('saving_preview');
       // STEP 6, 7, 8: Update records and log usage in parallel (Turbo-Boost)
       console.log('Finalizing database updates...');
       await Promise.all([
@@ -345,6 +488,7 @@ Deno.serve(async (req) => {
           .catch(err => console.error('[UsageLogger] Non-critical logging failure:', err))
       ]);
 
+      setPhase('complete');
       console.log('Material processed successfully - Final preview generated');
 
       return new Response(
@@ -359,18 +503,26 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } catch (processingError: any) {
-      console.error('Processing error:', processingError);
+      console.error(`[process-material] Processing error in phase=${inflight.phase}:`, processingError);
 
       // Capture error in Sentry with context
       await captureException(processingError, {
         material_id: materialId,
         notebook_id: notebookId,
         user_id: user?.id,
-        operation: 'process-material-main'
+        operation: 'process-material-main',
+        phase: inflight.phase,
       });
 
-      // Update material with specific error
-      await materialRepo.updateWithError(materialId, processingError.message);
+      // Update material with specific error — include forensic extras so the
+      // next debugger doesn't have to reverse-engineer what died.
+      await materialRepo.updateWithError(materialId, processingError.message, {
+        error_type: processingError?.name || 'Error',
+        error_stack: String(processingError?.stack || '').slice(0, 2000),
+        last_phase: inflight.phase,
+        duration_ms: Date.now() - inflight.startedAt,
+      });
+      inflight.failurePersisted = true;
 
       // Update notebook metadata (prevent UI freezing but record failure)
       await notebookRepo.updateWithError(notebookId, originalTitle, processingError.message);
@@ -381,14 +533,39 @@ Deno.serve(async (req) => {
       throw processingError;
     }
   } catch (error: any) {
-    console.error('Fatal error:', error);
+    console.error(`[process-material] Fatal error in phase=${inflight.phase}:`, error);
 
     // Capture fatal error in Sentry
     await captureException(error, {
       operation: 'process-material-fatal',
       notebook_id: notebookId,
       user_id: user?.id,
+      phase: inflight.phase,
     });
+
+    // Best-effort forensic write. Inner catch already wrote for its own errors,
+    // but anything that dies outside the inner try (auth, parse, large-pdf
+    // check) lands here — we still want to see it.
+    if (inflight.materialId && inflight.supabase && !inflight.failurePersisted) {
+      try {
+        await inflight.supabase
+          .from('materials')
+          .update({
+            status: 'failed',
+            meta: {
+              error: error?.message || 'unknown_fatal',
+              error_type: error?.name || 'Error',
+              error_stack: String(error?.stack || '').slice(0, 2000),
+              last_phase: inflight.phase,
+              duration_ms: Date.now() - inflight.startedAt,
+              failed_at: new Date().toISOString(),
+            },
+          })
+          .eq('id', inflight.materialId);
+      } catch (writeErr) {
+        console.error('[process-material] Failed to persist fatal error:', writeErr);
+      }
+    }
 
     return new Response(
       JSON.stringify({

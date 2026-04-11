@@ -122,51 +122,84 @@ export const materialService = {
             if (result.error) throw result.error;
             return { success: true };
         } catch (error: any) {
+            // IMPORTANT: before we log anything scary, re-read the material so we
+            // can tell what actually happened server-side. supabase-js wraps many
+            // different conditions into a generic `FunctionsHttpError` with message
+            // "Edge Function returned a non-2xx status code" — that could be:
+            //   (a) the server wrote a real user-facing failure (e.g. PDFTooLarge)
+            //       and returned 400 with a clean reason — we should respect it.
+            //   (b) the server actually succeeded but the client's HTTP connection
+            //       dropped mid-processing — we should trust Realtime.
+            //   (c) a genuinely unknown error — log it loudly.
+            //
+            // We can't distinguish these from the error object alone, so the only
+            // reliable signal is the authoritative DB state.
+            const { data: material } = await supabase
+                .from('materials')
+                .select('status, processed, content, meta')
+                .eq('id', materialId)
+                .single();
+
+            // (a) Server already wrote a user-facing failure — respect it.
+            //     Log at warn level so the global console.error interceptor doesn't
+            //     render its red error modal for a case we've already handled cleanly.
+            if (material?.status === 'failed' && material?.meta?.user_facing) {
+                console.warn(
+                    '[MaterialService] Retry rejected by server:',
+                    material.meta.error
+                );
+                return { success: false, error: material.meta.error };
+            }
+
+            // (b1) Server actually succeeded and wrote a processed row — align client.
+            if (material?.processed && material?.content) {
+                console.log(
+                    '[MaterialService] Retry actually succeeded server-side, aligning client state'
+                );
+                await supabase
+                    .from('materials')
+                    .update({ status: 'processed' })
+                    .eq('id', materialId);
+                await supabase
+                    .from('notebooks')
+                    .update({ status: 'ready_for_studio' })
+                    .eq('id', notebookId);
+                return { success: true };
+            }
+
+            // (b2) Server is still working — connection drop without resolution yet.
+            //      Defer to Realtime instead of racing it.
+            const errMsg = String(error?.message || error || '');
+            const isLikelyTransientConnection =
+                errMsg.includes('non-2xx') ||
+                errMsg.includes('Failed to send a request');
+            if (isLikelyTransientConnection) {
+                console.warn(
+                    '[MaterialService] Transient retry error, deferring to Realtime sync:',
+                    errMsg
+                );
+                return { success: true, deferred: true };
+            }
+
+            // (c) Unknown error path — log loudly so it gets Sentry attention.
+            console.error('[MaterialService] Retry failed with unknown error:', errMsg);
             await handleError(error, {
                 operation: 'retry_processing',
                 component: 'material-service',
                 metadata: { notebookId, materialId }
             });
-            console.error('Retry error (checking if processing succeeded):', error.message);
-
-            // Check if material was actually processed before marking as failed
-            const { data: material } = await supabase
-                .from('materials')
-                .select('status, processed, content')
-                .eq('id', materialId)
-                .single();
-
-            // If material is already processed with content, don't override to failed
-            if (material?.processed && material?.content) {
-                console.log('Material was actually processed successfully despite error, updating status');
-                await supabase
-                    .from('materials')
-                    .update({ status: 'processed' })
-                    .eq('id', materialId);
-
-                await supabase
-                    .from('notebooks')
-                    .update({ status: 'ready_for_studio' })
-                    .eq('id', notebookId);
-
-                return { success: true };
-            }
-
-            // Only mark as failed if processing truly failed
             await supabase
                 .from('materials')
                 .update({
                     status: 'failed',
-                    meta: { error: `Retry failed: ${error.message}` }
+                    meta: { error: `Retry failed: ${errMsg}` }
                 })
                 .eq('id', materialId);
-
             await supabase
                 .from('notebooks')
                 .update({ status: 'ready_for_studio' })
                 .eq('id', notebookId);
-
-            return { success: false, error: error.message };
+            return { success: false, error: errMsg };
         }
     },
 

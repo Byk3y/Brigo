@@ -37,5 +37,5 @@ export type { WebsiteExtractionResult } from './extraction/common/types.ts';
 // Security Validation
 // ========================================
 
-export { validateUrlSecurity } from './extraction/security/url-validator.ts';
+export { validateUrlSecurity, validateUrlSecurityWithDns } from './extraction/security/url-validator.ts';
 export type { UrlValidationResult } from './extraction/security/types.ts';

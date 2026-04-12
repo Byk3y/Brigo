@@ -5,7 +5,7 @@
 
 import type { WebsiteExtractionResult } from './types.ts';
 import { JinaReaderService, DirectFetchService } from './services.ts';
-import { validateUrlSecurity } from '../security/url-validator.ts';
+import { validateUrlSecurityWithDns } from '../security/url-validator.ts';
 
 /**
  * Extract content from a website URL using Jina Reader
@@ -19,8 +19,9 @@ export async function extractWebsiteContent(url: string): Promise<WebsiteExtract
   console.log('[extractWebsiteContent] START - URL:', url);
   const startTime = Date.now();
 
-  // SECURITY: Validate URL to prevent SSRF attacks
-  const securityCheck = validateUrlSecurity(url);
+  // SECURITY: Validate URL to prevent SSRF attacks (with DNS resolution
+  // to close the rebinding gap — e.g. 127.0.0.1.nip.io)
+  const securityCheck = await validateUrlSecurityWithDns(url);
   if (!securityCheck.allowed) {
     console.error(`[extractWebsiteContent] SECURITY BLOCK: ${securityCheck.reason}`);
     throw new Error(securityCheck.reason || 'URL blocked for security reasons');

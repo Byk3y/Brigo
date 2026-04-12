@@ -401,7 +401,7 @@ export const createNotebookSlice: StateCreator<
             // Optimization: Only fetch full notebook when status is NOT extracting (i.e. processed/failed)
             // or if it's an update to a previously processed notebook (e.g. title/meta change)
             if (updatedNb.status !== 'extracting' && updatedNb.status !== 'pending') {
-              // Fetch full notebook data 
+              // Fetch full notebook data
               const fullNotebook = await notebookService.getNotebookById(updatedNb.id);
 
               if (fullNotebook) {
@@ -433,6 +433,46 @@ export const createNotebookSlice: StateCreator<
               notebooks: state.notebooks.map((n) =>
                 n.id === updatedNb.id ? { ...n, ...updatedNb } : n
               ),
+            }));
+          }
+        }
+      )
+      // Phase B: per-material status updates. When a material transitions
+      // to 'processed' or 'failed', update it in the notebook's materials
+      // array so the UI reflects individual failures immediately without
+      // waiting for a manual refresh or the notebook-level status change.
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'materials',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          const materialId = updated.id;
+          const status = updated.status;
+
+          if (status === 'processed' || status === 'failed') {
+            console.log(`[Store] Realtime: material ${materialId} status=${status}`);
+
+            set((state) => ({
+              notebooks: state.notebooks.map((n) => ({
+                ...n,
+                materials: n.materials.map((m) =>
+                  m.id === materialId
+                    ? {
+                        ...m,
+                        status,
+                        processed: status === 'processed',
+                        meta: updated.meta ?? m.meta,
+                        content: updated.content ?? m.content,
+                        preview_text: updated.preview_text ?? m.preview_text,
+                      }
+                    : m
+                ),
+              })),
             }));
           }
         }

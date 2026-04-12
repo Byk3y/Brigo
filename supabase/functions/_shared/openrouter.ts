@@ -69,6 +69,32 @@ const MODELS: Record<string, ModelConfig> = {
     costPer1kInput: 0.0005,
     costPer1kOutput: 0.0015,
   },
+  // Phase B: extraction paths migrated from direct Gemini API to get
+  // retry + fallback for free via callLLMWithRetry.
+  audio_transcription: {
+    name: 'google/gemini-2.5-flash',
+    maxTokens: 20480,
+    costPer1kInput: 0.0003,
+    costPer1kOutput: 0.0025,
+  },
+  image_ocr: {
+    name: 'google/gemini-2.5-flash',
+    maxTokens: 4096,
+    costPer1kInput: 0.0003,
+    costPer1kOutput: 0.0025,
+  },
+  website_cleanup: {
+    name: 'google/gemini-2.5-flash',
+    maxTokens: 8192,
+    costPer1kInput: 0.0003,
+    costPer1kOutput: 0.0025,
+  },
+  youtube_cleanup: {
+    name: 'google/gemini-2.5-flash',
+    maxTokens: 25000,
+    costPer1kInput: 0.0003,
+    costPer1kOutput: 0.0025,
+  },
 };
 
 // Fallback models if primary fails
@@ -81,6 +107,10 @@ const FALLBACK_MODELS: Record<string, string[]> = {
   studio: ['x-ai/grok-4.1-fast', 'openai/gpt-4o'],
   audio_script: ['openai/gpt-4o-mini'],
   notebook_chat: ['x-ai/grok-4.1-fast', 'meta-llama/llama-3.3-70b-instruct:free', 'openai/gpt-4o'],
+  audio_transcription: ['google/gemini-2.0-flash'],
+  image_ocr: ['google/gemini-2.0-flash'],
+  website_cleanup: ['google/gemini-2.0-flash', 'deepseek/deepseek-chat'],
+  youtube_cleanup: ['google/gemini-2.0-flash', 'deepseek/deepseek-chat'],
 };
 
 /**
@@ -92,17 +122,30 @@ export type LLMJobType =
   | 'pdf_extract_preview'
   | 'studio'
   | 'audio_script'
-  | 'notebook_chat';
+  | 'notebook_chat'
+  | 'audio_transcription'
+  | 'image_ocr'
+  | 'website_cleanup'
+  | 'youtube_cleanup';
 
 /**
- * File attachment for multimodal models (PDF, image, etc.) using the
- * OpenAI chat-completions `file` content-block format. `fileData` should
- * be a `data:application/pdf;base64,...` URL or a publicly fetchable URL.
+ * Multimodal attachment for OpenRouter content blocks.
+ *
+ * Three formats supported (matching OpenRouter's OpenAI-compatible API):
+ *   - `file`        — PDF/generic file via `{ type:'file', file:{…} }` block.
+ *                     `fileData` is a data-URL or fetchable URL.
+ *   - `image_url`   — Image via `{ type:'image_url', image_url:{url} }` block.
+ *                     `imageUrl` is a `data:image/…;base64,…` URL.
+ *   - `input_audio`  — Audio via `{ type:'input_audio', input_audio:{…} }` block.
+ *                     `data` is raw base64 (no data: prefix), `mediaType` is MIME.
+ *
+ * `type` defaults to `'file'` for backward compatibility with existing
+ * callers (e.g. PdfProcessor) that don't set it.
  */
-export interface LLMAttachment {
-  filename: string;
-  fileData: string;
-}
+export type LLMAttachment =
+  | { type?: 'file'; filename: string; fileData: string }
+  | { type: 'image_url'; imageUrl: string }
+  | { type: 'input_audio'; mediaType: string; data: string };
 
 /**
  * Structured-output schema passed through to OpenRouter as `response_format`.
@@ -172,10 +215,44 @@ export async function callLLM(
         role: 'user',
         content: [
           { type: 'text', text: textContent },
-          ...options.attachments.map((a) => ({
-            type: 'file',
-            file: { filename: a.filename, file_data: a.fileData },
-          })),
+          ...options.attachments.map((a) => {
+            const blockType = a.type || 'file';
+            switch (blockType) {
+              case 'file':
+                return {
+                  type: 'file' as const,
+                  file: {
+                    filename: (a as { filename: string; fileData: string }).filename,
+                    file_data: (a as { filename: string; fileData: string }).fileData,
+                  },
+                };
+              case 'image_url':
+                return {
+                  type: 'image_url' as const,
+                  image_url: {
+                    url: (a as { imageUrl: string }).imageUrl,
+                  },
+                };
+              case 'input_audio': {
+                // OpenRouter expects short format names (wav, mp3, aac, ogg,
+                // flac, m4a, pcm16, pcm24), not full MIME types (audio/wav).
+                const rawMime = (a as { mediaType: string }).mediaType;
+                const shortFormat = rawMime
+                  .replace(/^audio\//, '')
+                  .replace('mpeg', 'mp3')  // audio/mpeg → mp3
+                  .replace('mp4', 'm4a');  // audio/mp4 → m4a
+                return {
+                  type: 'input_audio' as const,
+                  input_audio: {
+                    data: (a as { data: string }).data,
+                    format: shortFormat,
+                  },
+                };
+              }
+              default:
+                return { type: 'text' as const, text: '' };
+            }
+          }),
         ],
       };
     }

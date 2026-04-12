@@ -94,18 +94,15 @@ export interface LLMPreviewResponse {
 }
 
 /**
- * Result from large PDF check
+ * Result from PdfSizeGuard.check().
+ *
+ * Shape contract:
+ *   - `rejectedReason` set → caller must persist a user-facing failure and
+ *     return a clean 400. `fileSizeBytes` is also set.
+ *   - `rejectedReason` unset → caller proceeds. `fileSizeBytes` may be set
+ *     (if we could read it) or absent (if storage lookup failed — fail open).
  */
-export interface LargePDFCheckResult {
-  shouldProcessInBackground: boolean;
-  jobId?: string;
-  estimatedPages?: number;
+export interface PdfSizeCheckResult {
   fileSizeBytes?: number;
-  message?: string;
-  /**
-   * If set, the PDF was rejected outright (e.g. over the hard ceiling the
-   * current extraction pipeline can handle). Callers MUST persist this as
-   * a user-facing error and return a clean response without enqueueing work.
-   */
   rejectedReason?: string;
 }

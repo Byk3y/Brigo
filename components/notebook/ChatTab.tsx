@@ -26,7 +26,6 @@ import { PreviewSkeleton } from './PreviewSkeleton';
 import { MotiView } from 'moti';
 import { getTopicEmoji } from '@/lib/emoji-matcher';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
-import { BackgroundProcessingIndicator } from '@/components/BackgroundProcessingIndicator';
 import { SourceSelectionModal } from './SourceSelectionModal';
 import { useNotebookChat } from '@/lib/hooks/useNotebookChat';
 import { useStore } from '@/lib/store';
@@ -296,7 +295,11 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz, onRetryM
   };
 
   const isExtracting = notebook.status === 'extracting' || notebook.status === 'pending';
-  const isBackgroundProcessing = (notebook.meta as any)?.background_processing === true;
+  // Phase 2: removed `isBackgroundProcessing` flag. The whole large-PDF
+  // background-queue path was deleted — PDFs over 14 MB are now rejected
+  // upfront with a clean user-facing error, so a notebook is never in a
+  // "background processing" state. The skeleton + spinner below covers all
+  // in-flight processing states.
   const hasExistingContent = !!briefing;
 
   // Check if any material has truly failed (status failed AND not processed)
@@ -341,52 +344,35 @@ export const ChatTab: React.FC<ChatTabProps> = ({ notebook, onTakeQuiz, onRetryM
             </View>
           </View>
 
-          {isBackgroundProcessing ? (
-            <View style={{ marginBottom: 24 }}>
-              <BackgroundProcessingIndicator notebookId={notebook.id} />
-              <View style={{ marginTop: 24, padding: 16, backgroundColor: colors.surfaceAlt, borderRadius: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-                  <Text style={{ marginLeft: 8, fontSize: 16, color: colors.text, fontFamily: 'Nunito-SemiBold' }}>
-                    Processing Large Document
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20, fontFamily: 'Nunito-Regular' }}>
-                  This is a large file and we're processing it in the background. You can safely leave this page and come back later. We'll show the overview as soon as it's ready!
-                </Text>
-              </View>
-            </View>
-          ) : (
-            <View>
-              <PreviewSkeleton lines={8} />
-              <MotiView
-                from={{ opacity: 0, translateY: 10 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                transition={{ type: 'timing', duration: 1000 } as any}
-                style={{ alignItems: 'center', marginTop: 32 }}
-              >
-                <ActivityIndicator size="small" color={colors.primary} style={{ marginBottom: 16 }} />
-                <Text style={{
-                  fontSize: 16,
-                  color: colors.textSecondary,
-                  fontFamily: 'Nunito-Medium',
-                  textAlign: 'center'
-                }}>
-                  Just a moment...
-                </Text>
-                <Text style={{
-                  fontSize: 13,
-                  color: colors.textMuted,
-                  fontFamily: 'Nunito-Regular',
-                  textAlign: 'center',
-                  marginTop: 8,
-                  paddingHorizontal: 32
-                }}>
-                  We're extracting the key insights from your document. We'll notify you when it's ready!
-                </Text>
-              </MotiView>
-            </View>
-          )}
+          <View>
+            <PreviewSkeleton lines={8} />
+            <MotiView
+              from={{ opacity: 0, translateY: 10 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: 'timing', duration: 1000 } as any}
+              style={{ alignItems: 'center', marginTop: 32 }}
+            >
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginBottom: 16 }} />
+              <Text style={{
+                fontSize: 16,
+                color: colors.textSecondary,
+                fontFamily: 'Nunito-Medium',
+                textAlign: 'center'
+              }}>
+                Just a moment...
+              </Text>
+              <Text style={{
+                fontSize: 13,
+                color: colors.textMuted,
+                fontFamily: 'Nunito-Regular',
+                textAlign: 'center',
+                marginTop: 8,
+                paddingHorizontal: 32
+              }}>
+                We're extracting the key insights from your document. We'll notify you when it's ready!
+              </Text>
+            </MotiView>
+          </View>
         </View>
       </ScrollView>
     );

@@ -76,6 +76,36 @@ export class MaterialRepository {
   }
 
   /**
+   * Phase 2: one-shot save of extracted text + preview + classification in a
+   * single row update. Used by the PdfProcessor path where Gemini returns
+   * everything in one call, so we persist everything atomically rather than
+   * splitting into updateWithExtractedContent() + updateWithPreview() which
+   * would leave a brief inconsistent window.
+   */
+  async updateWithExtractedContentAndPreview(
+    materialId: string,
+    content: string,
+    previewText: string,
+    contentClassification: ContentClassification,
+    existingMeta: Record<string, any> = {}
+  ): Promise<void> {
+    await this.supabase
+      .from('materials')
+      .update({
+        content,
+        processed: true,
+        status: 'processed',
+        processed_at: new Date().toISOString(),
+        preview_text: previewText.substring(0, 500),
+        meta: {
+          ...existingMeta,
+          content_classification: contentClassification,
+        },
+      })
+      .eq('id', materialId);
+  }
+
+  /**
    * Find all processed materials for a notebook
    */
   async findAllProcessedByNotebook(notebookId: string): Promise<any[]> {

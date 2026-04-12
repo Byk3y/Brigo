@@ -3,7 +3,7 @@
  * Extracts content from various material types (PDF, image, audio, website, YouTube, text)
  */
 
-import { extractPDF, extractImageText, transcribeAudio, extractWebsiteContent } from '../extraction.ts';
+import { extractImageText, transcribeAudio, extractWebsiteContent } from '../extraction.ts';
 import type { Material, ContentExtractionResult } from './types.ts';
 
 /**
@@ -13,7 +13,13 @@ type SupabaseClient = any;
 
 /**
  * ContentExtractor class
- * Handles content extraction for different material types
+ * Handles content extraction for non-PDF material types.
+ *
+ * Phase 2 note: PDFs are handled by PdfProcessor (single-call Gemini 2.5
+ * Flash extraction + classification + preview), NOT by this class. The
+ * `process-material` edge function dispatches on `material.kind` and only
+ * routes non-PDF materials through here. Calling `extract()` with a PDF
+ * material will throw.
  */
 export class ContentExtractor {
   constructor(private supabase: SupabaseClient) { }
@@ -25,7 +31,7 @@ export class ContentExtractor {
    * @returns Extracted text and optional metadata
    */
   async extract(material: Material): Promise<ContentExtractionResult> {
-    const { kind, storage_path, external_url, content } = material;
+    const { kind, content } = material;
 
     // If content already exists (text/note), return it
     if (content && (kind === 'text' || kind === 'note' || kind === 'copied-text')) {
@@ -35,7 +41,11 @@ export class ContentExtractor {
     // Route to appropriate extractor based on material kind
     switch (kind) {
       case 'pdf':
-        return await this.extractPDF(material);
+        // PDFs are handled by PdfProcessor directly in process-material/index.ts.
+        // If we hit this branch, something is wired wrong.
+        throw new Error(
+          'ContentExtractor: PDFs must be processed via PdfProcessor, not ContentExtractor'
+        );
       case 'image':
       case 'photo':
         return await this.extractImage(material);
@@ -48,25 +58,6 @@ export class ContentExtractor {
       default:
         throw new Error(`Unsupported material kind: ${kind}`);
     }
-  }
-
-  /**
-   * Extract content from PDF
-   */
-  private async extractPDF(material: Material): Promise<ContentExtractionResult> {
-    // Download PDF from storage
-    const { data: fileData, error } = await this.supabase.storage
-      .from('uploads')
-      .download(material.storage_path);
-
-    if (error || !fileData) {
-      throw new Error(`Failed to download PDF: ${error?.message || 'Unknown error'}`);
-    }
-
-    const fileBuffer = new Uint8Array(await fileData.arrayBuffer());
-    const text = await extractPDF(fileBuffer);
-
-    return { text };
   }
 
   /**

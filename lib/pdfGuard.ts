@@ -2,7 +2,7 @@
  * Client-side PDF upload guard.
  *
  * This is the first line of defense against oversized PDFs. The server-side
- * `LargePDFHandler.checkAndQueue` in `process-material` is the second line,
+ * `PdfSizeGuard.check` in `process-material` is the second line,
  * so even if this guard is bypassed (e.g. stale client bundle, unknown upload
  * path) the upload still gets rejected — but:
  *   - the file wastes bandwidth on the way to storage

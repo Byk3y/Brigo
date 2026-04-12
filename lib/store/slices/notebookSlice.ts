@@ -35,7 +35,7 @@ export interface NotebookSlice {
     notebookId: string,
     material: Omit<Material, 'id' | 'createdAt'> & { fileUri?: string; filename?: string }
   ) => Promise<void>;
-  deleteMaterial: (notebookId: string, materialId: string) => void;
+  deleteMaterial: (notebookId: string, materialId: string) => Promise<void>;
   loadChatMessages: (notebookId: string) => Promise<void>;
   addChatMessage: (notebookId: string, message: ChatMessage) => void;
   updateLastChatMessage: (notebookId: string, content: string) => void;
@@ -296,9 +296,20 @@ export const createNotebookSlice: StateCreator<
     }
   },
 
-  deleteMaterial: (notebookId, materialId) =>
-    set((state) => ({
-      notebooks: state.notebooks.map((n) =>
+  deleteMaterial: async (notebookId, materialId) => {
+    // Capture the material's storage path BEFORE the optimistic removal so
+    // we can pass it to the service call. Without this, the service would
+    // only delete the DB row and leave the file orphaned in storage.
+    const notebook = get().notebooks.find((n) => n.id === notebookId);
+    const material = notebook?.materials.find((m) => m.id === materialId);
+    const storagePath: string | null =
+      (material as any)?.storage_path || (material as any)?.storagePath || null;
+
+    // Optimistic UI update: remove from local state immediately so the
+    // delete feels instant. The service call runs in the background and
+    // we don't block on it.
+    set((s) => ({
+      notebooks: s.notebooks.map((n) =>
         n.id === notebookId
           ? {
             ...n,
@@ -306,7 +317,17 @@ export const createNotebookSlice: StateCreator<
           }
           : n
       ),
-    })),
+    }));
+
+    // Background DB + storage delete. Fire-and-forget. If it fails we log
+    // but don't roll back the UI — the user already saw the material
+    // disappear and rolling back would be worse UX than a stale row.
+    try {
+      await materialService.deleteMaterial(materialId, storagePath || undefined);
+    } catch (err) {
+      console.error('[Store] Failed to delete material from backend:', err);
+    }
+  },
 
   loadChatMessages: async (notebookId) => {
     try {

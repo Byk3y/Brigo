@@ -158,6 +158,24 @@ export type Database = {
           },
         ]
       }
+      creator_whitelist: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
       embeddings: {
         Row: {
           chunk_index: number
@@ -281,6 +299,87 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      friend_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          invite_code: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          invite_code: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          invite_code?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      friend_streaks: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          initiated_by: string
+          last_streak_date: string | null
+          meta: Json | null
+          status: string
+          streak: number
+          updated_at: string
+          user_a: string
+          user_a_last_study: string | null
+          user_b: string
+          user_b_last_study: string | null
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          initiated_by: string
+          last_streak_date?: string | null
+          meta?: Json | null
+          status?: string
+          streak?: number
+          updated_at?: string
+          user_a: string
+          user_a_last_study?: string | null
+          user_b: string
+          user_b_last_study?: string | null
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          initiated_by?: string
+          last_streak_date?: string | null
+          meta?: Json | null
+          status?: string
+          streak?: number
+          updated_at?: string
+          user_a?: string
+          user_a_last_study?: string | null
+          user_b?: string
+          user_b_last_study?: string | null
+        }
+        Relationships: []
       }
       materials: {
         Row: {
@@ -540,6 +639,7 @@ export type Database = {
           created_at: string | null
           id: string
           points_awarded: number
+          ref_activity_id: string | null
           source: string | null
           task_id: string
           user_id: string
@@ -550,6 +650,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           points_awarded: number
+          ref_activity_id?: string | null
           source?: string | null
           task_id: string
           user_id: string
@@ -560,11 +661,19 @@ export type Database = {
           created_at?: string | null
           id?: string
           points_awarded?: number
+          ref_activity_id?: string | null
           source?: string | null
           task_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pet_task_completions_ref_activity_id_fkey"
+            columns: ["ref_activity_id"]
+            isOneToOne: false
+            referencedRelation: "user_activity_log"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pet_task_completions_task_id_fkey"
             columns: ["task_id"]
@@ -671,93 +780,6 @@ export type Database = {
             columns: ["material_id"]
             isOneToOne: false
             referencedRelation: "materials"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      processing_queue: {
-        Row: {
-          attempt_count: number
-          completed_at: string | null
-          created_at: string
-          error_details: Json | null
-          error_message: string | null
-          estimated_pages: number | null
-          file_size_bytes: number | null
-          id: string
-          job_type: string
-          material_id: string
-          max_attempts: number
-          next_retry_at: string | null
-          notebook_id: string
-          priority: number
-          processed_pages: number | null
-          progress: number
-          progress_message: string | null
-          result: Json | null
-          started_at: string | null
-          status: Database["public"]["Enums"]["processing_job_status"]
-          user_id: string
-        }
-        Insert: {
-          attempt_count?: number
-          completed_at?: string | null
-          created_at?: string
-          error_details?: Json | null
-          error_message?: string | null
-          estimated_pages?: number | null
-          file_size_bytes?: number | null
-          id?: string
-          job_type?: string
-          material_id: string
-          max_attempts?: number
-          next_retry_at?: string | null
-          notebook_id: string
-          priority?: number
-          processed_pages?: number | null
-          progress?: number
-          progress_message?: string | null
-          result?: Json | null
-          started_at?: string | null
-          status?: Database["public"]["Enums"]["processing_job_status"]
-          user_id: string
-        }
-        Update: {
-          attempt_count?: number
-          completed_at?: string | null
-          created_at?: string
-          error_details?: Json | null
-          error_message?: string | null
-          estimated_pages?: number | null
-          file_size_bytes?: number | null
-          id?: string
-          job_type?: string
-          material_id?: string
-          max_attempts?: number
-          next_retry_at?: string | null
-          notebook_id?: string
-          priority?: number
-          processed_pages?: number | null
-          progress?: number
-          progress_message?: string | null
-          result?: Json | null
-          started_at?: string | null
-          status?: Database["public"]["Enums"]["processing_job_status"]
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "processing_queue_material_id_fkey"
-            columns: ["material_id"]
-            isOneToOne: false
-            referencedRelation: "materials"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "processing_queue_notebook_id_fkey"
-            columns: ["notebook_id"]
-            isOneToOne: false
-            referencedRelation: "notebooks"
             referencedColumns: ["id"]
           },
         ]
@@ -1189,6 +1211,36 @@ export type Database = {
           },
         ]
       }
+      task_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          points: number
+          task_key: string
+          threshold_rules: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          points?: number
+          task_key: string
+          threshold_rules?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          points?: number
+          task_key?: string
+          threshold_rules?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       usage_logs: {
         Row: {
           created_at: string | null
@@ -1254,6 +1306,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_activity_log: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          id: string
+          idempotency_key: string | null
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_flashcard_progress: {
         Row: {
@@ -1369,6 +1448,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_friend_invite: { Args: { p_invite_code: string }; Returns: Json }
       apply_streak_freeze: {
         Args: { p_timezone?: string; p_user_id: string }
         Returns: Json
@@ -1394,49 +1474,17 @@ export type Database = {
         Args: { p_timezone?: string; p_user_id: string }
         Returns: Json
       }
-      cleanup_old_jobs: { Args: never; Returns: number }
-      complete_job: {
-        Args: { p_job_id: string; p_result?: Json }
-        Returns: undefined
+      check_task_thresholds: {
+        Args: { p_metadata: Json; p_thresholds: Json }
+        Returns: boolean
       }
-      enqueue_processing_job: {
-        Args: {
-          p_estimated_pages?: number
-          p_file_size_bytes?: number
-          p_job_type?: string
-          p_material_id: string
-          p_notebook_id: string
-          p_priority?: number
-          p_user_id: string
-        }
-        Returns: string
-      }
-      fail_job: {
-        Args: {
-          p_error_details?: Json
-          p_error_message: string
-          p_job_id: string
-          p_should_retry?: boolean
-        }
-        Returns: undefined
-      }
+      create_friend_invite: { Args: never; Returns: Json }
       get_daily_tasks: {
         Args: { p_timezone?: string; p_user_id: string }
         Returns: Json[]
       }
       get_foundational_tasks: { Args: { p_user_id: string }; Returns: Json }
-      get_next_pending_job: {
-        Args: never
-        Returns: {
-          job_id: string
-          p_estimated_pages: number
-          p_file_size_bytes: number
-          p_job_type: string
-          p_material_id: string
-          p_notebook_id: string
-          p_user_id: string
-        }[]
-      }
+      get_friend_streaks: { Args: never; Returns: Json }
       get_task_progress: {
         Args: { p_task_key: string; p_timezone?: string; p_user_id: string }
         Returns: Json
@@ -1460,10 +1508,31 @@ export type Database = {
         Args: { p_timezone?: string; p_user_id: string }
         Returns: Json
       }
+      invoke_friend_streak_deaths: { Args: never; Returns: undefined }
+      invoke_push_reminders: { Args: never; Returns: undefined }
+      log_activity: {
+        Args: {
+          p_activity_type: string
+          p_idempotency_key?: string
+          p_metadata?: Json
+        }
+        Returns: Json
+      }
       merge_profile_meta: {
         Args: { p_new_meta: Json; p_user_id: string }
         Returns: undefined
       }
+      nudge_friend: { Args: { p_friend_streak_id: string }; Returns: Json }
+      process_activity_rewards: {
+        Args: { p_activity_id: string }
+        Returns: Json
+      }
+      processor_pet_security: { Args: { p_activity_id: string }; Returns: Json }
+      processor_study_rewards: {
+        Args: { p_activity_id: string }
+        Returns: Json
+      }
+      remove_friend: { Args: { p_friend_streak_id: string }; Returns: Json }
       search_embeddings: {
         Args: {
           filter_notebook_id?: string
@@ -1479,15 +1548,7 @@ export type Database = {
           similarity: number
         }[]
       }
-      update_job_progress: {
-        Args: {
-          p_job_id: string
-          p_message?: string
-          p_processed_pages?: number
-          p_progress: number
-        }
-        Returns: undefined
-      }
+      update_friend_streaks: { Args: never; Returns: Json }
     }
     Enums: {
       processing_job_status:

@@ -1,17 +1,36 @@
 /**
  * Edge Function: Process Material
  *
- * Processes uploaded materials by:
- * 1. Extracting content (PDF→text, image→OCR, audio→transcript)
- * 2. Generating AI title and concise overview (60-85 words - quick, scannable summary)
- * 3. Updating material and notebook records
- * 4. Logging usage for cost tracking
+ * Phase 2: Fire-and-forget processing via EdgeRuntime.waitUntil().
  *
- * Phase 2 Implementation with:
- * - Gemini 2.0 Flash PDF extraction (multimodal AI)
- * - Gemini 2.0 Flash OCR for camera photos (same API as PDFs)
- * - AssemblyAI audio transcription
- * - OpenRouter LLM title and preview generation
+ * Flow:
+ *   1. Validate request (auth, rate limit, material/notebook fetch, size guard)
+ *   2. Acquire lock (material.status = processing, notebook.status = extracting)
+ *   3. Return 200 immediately with { accepted: true } so the client releases
+ *      its HTTP connection
+ *   4. EdgeRuntime.waitUntil() runs the actual extraction + preview in the
+ *      background. Completion is signaled to the client via Realtime updates
+ *      on the notebooks table (handled by lib/store/slices/notebookSlice.ts).
+ *
+ * Why fire-and-forget: Phase 1 discovered that iOS/Expo HTTP stack drops
+ * long-running connections around 30-60s, making supabase-js throw
+ * FunctionsHttpError with message "Edge Function returned a non-2xx status
+ * code" for uploads that were actually succeeding server-side. Returning
+ * early means the client's connection lifecycle is decoupled from server
+ * processing duration — the class of false failures is gone.
+ *
+ * Per-material-type handling:
+ *   - PDF: single Gemini 2.5 Flash call via PdfProcessor (extraction +
+ *          classification + preview in one structured-output response)
+ *   - Everything else: traditional two-step via ContentExtractor +
+ *                      PreviewGenerator (unchanged from Phase 1 behavior,
+ *                      just wrapped in waitUntil)
+ *
+ * The "last material triggers preview" aggregation pattern was deleted:
+ * each material now generates its own preview from its own content. The
+ * notebook's top-level preview reflects whichever material completed last.
+ * A future "Regenerate from all sources" UX button will cover the combined-
+ * preview case for multi-material notebooks.
  */
 
 import { createClient } from 'supabase';
@@ -22,97 +41,128 @@ import { checkRateLimit, RATE_LIMITS } from '../_shared/ratelimit.ts';
 import { validateUUID, validateString } from '../_shared/validation.ts';
 import { PreviewGenerator } from '../_shared/material-processing/preview-generator.ts';
 import { ContentExtractor } from '../_shared/material-processing/content-extractor.ts';
-import { LargePDFHandler } from '../_shared/material-processing/large-pdf-handler.ts';
-import { MaterialRepository, NotebookRepository, UsageLogger, StorageCleanup } from '../_shared/material-processing/database-operations.ts';
+import { PdfProcessor } from '../_shared/material-processing/pdf-processor.ts';
+import { PdfSizeGuard } from '../_shared/material-processing/pdf-size-guard.ts';
+import {
+  MaterialRepository,
+  NotebookRepository,
+  UsageLogger,
+  StorageCleanup,
+} from '../_shared/material-processing/database-operations.ts';
 import { initSentry, captureException, setUser } from '../_shared/sentry.ts';
 
 // Initialize Sentry once when the isolate starts
 initSentry();
 
 /**
- * Module-level in-flight context. The `beforeunload` and `unhandledrejection`
- * handlers read from this so we can write a forensic breadcrumb to
- * `materials.meta` even when the function is killed by WORKER_LIMIT / timeout
- * before any catch block runs.
- *
- * See: https://supabase.com/docs/guides/functions/background-tasks
+ * Ambient declaration for the Supabase Edge Runtime global that exposes
+ * `waitUntil`. Deno's built-in types don't know about this, but Supabase
+ * exposes it as a global inside deployed edge functions. See
+ * https://supabase.com/docs/guides/functions/background-tasks.
+ */
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<unknown>): void;
+};
+
+/**
+ * Per-request in-flight context. Phase 2 allows multiple concurrent
+ * requests in a single isolate (the fire-and-forget pattern means the
+ * synchronous handler returns before the background work completes, so a
+ * new request can arrive while the previous one's waitUntil task is still
+ * running). We track all of them in a Set so the shutdown handler can
+ * flush forensic breadcrumbs for every active task at once.
  */
 interface InFlightCtx {
   supabase: any | null;
   materialId: string | null;
   notebookId: string | null;
   userId: string | null;
+  kind: string | null;
   phase: string;
   startedAt: number;
   failurePersisted: boolean;
 }
-const inflight: InFlightCtx = {
-  supabase: null,
-  materialId: null,
-  notebookId: null,
-  userId: null,
-  phase: 'idle',
-  startedAt: 0,
-  failurePersisted: false,
+
+const inflightRequests = new Set<InFlightCtx>();
+
+/**
+ * Phase-breadcrumb helper. Logs to console AND mutates the ctx in place so
+ * the shutdown handler can read the current phase.
+ */
+const setPhase = (ctx: InFlightCtx, p: string) => {
+  ctx.phase = p;
+  console.log(
+    `[process-material] phase=${p} material=${ctx.materialId} t=${Date.now() - ctx.startedAt}ms`
+  );
 };
 
-const setPhase = (p: string) => {
-  inflight.phase = p;
-  console.log(`[process-material] phase=${p} t=${Date.now() - inflight.startedAt}ms`);
-};
-
-// Forensic breadcrumb on runtime shutdown (OOM / wall-clock / boot error).
-// We can't await here reliably, so fire-and-forget a best-effort update.
+/**
+ * Forensic breadcrumb on runtime shutdown (OOM / wall-clock / boot error).
+ * Iterates every in-flight request and fires a best-effort UPDATE so every
+ * active background task gets a failure row even if the isolate is dying.
+ */
 addEventListener('beforeunload', (ev: any) => {
   const reason = ev?.detail?.reason || 'unknown';
-  console.error(`[process-material] beforeunload phase=${inflight.phase} reason=${reason}`);
-  if (!inflight.supabase || !inflight.materialId) return;
-  try {
-    inflight.supabase
-      .from('materials')
-      .update({
-        status: 'failed',
-        meta: {
-          error: `edge_function_shutdown: ${reason}`,
-          error_type: 'WORKER_SHUTDOWN',
-          shutdown_reason: reason,
-          last_phase: inflight.phase,
-          duration_ms: Date.now() - inflight.startedAt,
-          failed_at: new Date().toISOString(),
-        },
-      })
-      .eq('id', inflight.materialId)
-      .then(() => {})
-      .catch((e: any) => console.error('[process-material] beforeunload write failed:', e));
-  } catch (e) {
-    console.error('[process-material] beforeunload threw:', e);
+  console.error(
+    `[process-material] beforeunload reason=${reason} inflight=${inflightRequests.size}`
+  );
+  for (const ctx of inflightRequests) {
+    if (!ctx.supabase || !ctx.materialId) continue;
+    try {
+      ctx.supabase
+        .from('materials')
+        .update({
+          status: 'failed',
+          meta: {
+            error: `edge_function_shutdown: ${reason}`,
+            error_type: 'WORKER_SHUTDOWN',
+            shutdown_reason: reason,
+            last_phase: ctx.phase,
+            duration_ms: Date.now() - ctx.startedAt,
+            failed_at: new Date().toISOString(),
+          },
+        })
+        .eq('id', ctx.materialId)
+        .then(() => {})
+        .catch((e: any) =>
+          console.error('[process-material] beforeunload write failed:', e)
+        );
+    } catch (e) {
+      console.error('[process-material] beforeunload threw:', e);
+    }
   }
 });
 
-// Catch floating promise rejections so they also land in materials.meta.
+/**
+ * Catch floating promise rejections in background tasks. Without this,
+ * unhandled rejections would silently hit the isolate and leave the
+ * material stuck in 'processing'.
+ */
 addEventListener('unhandledrejection', (ev: any) => {
   const reason = ev?.reason;
   const message = reason?.message || String(reason);
-  console.error(`[process-material] unhandledrejection phase=${inflight.phase}:`, message);
-  if (!inflight.supabase || !inflight.materialId) return;
-  try {
-    inflight.supabase
-      .from('materials')
-      .update({
-        status: 'failed',
-        meta: {
-          error: `unhandled_rejection: ${message}`,
-          error_type: reason?.name || 'UnhandledRejection',
-          error_stack: (reason?.stack || '').slice(0, 2000),
-          last_phase: inflight.phase,
-          duration_ms: Date.now() - inflight.startedAt,
-          failed_at: new Date().toISOString(),
-        },
-      })
-      .eq('id', inflight.materialId)
-      .then(() => {})
-      .catch(() => {});
-  } catch {}
+  console.error(`[process-material] unhandledrejection:`, message);
+  for (const ctx of inflightRequests) {
+    if (!ctx.supabase || !ctx.materialId) continue;
+    try {
+      ctx.supabase
+        .from('materials')
+        .update({
+          status: 'failed',
+          meta: {
+            error: `unhandled_rejection: ${message}`,
+            error_type: reason?.name || 'UnhandledRejection',
+            error_stack: (reason?.stack || '').slice(0, 2000),
+            last_phase: ctx.phase,
+            duration_ms: Date.now() - ctx.startedAt,
+            failed_at: new Date().toISOString(),
+          },
+        })
+        .eq('id', ctx.materialId)
+        .then(() => {})
+        .catch(() => {});
+    } catch {}
+  }
   ev?.preventDefault?.();
 });
 
@@ -123,29 +173,36 @@ Deno.serve(async (req) => {
   }
 
   const corsHeaders = getCorsHeaders(req);
-  let notebookId: string | undefined;
-  // Hoisted so the outer catch block can reference user.id without a
-  // block-scope ReferenceError (which was previously causing the platform
-  // to return a plain-text "Internal Server Error" instead of our JSON body).
-  let user: any = null;
 
-  // Reset in-flight context for this invocation so the shutdown handler has
-  // the current material to write a breadcrumb against.
-  inflight.supabase = null;
-  inflight.materialId = null;
-  inflight.notebookId = null;
-  inflight.userId = null;
-  inflight.phase = 'init';
-  inflight.startedAt = Date.now();
-  inflight.failurePersisted = false;
+  // Create a per-request context. Hoisted so catch blocks can use it, and
+  // registered in the Set so beforeunload can flush breadcrumbs for it.
+  const ctx: InFlightCtx = {
+    supabase: null,
+    materialId: null,
+    notebookId: null,
+    userId: null,
+    kind: null,
+    phase: 'init',
+    startedAt: Date.now(),
+    failurePersisted: false,
+  };
+  inflightRequests.add(ctx);
+
+  // Hoisted for the outer catch (see Phase 1 fix: the old code had this
+  // declared inside the inner try, causing a ReferenceError in the outer
+  // catch that made the platform return plain-text "Internal Server Error"
+  // instead of our JSON 500 body).
+  let user: any = null;
+  let originalTitle = '';
 
   try {
-    setPhase('init');
+    setPhase(ctx, 'init');
+
     // Initialize Supabase client (service role)
     const supabaseUrl = getRequiredEnv('SUPABASE_URL');
     const supabaseServiceKey = getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    inflight.supabase = supabase;
+    ctx.supabase = supabase;
 
     // Initialize repositories
     const materialRepo = new MaterialRepository(supabase);
@@ -157,15 +214,14 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('authorization');
     const isInternalWebhook = req.headers.get('x-internal-webhook') === 'true';
 
-    // `user` is hoisted above — do not re-declare here.
     let isServiceBackdoor = false;
 
     if (isInternalWebhook) {
-      // Internal system-to-system call (Bulletproof Architecture)
       isServiceBackdoor = true;
       console.log('[Auth] Bypassing user JWT for internal webhook call');
     } else {
       if (!authHeader) {
+        inflightRequests.delete(ctx);
         return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -176,31 +232,29 @@ Deno.serve(async (req) => {
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
 
       if (authError || !authUser) {
+        inflightRequests.delete(ctx);
         return new Response(JSON.stringify({ error: 'Unauthorized', details: authError }), {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       user = authUser;
-      // Set user context in Sentry for better debugging
       setUser(user.id);
     }
 
-    setPhase('parsing_request');
-    // Parse request body
+    setPhase(ctx, 'parsing_request');
     const body = await req.json();
     let materialId = body.material_id;
 
-    // Handle Database Webhook payload if applicable
-    // Webhooks send a payload like { record: { ... }, type: 'INSERT', ... }
+    // Handle Supabase Database Webhook payload format
     if (body.record && body.table === 'objects' && body.schema === 'storage') {
-      const storagePath = body.record.name; // user_id/material_id/filename
+      const storagePath = body.record.name;
       materialId = storagePath.split('/')[1];
       console.log(`[Webhook] Detected storage upload for material: ${materialId}`);
     }
 
-    // Validate material_id
     if (!materialId) {
+      inflightRequests.delete(ctx);
       return new Response(JSON.stringify({ error: 'Missing material_id' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -209,26 +263,30 @@ Deno.serve(async (req) => {
 
     const materialIdValidation = validateUUID(materialId, 'material_id');
     if (!materialIdValidation.isValid) {
+      inflightRequests.delete(ctx);
       return new Response(JSON.stringify({ error: materialIdValidation.error }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Publish materialId to in-flight context so shutdown handlers can record it
-    inflight.materialId = materialId;
+    ctx.materialId = materialId;
 
-    setPhase('fetching_material');
-    // Fetch material and verify ownership (if not service backdoor)
+    setPhase(ctx, 'fetching_material');
     const { data: material, error: materialError } = await materialRepo.findById(materialId);
 
     if (materialError || !material) {
-      return new Response(JSON.stringify({ error: 'Material not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      inflightRequests.delete(ctx);
+      return new Response(JSON.stringify({ error: 'Material not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // IDEMPOTENCY: If material is already processed or actively being processed, return early
+    // IDEMPOTENCY: if already processed or in-flight, return early
     if (material.status === 'processed' || material.status === 'processing') {
-      console.log(`[Idempotency] Material ${materialId} is already ${material.status}. Returning success.`);
+      console.log(`[Idempotency] Material ${materialId} is already ${material.status}.`);
+      inflightRequests.delete(ctx);
       return new Response(
         JSON.stringify({
           success: true,
@@ -240,37 +298,45 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get notebook from the new notebook_id column
-    notebookId = material.notebook_id;
-    inflight.notebookId = notebookId ?? null;
+    ctx.kind = material.kind;
+
+    const notebookId = material.notebook_id;
+    ctx.notebookId = notebookId ?? null;
 
     if (!notebookId) {
-      return new Response(JSON.stringify({ error: 'Material is not associated with a notebook' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      inflightRequests.delete(ctx);
+      return new Response(
+        JSON.stringify({ error: 'Material is not associated with a notebook' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const { data: notebook, error: notebookError } = await notebookRepo.findById(notebookId);
 
     if (notebookError || !notebook) {
-      return new Response(JSON.stringify({ error: 'Notebook not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      inflightRequests.delete(ctx);
+      return new Response(JSON.stringify({ error: 'Notebook not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // AUTHORIZATION: Verify user owns this notebook/material (unless it's an internal webhook)
+    // AUTHORIZATION
     if (!isServiceBackdoor) {
       if (!user || notebook.user_id !== user.id) {
+        inflightRequests.delete(ctx);
         return new Response(
-          JSON.stringify({
-            error: 'Forbidden: You do not have permission to access this material',
-          }),
+          JSON.stringify({ error: 'Forbidden: You do not have permission to access this material' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }
 
     const userId = notebook.user_id;
-    inflight.userId = userId;
-    const originalTitle = notebook.title; // Store original title for error recovery
+    ctx.userId = userId;
+    originalTitle = notebook.title;
 
-    // RATE LIMITING: Check if user is making too many requests
+    // RATE LIMITING
     const rateLimitResult = await checkRateLimit({
       identifier: userId,
       limit: RATE_LIMITS.PROCESS_MATERIAL.limit,
@@ -279,6 +345,7 @@ Deno.serve(async (req) => {
     });
 
     if (!rateLimitResult.allowed) {
+      inflightRequests.delete(ctx);
       return new Response(
         JSON.stringify({
           error: 'Too many requests. Please wait before processing more materials.',
@@ -300,273 +367,266 @@ Deno.serve(async (req) => {
       );
     }
 
-    // QUOTA NOTE: Preview generation is unlimited for all users (trial + premium)
-    // Quota enforcement only applies to:
-    //   - Studio jobs (flashcards/quiz generation) - 5 for trial
-    //   - Audio jobs (podcast generation) - 3 for trial
-    // Quota check will be added in Phase 3 (Studio) and Phase 4 (Audio)
+    setPhase(ctx, 'checking_pdf_size');
+    // Hard 14 MB ceiling for PDFs. PDFs over this are rejected outright (the
+    // current Gemini-via-OpenRouter path can't handle them and we'd just
+    // waste an upload round-trip). Other material types pass through.
+    const pdfSizeGuard = new PdfSizeGuard(supabase);
+    const sizeCheck = await pdfSizeGuard.check(material);
 
-    setPhase('checking_large_pdf');
-    // LARGE PDF DETECTION: Route large PDFs to background processing
-    const largePDFHandler = new LargePDFHandler(supabase);
-    const largePDFCheck = await largePDFHandler.checkAndQueue(material, notebookId, userId);
-
-    // If the PDF was rejected outright (over the hard ceiling), persist a
-    // user-facing error and return cleanly. This catches retry / webhook /
-    // any path that bypasses the client-side guard.
-    if (largePDFCheck.rejectedReason) {
-      console.warn(`[process-material] Rejected: ${largePDFCheck.rejectedReason}`);
-      await materialRepo.updateWithError(materialId, largePDFCheck.rejectedReason, {
+    if (sizeCheck.rejectedReason) {
+      console.warn(`[process-material] Rejected: ${sizeCheck.rejectedReason}`);
+      await materialRepo.updateWithError(materialId, sizeCheck.rejectedReason, {
         error_type: 'PDFTooLarge',
         user_facing: true,
-        file_size_bytes: largePDFCheck.fileSizeBytes,
-        last_phase: 'checking_large_pdf',
-        duration_ms: Date.now() - inflight.startedAt,
+        file_size_bytes: sizeCheck.fileSizeBytes,
+        last_phase: 'checking_pdf_size',
+        duration_ms: Date.now() - ctx.startedAt,
       });
-      inflight.failurePersisted = true;
-      await notebookRepo.updateWithError(notebookId, originalTitle, largePDFCheck.rejectedReason);
+      ctx.failurePersisted = true;
+      await notebookRepo.updateWithError(notebookId, originalTitle, sizeCheck.rejectedReason);
+      inflightRequests.delete(ctx);
       return new Response(
         JSON.stringify({
           success: false,
           materialId,
           notebook_id: notebookId,
           rejected: true,
-          reason: largePDFCheck.rejectedReason,
-          file_size_bytes: largePDFCheck.fileSizeBytes,
+          reason: sizeCheck.rejectedReason,
+          file_size_bytes: sizeCheck.fileSizeBytes,
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (largePDFCheck.shouldProcessInBackground) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          materialId,
-          notebook_id: notebookId,
-          background_processing: true,
-          job_id: largePDFCheck.jobId,
-          estimated_pages: largePDFCheck.estimatedPages,
-          message: largePDFCheck.message,
-        }),
-        { status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Update notebook status to 'extracting' for processing
+    // ----------------------------------------------------------------
+    // LOCK ACQUIRED. Mark as processing, set notebook to extracting, then
+    // fire-and-forget the actual work via EdgeRuntime.waitUntil.
+    // ----------------------------------------------------------------
+    setPhase(ctx, 'lock_acquiring');
+    await supabase.from('materials').update({ status: 'processing' }).eq('id', materialId);
     await notebookRepo.updateStatus(notebookId, 'extracting');
 
-    try {
-      // Mark as processing
-      await supabase.from('materials').update({ status: 'processing' }).eq('id', materialId);
+    // Spawn the background task. The closure captures everything it needs
+    // from the local scope (including `ctx`) so concurrent requests in the
+    // same isolate don't step on each other.
+    EdgeRuntime.waitUntil(
+      (async () => {
+        try {
+          if (material.kind === 'pdf') {
+            // Phase 2 single-call PDF path: extraction + classification +
+            // preview all in one Gemini 2.5 Flash call via OpenRouter.
+            setPhase(ctx, 'pdf_processing');
+            const processor = new PdfProcessor(supabase);
+            const result = await processor.process(material, notebook.title);
 
-      setPhase('extracting');
-      // STEP 1: Extract content
-      console.log(`Extracting content from ${material.kind}: ${materialId}`);
-      const contentExtractor = new ContentExtractor(supabase);
-      const { text: extractedContent, metadata: extractMetadata } = await contentExtractor.extract(material);
+            setPhase(ctx, 'saving_pdf_results');
+            const contentSummary = buildPerMaterialSummary(result.content_classification);
 
-      console.log(`Extracted ${extractedContent.length} characters`);
+            await Promise.all([
+              materialRepo.updateWithExtractedContentAndPreview(
+                materialId,
+                result.extractedText,
+                result.preview.overview,
+                result.content_classification,
+                material.meta || {}
+              ),
+              notebookRepo.updateWithPreview(notebookId, {
+                title: result.title,
+                emoji: !notebook.emoji ? result.emoji : undefined,
+                color: !notebook.color ? result.color : undefined,
+                preview: result.preview,
+                contentClassification: result.content_classification,
+                contentSummary,
+              }),
+              usageLogger.logSuccess(userId, notebookId, 'pdf_extract_preview', result)
+                .catch((err) =>
+                  console.error('[UsageLogger] Non-critical logging failure:', err)
+                ),
+            ]);
 
-      setPhase('saving_content');
-      // STEP 2: Save extracted content
-      await materialRepo.updateWithExtractedContent(
-        materialId,
-        extractedContent,
-        material.meta || {},
-        extractMetadata || {}
-      );
+            // Phase 2.5: delete the original PDF from storage now that the
+            // extracted text is safely in materials.content. None of the
+            // downstream features (chat, flashcards, quiz, source viewer)
+            // read from the original file — they all use materials.content.
+            // Keeping the file would just accumulate storage quota forever.
+            //
+            // Best-effort — StorageCleanup.deleteFile() catches its own errors
+            // and never throws, so a storage delete failure won't bubble up
+            // and mark the material as failed.
+            //
+            // Only fires on SUCCESS. Failed/pending/processing materials keep
+            // their file so retry can re-download and try again.
+            if (material.storage_path) {
+              setPhase(ctx, 'deleting_pdf_storage');
+              await storageCleanup.deleteFile(material.storage_path);
+            }
 
-      setPhase('checking_pending_materials');
-      // STEP 3: Check if other materials are still processing
-      // Only generate preview when ALL materials are done (Last Material Triggers Preview pattern)
-      const pendingCount = await materialRepo.countPendingMaterials(notebookId, materialId);
+            setPhase(ctx, 'complete');
+            console.log(
+              `[process-material] PDF processed: ${materialId} (${result.extractedText.length} chars, ${result.latency}ms)`
+            );
+          } else {
+            // Non-PDF path: traditional two-step (extract then preview) but
+            // without the "last material triggers preview" aggregation.
+            setPhase(ctx, 'extracting');
+            const contentExtractor = new ContentExtractor(supabase);
+            const { text: extractedContent, metadata: extractMetadata } =
+              await contentExtractor.extract(material);
 
-      if (pendingCount > 0) {
-        // Other materials still processing - defer preview generation to the last one
-        console.log(`[Preview Deferred] ${pendingCount} materials still processing. Skipping preview generation.`);
+            setPhase(ctx, 'saving_content');
+            await materialRepo.updateWithExtractedContent(
+              materialId,
+              extractedContent,
+              material.meta || {},
+              extractMetadata || {}
+            );
 
-        // Just update notebook status to show progress
-        await notebookRepo.updateStatus(notebookId, 'extracting');
+            setPhase(ctx, 'generating_preview');
+            const previewGenerator = new PreviewGenerator();
+            const llmResult = await previewGenerator.generate(extractedContent, notebook.title);
 
-        return new Response(
-          JSON.stringify({
-            success: true,
-            materialId,
+            setPhase(ctx, 'saving_preview');
+            const contentSummary = buildPerMaterialSummary(llmResult.content_classification);
+
+            await Promise.all([
+              materialRepo.updateWithPreview(
+                materialId,
+                llmResult.preview.overview,
+                llmResult.content_classification,
+                material.meta || {}
+              ),
+              notebookRepo.updateWithPreview(notebookId, {
+                title: llmResult.title,
+                emoji: !notebook.emoji ? llmResult.emoji : undefined,
+                color: !notebook.color ? llmResult.color : undefined,
+                preview: llmResult.preview,
+                contentClassification: llmResult.content_classification,
+                contentSummary,
+              }),
+              usageLogger.logSuccess(userId, notebookId, 'preview', llmResult)
+                .catch((err) =>
+                  console.error('[UsageLogger] Non-critical logging failure:', err)
+                ),
+            ]);
+
+            setPhase(ctx, 'complete');
+            console.log(
+              `[process-material] ${material.kind} processed: ${materialId} (${extractedContent.length} chars, ${llmResult.latency}ms)`
+            );
+          }
+        } catch (processingError: any) {
+          setPhase(ctx, 'error');
+          console.error(
+            `[process-material] Background task error in phase=${ctx.phase}:`,
+            processingError
+          );
+
+          await captureException(processingError, {
+            material_id: materialId,
             notebook_id: notebookId,
-            preview_deferred: true,
-            pending_materials: pendingCount,
-            message: `Material extracted. Preview deferred (${pendingCount} materials still processing).`,
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+            user_id: user?.id,
+            operation: 'process-material-background',
+            phase: ctx.phase,
+            kind: material.kind,
+          });
 
-      // This is the LAST material - generate final preview for all sources
-      console.log('[Preview Generation] This is the last material. Generating combined preview...');
+          const jobType =
+            material.kind === 'pdf' ? 'pdf_extract_preview' : 'preview';
 
-      // STEP 4: Fetch ALL processed materials for this notebook to generate a combined preview
-      const allMaterials = await materialRepo.findAllProcessedByNotebook(notebookId);
+          try {
+            await materialRepo.updateWithError(materialId, processingError.message, {
+              error_type: processingError?.name || 'Error',
+              error_stack: String(processingError?.stack || '').slice(0, 2000),
+              last_phase: ctx.phase,
+              duration_ms: Date.now() - ctx.startedAt,
+            });
+            ctx.failurePersisted = true;
+          } catch (writeErr) {
+            console.error(
+              '[process-material] Failed to persist material error:',
+              writeErr
+            );
+          }
 
-      let combinedContent = "";
-      if (allMaterials && allMaterials.length > 0) {
-        combinedContent = allMaterials
-          .map((m: any, i: number) => {
-            const title = m.meta?.title || m.meta?.filename || `Source ${i + 1}`;
-            return `--- SOURCE: ${title} (${m.kind}) ---\n${m.content}\n--- END ---`;
-          })
-          .join('\n\n');
-      } else {
-        combinedContent = extractedContent; // Fallback to current
-      }
+          try {
+            await notebookRepo.updateWithError(
+              notebookId,
+              originalTitle,
+              processingError.message
+            );
+          } catch (writeErr) {
+            console.error(
+              '[process-material] Failed to persist notebook error:',
+              writeErr
+            );
+          }
 
-      setPhase('generating_preview');
-      // STEP 5: Generate AI title and preview based on COMBINED content
-      console.log(`Generating AI title and preview from ${allMaterials?.length || 1} combined sources...`);
-      const previewStartTime = Date.now();
+          try {
+            await usageLogger.logError(userId, notebookId, jobType, processingError.message);
+          } catch (writeErr) {
+            console.error('[UsageLogger] Non-critical logging failure:', writeErr);
+          }
+        } finally {
+          // Remove from the in-flight set whether we succeeded or failed,
+          // so beforeunload doesn't try to write a breadcrumb for a task
+          // that's already finished.
+          inflightRequests.delete(ctx);
+        }
+      })()
+    );
 
-      const previewGenerator = new PreviewGenerator();
-      const llmResult = await previewGenerator.generate(combinedContent, notebook.title);
-      const aiTitle = llmResult.title;
-      const preview = llmResult.preview;
-      const contentClassification = llmResult.content_classification;
-
-      const previewLatency = Date.now() - previewStartTime;
-      console.log(`AI title and preview generated in ${previewLatency}ms`);
-      console.log(`Content classified as: ${contentClassification.type} (${contentClassification.exam_relevance} exam relevance)`);
-
-      // STEP 5.5: Build content summary from ALL materials in this notebook for multi-material awareness
-      const updatedMaterials = await materialRepo.findAllByNotebook(notebookId);
-
-      const materialClassifications = (updatedMaterials || [])
-        .map((m: any) => m.meta?.content_classification)
-        .filter(Boolean);
-
-      const contentSummary = {
-        material_count: updatedMaterials?.length || 1,
-        has_past_paper: materialClassifications.some((c: any) => c.type === 'past_paper'),
-        has_notes: materialClassifications.some((c: any) =>
-          c.type === 'lecture_notes' || c.type === 'textbook_chapter'
-        ),
-        has_video: materialClassifications.some((c: any) => c.type === 'video_transcript'),
-        material_types: [...new Set(materialClassifications.map((c: any) => c.type))],
-        // Use highest exam relevance from any material
-        exam_relevance: materialClassifications.some((c: any) => c.exam_relevance === 'high')
-          ? 'high'
-          : materialClassifications.some((c: any) => c.exam_relevance === 'medium')
-            ? 'medium'
-            : 'low',
-        primary_subject: contentClassification.subject_area, // From latest material
-      };
-
-      console.log(`Content summary: ${contentSummary.material_count} materials, has_past_paper: ${contentSummary.has_past_paper}, has_notes: ${contentSummary.has_notes}`);
-
-      setPhase('saving_preview');
-      // STEP 6, 7, 8: Update records and log usage in parallel (Turbo-Boost)
-      console.log('Finalizing database updates...');
-      await Promise.all([
-        // Update material with preview
-        materialRepo.updateWithPreview(
-          materialId,
-          preview.overview,
-          contentClassification,
-          material.meta || {}
-        ),
-
-        // Update notebook with AI-generated title, preview, classification, and summary
-        notebookRepo.updateWithPreview(notebookId, {
-          title: aiTitle,
-          emoji: !notebook.emoji ? llmResult.emoji : undefined,
-          color: !notebook.color ? llmResult.color : undefined,
-          preview,
-          contentClassification,
-          contentSummary,
-        }),
-
-        // Log usage with ACTUAL token counts from LLM API (Non-critical fallback)
-        usageLogger.logSuccess(userId, notebookId, 'preview', llmResult)
-          .catch(err => console.error('[UsageLogger] Non-critical logging failure:', err))
-      ]);
-
-      setPhase('complete');
-      console.log('Material processed successfully - Final preview generated');
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          materialId,
-          notebook_id: notebookId,
-          preview,
-          sources_count: allMaterials?.length || 1,
-          message: 'Material processed and final preview generated',
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } catch (processingError: any) {
-      console.error(`[process-material] Processing error in phase=${inflight.phase}:`, processingError);
-
-      // Capture error in Sentry with context
-      await captureException(processingError, {
-        material_id: materialId,
+    // Return the "accepted" response IMMEDIATELY. Client releases the
+    // connection here — Realtime will deliver the final state via
+    // notebooks-table UPDATE events once the background task finishes.
+    setPhase(ctx, 'returned_accepted');
+    return new Response(
+      JSON.stringify({
+        success: true,
+        accepted: true,
+        materialId,
         notebook_id: notebookId,
-        user_id: user?.id,
-        operation: 'process-material-main',
-        phase: inflight.phase,
-      });
-
-      // Update material with specific error — include forensic extras so the
-      // next debugger doesn't have to reverse-engineer what died.
-      await materialRepo.updateWithError(materialId, processingError.message, {
-        error_type: processingError?.name || 'Error',
-        error_stack: String(processingError?.stack || '').slice(0, 2000),
-        last_phase: inflight.phase,
-        duration_ms: Date.now() - inflight.startedAt,
-      });
-      inflight.failurePersisted = true;
-
-      // Update notebook metadata (prevent UI freezing but record failure)
-      await notebookRepo.updateWithError(notebookId, originalTitle, processingError.message);
-
-      // Log failed usage
-      await usageLogger.logError(userId, notebookId, 'preview', processingError.message);
-
-      throw processingError;
-    }
+        kind: material.kind,
+        message: 'Processing started in background',
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error: any) {
-    console.error(`[process-material] Fatal error in phase=${inflight.phase}:`, error);
+    // Outer catch: synchronous setup errors only (auth parse, validation,
+    // rate limit, lock acquisition). Background task errors are caught
+    // inside the waitUntil closure.
+    console.error(`[process-material] Sync setup error in phase=${ctx.phase}:`, error);
 
-    // Capture fatal error in Sentry
     await captureException(error, {
-      operation: 'process-material-fatal',
-      notebook_id: notebookId,
+      operation: 'process-material-sync',
+      notebook_id: ctx.notebookId,
       user_id: user?.id,
-      phase: inflight.phase,
+      phase: ctx.phase,
     });
 
-    // Best-effort forensic write. Inner catch already wrote for its own errors,
-    // but anything that dies outside the inner try (auth, parse, large-pdf
-    // check) lands here — we still want to see it.
-    if (inflight.materialId && inflight.supabase && !inflight.failurePersisted) {
+    // Best-effort forensic write if we got far enough to have a materialId
+    if (ctx.materialId && ctx.supabase && !ctx.failurePersisted) {
       try {
-        await inflight.supabase
+        await ctx.supabase
           .from('materials')
           .update({
             status: 'failed',
             meta: {
-              error: error?.message || 'unknown_fatal',
+              error: error?.message || 'unknown_sync_error',
               error_type: error?.name || 'Error',
               error_stack: String(error?.stack || '').slice(0, 2000),
-              last_phase: inflight.phase,
-              duration_ms: Date.now() - inflight.startedAt,
+              last_phase: ctx.phase,
+              duration_ms: Date.now() - ctx.startedAt,
               failed_at: new Date().toISOString(),
             },
           })
-          .eq('id', inflight.materialId);
+          .eq('id', ctx.materialId);
       } catch (writeErr) {
-        console.error('[process-material] Failed to persist fatal error:', writeErr);
+        console.error('[process-material] Failed to persist sync error:', writeErr);
       }
     }
 
+    inflightRequests.delete(ctx);
     return new Response(
       JSON.stringify({
         error: error.message || 'Internal server error',
@@ -576,3 +636,30 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+/**
+ * Build a minimal content_summary for a single material. Phase 2 deletes
+ * the old "fetch all materials and aggregate" pattern — the notebook now
+ * reflects only the material that most recently completed. For multi-
+ * material notebooks, whichever material finishes last "wins" the notebook
+ * preview, classification, and summary.
+ *
+ * A future Phase 3 "Regenerate from all sources" button will recompute this
+ * by aggregating across all materials on user demand.
+ */
+function buildPerMaterialSummary(classification: {
+  type?: string | null;
+  exam_relevance?: string | null;
+  subject_area?: string | null;
+}): Record<string, any> {
+  const type = classification.type || 'general';
+  return {
+    material_count: 1,
+    has_past_paper: type === 'past_paper',
+    has_notes: type === 'lecture_notes' || type === 'textbook_chapter',
+    has_video: type === 'video_transcript',
+    material_types: [type],
+    exam_relevance: classification.exam_relevance || 'medium',
+    primary_subject: classification.subject_area || null,
+  };
+}

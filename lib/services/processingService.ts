@@ -36,18 +36,16 @@ export const processingService = {
         }
 
         if (materialId) {
-            // Create timeout promise (180 seconds)
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Edge Function request timed out after 180s')), 180000)
-            );
-
+            // Phase 2: process-material now returns 200 in <5s with
+            // { accepted: true } and runs the actual work in EdgeRuntime.waitUntil
+            // on the server side. We no longer race a 180s timeout against the
+            // edge function — there's nothing to race because the call returns
+            // almost immediately. Realtime delivers the final processed/failed
+            // state via lib/store/slices/notebookSlice.ts subscriptions.
             try {
-                const result: any = await Promise.race([
-                    supabase.functions.invoke('process-material', {
-                        body: { material_id: materialId },
-                    }),
-                    timeoutPromise,
-                ]);
+                const result: any = await supabase.functions.invoke('process-material', {
+                    body: { material_id: materialId },
+                });
 
                 const { data, error } = result;
                 if (error) {
@@ -59,7 +57,7 @@ export const processingService = {
                     //   (a) Server wrote a real user-facing failure (e.g. PDFTooLarge 400
                     //       rejection) — respect it quietly, don't fire the red error modal.
                     //   (b) Server actually succeeded and we're just seeing a dropped
-                    //       connection on iOS/Expo — trust Realtime, return network_interrupted.
+                    //       connection — trust Realtime, return network_interrupted.
                     //   (c) Unknown real error — log loudly and let the global handler fire.
                     const { data: material } = await supabase
                         .from('materials')
@@ -79,7 +77,9 @@ export const processingService = {
                         };
                     }
 
-                    // (b) Transient connection drop — let Realtime report the real status
+                    // (b) Transient connection drop — let Realtime report the real status.
+                    // Should be MUCH rarer post-Phase-2 because the server returns in <5s,
+                    // but iOS/Expo can still drop a connection in that window.
                     const errMsg = String(error?.message || error || '');
                     const isLikelyTransientConnection =
                         errMsg.includes('non-2xx') ||
@@ -104,64 +104,52 @@ export const processingService = {
                         .update({ status: 'ready_for_studio' })
                         .eq('id', notebookId);
                     return { status: 'failed', error };
-                } else {
-                    console.log('Edge Function triggered successfully:', data);
-
-                    // Check if this is a background processing response
-                    if (data?.background_processing && data?.job_id) {
-                        console.log('Large PDF queued for background processing:', data.job_id);
-                        return {
-                            status: 'background_processing',
-                            data,
-                            jobId: data.job_id,
-                            estimatedPages: data.estimated_pages,
-                        };
-                    }
-
-                    return { status: 'success', data };
                 }
+
+                // Phase 2 happy path: server accepted the work for background
+                // processing. The actual extraction/preview is running in
+                // EdgeRuntime.waitUntil and Realtime will deliver the final
+                // status. Nothing more for the client to do here.
+                if (data?.accepted) {
+                    console.log(
+                        `[ProcessingService] Edge Function accepted ${materialId} for background processing (kind=${data?.kind})`
+                    );
+                    return { status: 'accepted', data };
+                }
+
+                // Fallback: server returned 200 without `accepted: true`. This
+                // shouldn't happen post-Phase-2 but we handle it as plain success
+                // for backwards compatibility and idempotent re-invocations.
+                console.log('[ProcessingService] Edge Function returned success:', data);
+                return { status: 'success', data };
 
             } catch (err: any) {
-                const isTimeout = err.message?.includes('timed out');
-                const isNetworkError = err.message?.includes('fetch') || err.message?.includes('network');
+                // Real network errors only (no more 180s timeout race after Phase 2).
+                const isNetworkError =
+                    err.message?.includes('fetch') || err.message?.includes('network');
 
-                if (isTimeout) {
-                    await handleError(err, {
-                        operation: 'trigger_processing_timeout',
-                        component: 'processing-service',
-                        userId,
-                        metadata: { notebookId, materialId, errorType: 'timeout', timeout: '180s' }
-                    });
-                    await supabase
-                        .from('materials')
-                        .update({
-                            status: 'failed',
-                            meta: { error: 'Request timed out after 180s. Please retry.' }
-                        })
-                        .eq('id', materialId);
-
-                    await supabase
-                        .from('notebooks')
-                        .update({ status: 'ready_for_studio' })
-                        .eq('id', notebookId);
-                    return { status: 'failed', error: err };
-                } else if (isNetworkError) {
-                    console.warn('[ProcessingService] Network error during edge function trigger (likely app backgrounded):', err.message);
-                    console.warn('[ProcessingService] Relying on Realtime sync to get actual processing status');
+                if (isNetworkError) {
+                    console.warn(
+                        '[ProcessingService] Network error during edge function trigger (likely app backgrounded):',
+                        err.message
+                    );
+                    console.warn(
+                        '[ProcessingService] Relying on Realtime sync to get actual processing status'
+                    );
                     return { status: 'network_interrupted', error: err };
-                } else {
-                    await handleError(err, {
-                        operation: 'trigger_processing_error',
-                        component: 'processing-service',
-                        userId,
-                        metadata: { notebookId, materialId, errorType: 'permanent' }
-                    });
-                    await supabase
-                        .from('notebooks')
-                        .update({ status: 'ready_for_studio' })
-                        .eq('id', notebookId);
-                    return { status: 'failed', error: err };
                 }
+
+                await handleError(err, {
+                    operation: 'trigger_processing_error',
+                    component: 'processing-service',
+                    userId,
+                    metadata: { notebookId, materialId, errorType: 'permanent' },
+                });
+                await supabase
+                    .from('notebooks')
+                    .update({ status: 'ready_for_studio' })
+                    .eq('id', notebookId);
+                return { status: 'failed', error: err };
             }
         }
         return { status: 'pending' };

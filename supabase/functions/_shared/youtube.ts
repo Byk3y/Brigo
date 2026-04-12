@@ -444,32 +444,30 @@ export async function getYoutubeTranscript(url: string, _rapidApiKey: string): P
 /**
  * Clean up transcript with AI
  * Fixes common transcription errors and improves formatting
+ *
+ * Phase B: migrated from direct Gemini 2.0 Flash API to OpenRouter
+ * callLLMWithRetry. Returns { text, truncated } so callers can surface
+ * a warning when long transcripts are cut.
  */
 export async function cleanTranscriptWithAI(
-    rawTranscript: string,
-    apiKey: string
-): Promise<string> {
+    rawTranscript: string
+): Promise<{ text: string; truncated: boolean }> {
     // Skip if cleanup is disabled
     if (!YOUTUBE_CONFIG.cleanup.enabled) {
         console.log('[YouTube] AI cleanup disabled, returning formatted transcript');
-        return formatTranscript(rawTranscript);
+        return { text: formatTranscript(rawTranscript), truncated: false };
     }
 
-    console.log('[YouTube] Cleaning transcript with Gemini 2.0 Flash...');
+    const { callLLMWithRetry } = await import('./openrouter.ts');
+
+    console.log('[YouTube] Cleaning transcript via OpenRouter...');
     const startTime = Date.now();
 
+    const truncated = rawTranscript.length > 30000;
+
     try {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${YOUTUBE_CONFIG.cleanup.model}:generateContent?key=${apiKey}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            parts: [
-                                {
-                                    text: `You are an expert academic editor specializing in technology content. Below is a raw YouTube transcript that may contain speech-to-text errors.
+        const systemPrompt = 'You are an expert academic editor specializing in technology content.';
+        const userPrompt = `Below is a raw YouTube transcript that may contain speech-to-text errors.
 
 YOUR TASK:
 1. Add proper punctuation and capitalization
@@ -493,36 +491,27 @@ YOUR TASK:
 7. Return ONLY the cleaned transcript text
 
 RAW TRANSCRIPT:
-${rawTranscript.substring(0, 30000)}`,
-                                },
-                            ],
-                        },
-                    ],
-                    generationConfig: {
-                        temperature: 0.1,
-                        maxOutputTokens: 25000,
-                    },
-                }),
-            }
+${rawTranscript.substring(0, 30000)}`;
+
+        const result = await callLLMWithRetry(
+            'youtube_cleanup',
+            systemPrompt,
+            userPrompt,
+            { temperature: 0.1 }
         );
 
-        if (!response.ok) {
-            throw new Error(`Gemini API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const cleanedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const cleanedText = result.content;
 
         if (!cleanedText || cleanedText.trim() === '') {
-            throw new Error('Gemini returned empty response');
+            throw new Error('LLM returned empty response');
         }
 
         const duration = Date.now() - startTime;
-        console.log(`[YouTube] ✅ AI cleanup SUCCESS in ${duration}ms`);
+        console.log(`[YouTube] AI cleanup SUCCESS in ${duration}ms (model: ${result.model})`);
 
-        return cleanedText.trim();
+        return { text: cleanedText.trim(), truncated };
     } catch (error: any) {
         console.error('[YouTube] AI Cleaning failed, returning formatted raw:', error.message);
-        return formatTranscript(rawTranscript);
+        return { text: formatTranscript(rawTranscript), truncated };
     }
 }

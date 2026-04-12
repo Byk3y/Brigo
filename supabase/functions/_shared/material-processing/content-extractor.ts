@@ -134,6 +134,7 @@ export class ContentExtractor {
           processingTime: websiteResult.metadata.processingTime,
           contentLength: websiteResult.metadata.contentLength,
           warning: websiteResult.metadata.warning,
+          content_truncated: websiteResult.metadata.content_truncated ?? false,
         },
       },
     };
@@ -149,7 +150,6 @@ export class ContentExtractor {
    */
   private async extractYouTube(material: Material): Promise<ContentExtractionResult> {
     const { getYoutubeTranscriptSmart, cleanTranscriptWithAI } = await import('../youtube.ts');
-    const { getRequiredEnv } = await import('../env.ts');
 
     if (!material.external_url) {
       throw new Error('YouTube material missing external_url');
@@ -168,24 +168,26 @@ export class ContentExtractor {
       );
 
       // Step 2: Clean up transcript with AI (fixes "Cloud Code" → "Claude Code" etc.)
-      const apiKey = getRequiredEnv('GOOGLE_AI_API_KEY');
-      const cleanedTranscript = await cleanTranscriptWithAI(result.transcript, apiKey);
+      // Phase B: cleanTranscriptWithAI now uses OpenRouter (retry + fallback)
+      // and returns { text, truncated } to surface truncation warnings.
+      const cleaned = await cleanTranscriptWithAI(result.transcript);
 
       const processingTime = Date.now() - startTime;
       console.log(
         `[ContentExtractor] YouTube extraction SUCCESS: ` +
-        `${cleanedTranscript.length} chars in ${processingTime}ms (method: ${result.method})`
+        `${cleaned.text.length} chars in ${processingTime}ms (method: ${result.method})`
       );
 
       return {
-        text: cleanedTranscript,
+        text: cleaned.text,
         metadata: {
           youtube_extraction: {
             method: result.method,
             videoId: result.videoId,
             processingTime,
             rawLength: result.transcript.length,
-            cleanedLength: cleanedTranscript.length,
+            cleanedLength: cleaned.text.length,
+            content_truncated: cleaned.truncated,
           },
         },
       };

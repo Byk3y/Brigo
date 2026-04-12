@@ -7,17 +7,17 @@ import { getRequiredEnv } from '../../env.ts';
 
 /**
  * Configuration for OCR services
+ *
+ * Phase B: Gemini API key and model moved to OpenRouter (openrouter.ts).
+ * Model and maxTokens are now in the MODELS map ('image_ocr').
+ * topP/topK dropped (not supported via OpenRouter).
+ * This config retains systemPrompt, temperature, and baseConfidence.
  */
 export const OCR_CONFIG = {
   gemini: {
     enabled: true,
-    apiKeyEnvVar: 'GOOGLE_AI_API_KEY',
-    model: 'gemini-2.0-flash',
     baseConfidence: 90,
     temperature: 0.1,
-    topP: 1,
-    topK: 32,
-    maxOutputTokens: 4096,
     systemPrompt:
       'Extract all text from this image. Return only the extracted text without any commentary or explanation. If there is no text, respond with "No text detected".',
   },
@@ -32,14 +32,7 @@ export const OCR_CONFIG = {
 } as const;
 
 /**
- * Get API key for Gemini OCR
- */
-export function getGeminiApiKey(): string {
-  return getRequiredEnv(OCR_CONFIG.gemini.apiKeyEnvVar);
-}
-
-/**
- * Get API key for Google Vision OCR
+ * Get API key for Google Vision OCR (fallback service)
  */
 export function getGoogleVisionApiKey(): string {
   return getRequiredEnv(OCR_CONFIG.googleVision.apiKeyEnvVar);

@@ -1,31 +1,30 @@
 /**
  * Image OCR Service Implementations
- * Gemini, Google Vision, and Tesseract OCR services
+ * Gemini (via OpenRouter) and Google Vision OCR services
+ *
+ * Phase B: GeminiOCRService migrated from direct Gemini 2.0 Flash API
+ * to OpenRouter callLLMWithRetry for automatic retry + fallback.
  */
 
 import type { OCRResult, OCRService } from './types.ts';
 import { bufferToBase64, detectImageMimeType } from '../common/utils.ts';
-import { OCR_CONFIG, getGeminiApiKey, getGoogleVisionApiKey } from './config.ts';
+import { OCR_CONFIG, getGoogleVisionApiKey } from './config.ts';
+import { callLLMWithRetry } from '../../openrouter.ts';
 
 /**
  * Gemini OCR Service - Multimodal AI text extraction
- * Uses Gemini 2.0 Flash for high-quality text extraction from images
- * Same API as PDF extraction - handles handwriting, watermarks, complex layouts
+ * Uses Gemini 2.5 Flash via OpenRouter for high-quality text extraction
+ * Same capability as PDF extraction — handles handwriting, watermarks, complex layouts
  */
 export class GeminiOCRService implements OCRService {
   name: 'google-vision' = 'google-vision'; // Keep 'google-vision' for backward compatibility
 
   isAvailable(): boolean {
-    try {
-      getGeminiApiKey();
-      return true;
-    } catch {
-      return false;
-    }
+    // OpenRouter key is checked at call time by callLLMWithRetry
+    return true;
   }
 
   async ocr(fileBuffer: Uint8Array, confidenceThreshold: number): Promise<OCRResult> {
-    const apiKey = getGeminiApiKey();
     const startTime = Date.now();
 
     try {
@@ -35,45 +34,18 @@ export class GeminiOCRService implements OCRService {
       // Detect MIME type from buffer magic bytes
       const mimeType = detectImageMimeType(fileBuffer);
 
-      // Call Gemini 2.0 Flash API
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${OCR_CONFIG.gemini.model}:generateContent?key=${apiKey}`,
+      // Call Gemini 2.5 Flash via OpenRouter (with retry + fallback)
+      const result = await callLLMWithRetry(
+        'image_ocr',
+        OCR_CONFIG.gemini.systemPrompt,
+        'Extract all text from this image.',
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    inline_data: {
-                      mime_type: mimeType,
-                      data: base64Image,
-                    },
-                  },
-                  {
-                    text: OCR_CONFIG.gemini.systemPrompt,
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: OCR_CONFIG.gemini.temperature,
-              topP: OCR_CONFIG.gemini.topP,
-              topK: OCR_CONFIG.gemini.topK,
-              maxOutputTokens: OCR_CONFIG.gemini.maxOutputTokens,
-            },
-          }),
+          temperature: OCR_CONFIG.gemini.temperature,
+          attachments: [{ type: 'image_url', imageUrl: `data:${mimeType};base64,${base64Image}` }],
         }
       );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Gemini API error: ${response.status} ${errorText}`);
-      }
-
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const text = result.content;
 
       if (!text || text.trim() === '' || text.includes('No text detected')) {
         throw new Error('No text detected in image');
@@ -82,10 +54,9 @@ export class GeminiOCRService implements OCRService {
       const processingTime = Date.now() - startTime;
 
       // Estimate confidence based on text length and processing success
-      // Longer text = higher confidence in extraction quality
-      let confidence: number = OCR_CONFIG.gemini.baseConfidence; // Base confidence for Gemini
+      let confidence: number = OCR_CONFIG.gemini.baseConfidence;
       if (text.length < 50) {
-        confidence = 75; // Lower confidence for very short text
+        confidence = 75;
       } else if (text.length < 100) {
         confidence = 85;
       }
@@ -164,7 +135,7 @@ export class GoogleVisionOCRService implements OCRService {
       const processingTime = Date.now() - startTime;
 
       // Google Vision doesn't provide confidence per image, estimate from detection
-      const confidence = OCR_CONFIG.googleVision.baseConfidence; // Assume good quality if detected
+      const confidence = OCR_CONFIG.googleVision.baseConfidence;
 
       return {
         text: text.trim(),
@@ -172,7 +143,7 @@ export class GoogleVisionOCRService implements OCRService {
         metadata: {
           engine: 'google-vision',
           lowQuality: confidence < confidenceThreshold,
-          language: 'eng', // TODO: Detect from response
+          language: 'eng',
           processingTime,
         },
       };

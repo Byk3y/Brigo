@@ -9,6 +9,7 @@ import { checkCanCreateContent } from '@/lib/services/subscriptionService';
 import type { LimitReason } from '@/lib/services/subscriptionService';
 import { useUpgrade } from '@/lib/hooks/useUpgrade';
 import { enforcePdfSizeGuard } from '@/lib/pdfGuard';
+import { enforceAudioSizeGuard, enforceImageSizeGuard } from '@/lib/mediaGuard';
 
 export const useMaterialAddition = (notebookId: string) => {
     const { addMaterial, loadNotebooks, user, notebooks, cachedPetState, flashcardsStudied } = useStore();
@@ -41,6 +42,14 @@ export const useMaterialAddition = (notebookId: string) => {
         const wrapped = withErrorHandling(async () => {
             const result = await pickDocument({ type: 'audio/*' });
             if (!result || result.cancelled) return null;
+
+            // Enforce 100 MB client-side guard for audio files
+            const guardResult = await enforceAudioSizeGuard({
+                uri: result.uri,
+                name: result.name,
+                pickerSize: result.size,
+            });
+            if (!guardResult.ok) return null;
 
             setIsAddingMaterial(true);
             try {
@@ -115,6 +124,16 @@ export const useMaterialAddition = (notebookId: string) => {
             });
 
             if (result.canceled || !result.assets || result.assets.length === 0) return null;
+
+            // Enforce 20 MB client-side guard on each selected image
+            for (const asset of result.assets) {
+                const imgGuard = await enforceImageSizeGuard({
+                    uri: asset.uri,
+                    name: asset.fileName ?? undefined,
+                    fileSize: asset.fileSize ?? undefined,
+                });
+                if (!imgGuard.ok) return null;
+            }
 
             setIsAddingMaterial(true);
             try {

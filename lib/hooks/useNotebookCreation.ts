@@ -10,6 +10,7 @@ import { checkCanCreateContent } from '@/lib/services/subscriptionService';
 import type { LimitReason } from '@/lib/services/subscriptionService';
 import { useUpgrade } from '@/lib/hooks/useUpgrade';
 import { enforcePdfSizeGuard } from '@/lib/pdfGuard';
+import { enforceAudioSizeGuard, enforceImageSizeGuard } from '@/lib/mediaGuard';
 
 const COLORS: Array<'blue' | 'green' | 'orange' | 'purple' | 'pink'> = ['blue', 'green', 'orange', 'purple', 'pink'];
 
@@ -68,6 +69,15 @@ export const useNotebookCreation = () => {
             if (!result || result.cancelled) {
                 return null;
             }
+
+            // Enforce 100 MB client-side guard for audio files
+            const guardResult = await enforceAudioSizeGuard({
+                uri: result.uri,
+                name: result.name,
+                pickerSize: result.size,
+            });
+            if (!guardResult.ok) return null;
+
             setIsAddingNotebook(true);
             try {
                 // SECURITY: Sanitize filename and enforce length limits
@@ -211,6 +221,17 @@ export const useNotebookCreation = () => {
             }
 
             const assets = result.assets;
+
+            // Enforce 20 MB client-side guard on each selected image
+            for (const asset of assets) {
+                const imgGuard = await enforceImageSizeGuard({
+                    uri: asset.uri,
+                    name: asset.fileName ?? undefined,
+                    fileSize: asset.fileSize ?? undefined,
+                });
+                if (!imgGuard.ok) return null;
+            }
+
             setIsAddingNotebook(true);
             try {
                 // 1. Create notebook with the first image

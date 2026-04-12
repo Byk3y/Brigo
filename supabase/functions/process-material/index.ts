@@ -367,20 +367,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    setPhase(ctx, 'checking_pdf_size');
-    // Hard 14 MB ceiling for PDFs. PDFs over this are rejected outright (the
-    // current Gemini-via-OpenRouter path can't handle them and we'd just
-    // waste an upload round-trip). Other material types pass through.
+    setPhase(ctx, 'checking_upload_size');
+    // Hard size ceiling per material type (PDF 14 MB, audio 100 MB,
+    // image/photo 20 MB). Materials over the limit are rejected outright
+    // so we don't waste bandwidth or leave dead files in storage.
+    // Website, YouTube, and text materials pass through (no storage file).
     const pdfSizeGuard = new PdfSizeGuard(supabase);
     const sizeCheck = await pdfSizeGuard.check(material);
 
     if (sizeCheck.rejectedReason) {
       console.warn(`[process-material] Rejected: ${sizeCheck.rejectedReason}`);
       await materialRepo.updateWithError(materialId, sizeCheck.rejectedReason, {
-        error_type: 'PDFTooLarge',
+        error_type: 'UploadTooLarge',
         user_facing: true,
         file_size_bytes: sizeCheck.fileSizeBytes,
-        last_phase: 'checking_pdf_size',
+        last_phase: 'checking_upload_size',
         duration_ms: Date.now() - ctx.startedAt,
       });
       ctx.failurePersisted = true;
@@ -509,6 +510,19 @@ Deno.serve(async (req) => {
                   console.error('[UsageLogger] Non-critical logging failure:', err)
                 ),
             ]);
+
+            // Phase A: delete original audio/image files from storage now
+            // that extracted text is safely in materials.content. Mirrors the
+            // PDF cleanup added in Phase 2.5. Website, YouTube, and text
+            // materials don't use storage so skip them.
+            // Best-effort — StorageCleanup.deleteFile() never throws.
+            if (
+              material.storage_path &&
+              (material.kind === 'audio' || material.kind === 'image' || material.kind === 'photo')
+            ) {
+              setPhase(ctx, 'deleting_storage');
+              await storageCleanup.deleteFile(material.storage_path);
+            }
 
             setPhase(ctx, 'complete');
             console.log(

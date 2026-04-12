@@ -4,8 +4,9 @@
  */
 
 import type { WebsiteExtractionResult, WebsiteExtractor } from './types.ts';
-import { WEBSITE_CONFIG, getJinaApiKey, getGeminiWebApiKey } from './config.ts';
+import { WEBSITE_CONFIG, getJinaApiKey } from './config.ts';
 import { MIN_WEBSITE_CONTENT_LENGTH } from '../common/constants.ts';
+import { callLLMWithRetry } from '../../openrouter.ts';
 
 /**
  * Jina Reader Service
@@ -95,17 +96,10 @@ export class DirectFetchService implements WebsiteExtractor {
   name: 'gemini' = 'gemini';
 
   isAvailable(): boolean {
-    try {
-      getGeminiWebApiKey();
-      return true;
-    } catch {
-      return false;
-    }
+    return true; // OpenRouter key checked at call time
   }
 
   async extract(url: string, startTime: number): Promise<WebsiteExtractionResult> {
-    const apiKey = getGeminiWebApiKey();
-
     console.log('[extractWithDirectFetch] Fetching URL directly:', url);
 
     // Fetch the page
@@ -147,43 +141,51 @@ export class DirectFetchService implements WebsiteExtractor {
       title = titleMatch[1].trim();
     }
 
-    // Truncate HTML if too long (Gemini has context limits)
+    // Truncate HTML if too long (context limits)
+    // Phase B: surface a truncation flag so the UI can warn the user
     const maxHtmlLength = WEBSITE_CONFIG.gemini.maxHtmlLength;
+    let contentTruncated = false;
     if (cleanedHtml.length > maxHtmlLength) {
+      contentTruncated = true;
       cleanedHtml = cleanedHtml.substring(0, maxHtmlLength);
     }
 
-    // Use Gemini to extract and clean the content
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${WEBSITE_CONFIG.gemini.model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `${WEBSITE_CONFIG.gemini.systemPrompt}
+    // Use Gemini 2.5 Flash via OpenRouter to extract and clean content
+    // (with retry + fallback — Phase B migration)
+    try {
+      const result = await callLLMWithRetry(
+        'website_cleanup',
+        WEBSITE_CONFIG.gemini.systemPrompt,
+        `HTML:\n${cleanedHtml}`,
+        { temperature: WEBSITE_CONFIG.gemini.temperature }
+      );
 
-HTML:
-${cleanedHtml}`,
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: WEBSITE_CONFIG.gemini.temperature,
-            maxOutputTokens: WEBSITE_CONFIG.gemini.maxOutputTokens,
-          },
-        }),
+      const extractedText = result.content;
+
+      if (!extractedText || extractedText.trim().length < MIN_WEBSITE_CONTENT_LENGTH) {
+        throw new Error('LLM returned insufficient extracted content');
       }
-    );
 
-    if (!geminiResponse.ok) {
-      // If Gemini fails, return basic text extraction
+      const processingTime = Date.now() - startTime;
+
+      console.log(
+        `[extractWithDirectFetch] SUCCESS with LLM cleanup: ${extractedText.length} chars in ${processingTime}ms`
+      );
+
+      return {
+        text: extractedText.trim(),
+        title,
+        metadata: {
+          source: 'gemini',
+          url,
+          processingTime,
+          contentLength: extractedText.length,
+          content_truncated: contentTruncated,
+        },
+      };
+    } catch (llmError: unknown) {
+      // If LLM fails after retries, return basic text extraction
       const basicText = cleanedHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-
       const processingTime = Date.now() - startTime;
 
       return {
@@ -194,33 +196,10 @@ ${cleanedHtml}`,
           url,
           processingTime,
           contentLength: basicText.length,
-          warning: 'Content extracted with basic HTML parsing (Gemini cleanup unavailable)',
+          content_truncated: contentTruncated,
+          warning: 'Content extracted with basic HTML parsing (LLM cleanup unavailable)',
         },
       };
     }
-
-    const data = await geminiResponse.json();
-    const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    if (!extractedText || extractedText.trim().length < MIN_WEBSITE_CONTENT_LENGTH) {
-      throw new Error('Gemini returned insufficient extracted content');
-    }
-
-    const processingTime = Date.now() - startTime;
-
-    console.log(
-      `[extractWithDirectFetch] SUCCESS with Gemini cleanup: ${extractedText.length} chars in ${processingTime}ms`
-    );
-
-    return {
-      text: extractedText.trim(),
-      title,
-      metadata: {
-        source: 'gemini',
-        url,
-        processingTime,
-        contentLength: extractedText.length,
-      },
-    };
   }
 }

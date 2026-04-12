@@ -30,5 +30,6 @@ export interface WebsiteExtractionResult {
     processingTime: number;
     contentLength: number;
     warning?: string;
+    content_truncated?: boolean;
   };
 }

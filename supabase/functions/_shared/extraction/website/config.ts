@@ -3,10 +3,15 @@
  * Configuration for website extraction services
  */
 
-import { getOptionalEnv, getRequiredEnv } from '../../env.ts';
+import { getOptionalEnv } from '../../env.ts';
 
 /**
  * Configuration for website extraction services
+ *
+ * Phase B: Gemini API key and model moved to OpenRouter (openrouter.ts).
+ * Model and maxTokens are now in the MODELS map ('website_cleanup').
+ * This config retains systemPrompt, temperature, maxHtmlLength, and
+ * Jina/directFetch settings.
  */
 export const WEBSITE_CONFIG = {
   jinaReader: {
@@ -20,10 +25,7 @@ export const WEBSITE_CONFIG = {
   },
   gemini: {
     enabled: true,
-    apiKeyEnvVar: 'GOOGLE_AI_API_KEY',
-    model: 'gemini-2.0-flash',
     temperature: 0.1,
-    maxOutputTokens: 8192,
     maxHtmlLength: 100000, // ~25k tokens
     systemPrompt:
       'Extract the main article/content from this HTML page. Return only the extracted content in clean markdown format. Remove navigation, ads, footers, and other non-content elements. Preserve headings, lists, and important formatting.',
@@ -40,11 +42,4 @@ export const WEBSITE_CONFIG = {
  */
 export function getJinaApiKey(): string {
   return getOptionalEnv(WEBSITE_CONFIG.jinaReader.apiKeyEnvVar, '');
-}
-
-/**
- * Get required Gemini API key for website cleanup
- */
-export function getGeminiWebApiKey(): string {
-  return getRequiredEnv(WEBSITE_CONFIG.gemini.apiKeyEnvVar);
 }

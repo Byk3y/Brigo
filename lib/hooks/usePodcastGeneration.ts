@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { podcastService } from '@/lib/services/podcastService';
 import { examPredictionService } from '@/lib/services/examPredictionService';
+import { studioService } from '@/lib/services/studioService';
 import { useStore } from '@/lib/store';
 import { useErrorHandler } from './useErrorHandler';
 
@@ -13,7 +14,7 @@ export const usePodcastGeneration = (
     onGenerationComplete: () => void
 ) => {
     const router = useRouter();
-    const { checkAndAwardTask, notify, removeStudioJob, addStudioJob } = useStore();
+    const { checkAndAwardTask, notify, removeStudioJob, addStudioJob, addUnseenCompletion } = useStore();
     const { handleError } = useErrorHandler();
     const [generatingType, setGeneratingType] = useState<'flashcards' | 'quiz' | 'audio' | 'prediction' | null>(null);
     const [generatingPodcastId, setGeneratingPodcastId] = useState<string | null>(null);
@@ -36,11 +37,16 @@ export const usePodcastGeneration = (
                 updated.delete(id);
 
                 // Update generating type based on remaining jobs
-                const hasPodcast = Array.from(updated).some(jid => jid.startsWith('podcast_'));
-                const hasPred = Array.from(updated).some(jid => jid.startsWith('pred_'));
+                const remaining = Array.from(updated);
+                const hasPodcast = remaining.some(jid => jid.startsWith('podcast_'));
+                const hasPred = remaining.some(jid => jid.startsWith('pred_'));
+                const hasFlashcards = remaining.some(jid => jid.startsWith('flashcards_'));
+                const hasQuiz = remaining.some(jid => jid.startsWith('quiz_'));
 
                 if (hasPodcast) setGeneratingType('audio');
                 else if (hasPred) setGeneratingType('prediction');
+                else if (hasFlashcards) setGeneratingType('flashcards');
+                else if (hasQuiz) setGeneratingType('quiz');
                 else setGeneratingType(null);
 
                 return updated;
@@ -55,21 +61,22 @@ export const usePodcastGeneration = (
     }, []);
 
     // Helper to check if any job of a certain type is running
-    const isJobTypeRunning = useCallback((type: 'podcast' | 'prediction') => {
-        return Array.from(activeJobs).some(id =>
-            type === 'podcast' ? id.startsWith('podcast_') : id.startsWith('pred_')
-        );
+    const isJobTypeRunning = useCallback((type: 'podcast' | 'prediction' | 'flashcards' | 'quiz') => {
+        const prefix = type === 'podcast' ? 'podcast_'
+            : type === 'prediction' ? 'pred_'
+            : type === 'flashcards' ? 'flashcards_'
+            : 'quiz_';
+        return Array.from(activeJobs).some(id => id.startsWith(prefix));
     }, [activeJobs]);
 
     // sync generatingType with activeJobs (Addition only, cleanup is handled in stopPolling)
     useEffect(() => {
         if (activeJobs.size === 0) return;
 
-        const hasPodcast = isJobTypeRunning('podcast');
-        const hasPred = isJobTypeRunning('prediction');
-
-        if (hasPodcast) setGeneratingType('audio');
-        else if (hasPred) setGeneratingType('prediction');
+        if (isJobTypeRunning('podcast')) setGeneratingType('audio');
+        else if (isJobTypeRunning('prediction')) setGeneratingType('prediction');
+        else if (isJobTypeRunning('flashcards')) setGeneratingType('flashcards');
+        else if (isJobTypeRunning('quiz')) setGeneratingType('quiz');
     }, [activeJobs, isJobTypeRunning]);
 
     const startPodcastPolling = useCallback((overviewId: string) => {
@@ -88,6 +95,7 @@ export const usePodcastGeneration = (
                     setCompletedPodcastId(overviewId);
                     setShowPodcastNotification(true);
                     removeStudioJob(notebookId, overviewId);
+                    addUnseenCompletion(notebookId, { id: overviewId, type: 'audio', completedAt: Date.now() });
 
                     // Global notification
                     notify({
@@ -166,6 +174,7 @@ export const usePodcastGeneration = (
                 if (status.status === 'completed') {
                     stopPolling(jobId);
                     removeStudioJob(notebookId, predictionId);
+                    addUnseenCompletion(notebookId, { id: predictionId, type: 'prediction', completedAt: Date.now() });
 
                     // Global notification with specific title if available
                     notify({
@@ -212,6 +221,100 @@ export const usePodcastGeneration = (
         pollIntervalsRef.current.set(jobId, interval);
     }, [onGenerationComplete, stopPolling, notebookName, notebookId, notify, handleError, removeStudioJob]);
 
+    const startFlashcardsPolling = useCallback((setId: string) => {
+        const jobId = `flashcards_${setId}`;
+        if (pollIntervalsRef.current.has(jobId)) return;
+        setActiveJobs(prev => new Set(prev).add(jobId));
+
+        const interval = setInterval(async () => {
+            try {
+                const status = await studioService.getFlashcardSetStatus(setId);
+                if (status.status === 'completed') {
+                    stopPolling(jobId);
+                    removeStudioJob(notebookId, setId);
+                    addUnseenCompletion(notebookId, { id: setId, type: 'flashcards', completedAt: Date.now() });
+                    notify({
+                        type: 'flashcards',
+                        title: 'Flashcards Ready!',
+                        message: `${status.title || notebookName} is ready to study`,
+                        data: { notebookId, setId },
+                    });
+                    if (checkAndAwardTask) checkAndAwardTask('generate_flashcards');
+                    onGenerationComplete();
+                } else if (status.status === 'failed') {
+                    stopPolling(jobId);
+                    removeStudioJob(notebookId, setId);
+                    const error = new Error(status.error_message || 'Failed to generate flashcards');
+                    await handleError(error, {
+                        operation: 'flashcards_generation_failed',
+                        component: 'flashcards-generation',
+                        metadata: { setId, status: status.status },
+                    });
+                }
+            } catch (error: any) {
+                const isNetworkError = error?.message?.includes('Network request failed') ||
+                    error?.message?.includes('network') ||
+                    error?.name === 'AbortError';
+                if (isNetworkError) return;
+                await handleError(error, {
+                    operation: 'poll_flashcards_status',
+                    component: 'flashcards-generation',
+                    metadata: { setId, notebookId },
+                });
+                stopPolling(jobId);
+            }
+        }, 3000);
+
+        pollIntervalsRef.current.set(jobId, interval);
+    }, [onGenerationComplete, stopPolling, checkAndAwardTask, notebookName, notebookId, notify, handleError, removeStudioJob]);
+
+    const startQuizPolling = useCallback((quizId: string) => {
+        const jobId = `quiz_${quizId}`;
+        if (pollIntervalsRef.current.has(jobId)) return;
+        setActiveJobs(prev => new Set(prev).add(jobId));
+
+        const interval = setInterval(async () => {
+            try {
+                const status = await studioService.getQuizStatus(quizId);
+                if (status.status === 'completed') {
+                    stopPolling(jobId);
+                    removeStudioJob(notebookId, quizId);
+                    addUnseenCompletion(notebookId, { id: quizId, type: 'quiz', completedAt: Date.now() });
+                    notify({
+                        type: 'quiz',
+                        title: 'Quiz Ready!',
+                        message: `${status.title || notebookName} is ready for testing`,
+                        data: { quizId, notebookId },
+                    });
+                    if (checkAndAwardTask) checkAndAwardTask('generate_quiz');
+                    onGenerationComplete();
+                } else if (status.status === 'failed') {
+                    stopPolling(jobId);
+                    removeStudioJob(notebookId, quizId);
+                    const error = new Error(status.error_message || 'Failed to generate quiz');
+                    await handleError(error, {
+                        operation: 'quiz_generation_failed',
+                        component: 'quiz-generation',
+                        metadata: { quizId, status: status.status },
+                    });
+                }
+            } catch (error: any) {
+                const isNetworkError = error?.message?.includes('Network request failed') ||
+                    error?.message?.includes('network') ||
+                    error?.name === 'AbortError';
+                if (isNetworkError) return;
+                await handleError(error, {
+                    operation: 'poll_quiz_status',
+                    component: 'quiz-generation',
+                    metadata: { quizId, notebookId },
+                });
+                stopPolling(jobId);
+            }
+        }, 3000);
+
+        pollIntervalsRef.current.set(jobId, interval);
+    }, [onGenerationComplete, stopPolling, checkAndAwardTask, notebookName, notebookId, notify, handleError, removeStudioJob]);
+
     const checkForPendingPodcast = useCallback(async () => {
         try {
             // Check for pending/generating podcast first
@@ -257,6 +360,38 @@ export const usePodcastGeneration = (
         }
     }, [notebookId, startPredictionPolling, addStudioJob]);
 
+    const checkForPendingFlashcards = useCallback(async () => {
+        try {
+            const pending = await studioService.findPendingFlashcardSet(notebookId);
+            if (pending) {
+                addStudioJob(notebookId, {
+                    id: pending.id,
+                    type: 'flashcards',
+                    startedAt: Date.now(),
+                });
+                startFlashcardsPolling(pending.id);
+            }
+        } catch {
+            // Non-critical
+        }
+    }, [notebookId, startFlashcardsPolling, addStudioJob]);
+
+    const checkForPendingQuiz = useCallback(async () => {
+        try {
+            const pending = await studioService.findPendingQuiz(notebookId);
+            if (pending) {
+                addStudioJob(notebookId, {
+                    id: pending.id,
+                    type: 'quiz',
+                    startedAt: Date.now(),
+                });
+                startQuizPolling(pending.id);
+            }
+        } catch {
+            // Non-critical
+        }
+    }, [notebookId, startQuizPolling, addStudioJob]);
+
     // Restart polling when app comes to foreground (if we have a pending podcast or prediction)
     useEffect(() => {
         const subscription = AppState.addEventListener('change', (nextAppState) => {
@@ -301,8 +436,12 @@ export const usePodcastGeneration = (
         setAudioProgress: setPodcastProgress,
         startAudioPolling: startPodcastPolling,
         startPredictionPolling,
+        startFlashcardsPolling,
+        startQuizPolling,
         checkForPendingAudio: checkForPendingPodcast,
         checkForPendingPrediction,
+        checkForPendingFlashcards,
+        checkForPendingQuiz,
         // Notification state
         showAudioNotification: showPodcastNotification,
         completedAudioId: completedPodcastId,

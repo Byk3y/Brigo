@@ -27,6 +27,8 @@ interface UseStudioGenerationParams {
   setGeneratingAudioId: (id: string | null) => void;
   startAudioPolling: (overviewId: string) => void;
   startPredictionPolling: (predictionId: string) => void;
+  startFlashcardsPolling: (setId: string) => void;
+  startQuizPolling: (quizId: string) => void;
   checkForPendingPrediction: () => Promise<void>;
 }
 
@@ -44,10 +46,12 @@ export const useStudioGeneration = ({
   setGeneratingAudioId,
   startAudioPolling,
   startPredictionPolling,
+  startFlashcardsPolling,
+  startQuizPolling,
   checkForPendingPrediction,
 }: UseStudioGenerationParams) => {
 
-  const { checkAndAwardTask, tier, status, isExpired, studioGenerationsCount, audioGenerationsCount, subscriptionSyncedAt, user, notebooks, cachedPetState, flashcardsStudied, notify, addStudioJob } = useStore();
+  const { checkAndAwardTask, tier, status, isExpired, studioGenerationsCount, audioGenerationsCount, subscriptionSyncedAt, user, notebooks, cachedPetState, flashcardsStudied, notify, addStudioJob, removeStudioJob } = useStore();
   const { handleError, withErrorHandling } = useErrorHandler();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeModalSource, setUpgradeModalSource] = useState<'create_attempt' | null>(null);
@@ -72,11 +76,20 @@ export const useStudioGeneration = ({
   }, [notebooks, notebookId]);
 
   /**
-   * Generate flashcards for the notebook
+   * Generate flashcards for the notebook. Pass retryId to delete a prior
+   * failed set before regenerating (avoids clutter in the list).
    */
-  const handleGenerateFlashcards = useCallback(async () => {
+  const handleGenerateFlashcards = useCallback(async (retryId?: string) => {
     try {
-      // Check quota before proceeding with detailed reason
+      if (retryId) {
+        try {
+          const { studioService } = await import('@/lib/services/studioService');
+          await studioService.deleteFlashcardSet(retryId);
+        } catch (err) {
+          console.error('Error deleting failed flashcard set on retry:', err);
+        }
+      }
+
       const quotaCheck = checkQuotaRemaining('studio', subscription);
 
       if (!quotaCheck.hasQuota) {
@@ -88,57 +101,70 @@ export const useStudioGeneration = ({
         return;
       }
 
-      // TODO: Implement confirmation dialog with centralized error handling
-      const ok = await new Promise<boolean>((resolve) => {
-        Alert.alert(
-          'Flashcards',
-          flashcardsCount > 0
-            ? `You already have ${flashcardsCount} flashcards. Generate more?`
-            : 'Generate flashcards for this notebook?',
-          [
-            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Generate', onPress: () => resolve(true) }
-          ]
-        );
-      });
-
-      if (!ok) return;
+      // Skip the confirmation dialog on retry — user already decided.
+      if (!retryId) {
+        const ok = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Flashcards',
+            flashcardsCount > 0
+              ? `You already have ${flashcardsCount} flashcards. Generate more?`
+              : 'Generate flashcards for this notebook?',
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Generate', onPress: () => resolve(true) }
+            ]
+          );
+        });
+        if (!ok) return;
+      }
 
       setGeneratingType('flashcards');
 
-      const result = await generateStudioContent({
-        notebook_id: notebookId,
-        content_type: 'flashcards',
-      });
+      // Optimistic slice entry so the dot shows instantly. Temp id is replaced
+      // with the real content_id once the edge function responds.
+      const optimisticId = `optimistic-flashcards-${Date.now()}`;
+      addStudioJob(notebookId, { id: optimisticId, type: 'flashcards', startedAt: Date.now() });
 
-      // Award task if applicable
-      if (checkAndAwardTask) {
-        checkAndAwardTask('generate_flashcards');
+      let result;
+      try {
+        result = await generateStudioContent({
+          notebook_id: notebookId,
+          content_type: 'flashcards',
+        });
+      } catch (err) {
+        removeStudioJob(notebookId, optimisticId);
+        throw err;
       }
 
-      // Refresh studio content
-      await refreshContent();
-
-      notify({
+      removeStudioJob(notebookId, optimisticId);
+      addStudioJob(notebookId, {
+        id: result.content_id,
         type: 'flashcards',
-        title: 'Flashcards Ready!',
-        message: `Generated ${result.generated_count} flashcards for ${notebookTitle}`,
-        data: { notebookId: notebookId, setId: result.content_id }
+        startedAt: Date.now(),
       });
+
+      await refreshContent();
+      startFlashcardsPolling(result.content_id);
     } catch (error: any) {
-      // Error already handled by API layer and displayed via ErrorNotificationContext
-      // No need for Alert.alert - error UI will show automatically
-    } finally {
       setGeneratingType(null);
     }
-  }, [notebookId, flashcardsCount, setGeneratingType, refreshContent, checkAndAwardTask, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown, notebookTitle, notify]);
+  }, [notebookId, flashcardsCount, setGeneratingType, refreshContent, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown, addStudioJob, removeStudioJob, startFlashcardsPolling]);
 
   /**
-   * Generate quiz for the notebook
+   * Generate quiz for the notebook. Pass retryId to delete a prior failed
+   * quiz before regenerating.
    */
-  const handleGenerateQuiz = useCallback(async () => {
+  const handleGenerateQuiz = useCallback(async (retryId?: string) => {
     try {
-      // Check quota before proceeding with detailed reason
+      if (retryId) {
+        try {
+          const { studioService } = await import('@/lib/services/studioService');
+          await studioService.deleteQuiz(retryId);
+        } catch (err) {
+          console.error('Error deleting failed quiz on retry:', err);
+        }
+      }
+
       const quotaCheck = checkQuotaRemaining('studio', subscription);
 
       if (!quotaCheck.hasQuota) {
@@ -150,50 +176,52 @@ export const useStudioGeneration = ({
         return;
       }
 
-      // TODO: Implement confirmation dialog with centralized error handling
-      const ok = await new Promise<boolean>((resolve) => {
-        Alert.alert(
-          'Quiz',
-          quizzesCount > 0
-            ? `You already have ${quizzesCount} quizzes. Generate another?`
-            : 'Generate a quiz for this notebook?',
-          [
-            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Generate', onPress: () => resolve(true) }
-          ]
-        );
-      });
-
-      if (!ok) return;
+      if (!retryId) {
+        const ok = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Quiz',
+            quizzesCount > 0
+              ? `You already have ${quizzesCount} quizzes. Generate another?`
+              : 'Generate a quiz for this notebook?',
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Generate', onPress: () => resolve(true) }
+            ]
+          );
+        });
+        if (!ok) return;
+      }
 
       setGeneratingType('quiz');
 
-      const result = await generateStudioContent({
-        notebook_id: notebookId,
-        content_type: 'quiz',
-      });
+      const optimisticId = `optimistic-quiz-${Date.now()}`;
+      addStudioJob(notebookId, { id: optimisticId, type: 'quiz', startedAt: Date.now() });
 
-      // Award task if applicable
-      if (checkAndAwardTask) {
-        checkAndAwardTask('generate_quiz');
+      let result;
+      try {
+        result = await generateStudioContent({
+          notebook_id: notebookId,
+          content_type: 'quiz',
+        });
+      } catch (err) {
+        removeStudioJob(notebookId, optimisticId);
+        throw err;
       }
 
-      // Refresh studio content
+      removeStudioJob(notebookId, optimisticId);
+      addStudioJob(notebookId, {
+        id: result.content_id,
+        type: 'quiz',
+        startedAt: Date.now(),
+      });
+
       await refreshContent();
 
-      notify({
-        type: 'quiz',
-        title: 'Quiz Ready!',
-        message: `${notebookTitle} is ready for testing`,
-        data: { quizId: result.content_id }
-      });
+      startQuizPolling(result.content_id);
     } catch (error: any) {
-      // Error already handled by API layer and displayed via ErrorNotificationContext
-      // No need for Alert.alert - error UI will show automatically
-    } finally {
       setGeneratingType(null);
     }
-  }, [notebookId, quizzesCount, setGeneratingType, refreshContent, checkAndAwardTask, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown, notebookTitle, notify]);
+  }, [notebookId, quizzesCount, setGeneratingType, refreshContent, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown, addStudioJob, removeStudioJob, startQuizPolling]);
 
   /**
    * Generate podcast for the notebook
@@ -228,7 +256,18 @@ export const useStudioGeneration = ({
 
       setGeneratingType('audio');
 
-      const result = await generatePodcast(notebookId);
+      const optimisticId = `optimistic-audio-${Date.now()}`;
+      addStudioJob(notebookId, { id: optimisticId, type: 'audio', startedAt: Date.now() });
+
+      let result;
+      try {
+        result = await generatePodcast(notebookId);
+      } catch (err) {
+        removeStudioJob(notebookId, optimisticId);
+        throw err;
+      }
+
+      removeStudioJob(notebookId, optimisticId);
       setGeneratingAudioId(result.overview_id);
       addStudioJob(notebookId, {
         id: result.overview_id,
@@ -289,6 +328,7 @@ export const useStudioGeneration = ({
     trackCreateAttemptBlocked,
     trackUpgradeModalShown,
     addStudioJob,
+    removeStudioJob,
   ]);
 
   /**
@@ -335,9 +375,20 @@ export const useStudioGeneration = ({
 
       setGeneratingType('prediction');
 
-      const result = await generateExamPrediction({
-        notebook_id: notebookId,
-      });
+      const optimisticId = `optimistic-prediction-${Date.now()}`;
+      addStudioJob(notebookId, { id: optimisticId, type: 'prediction', startedAt: Date.now() });
+
+      let result;
+      try {
+        result = await generateExamPrediction({
+          notebook_id: notebookId,
+        });
+      } catch (err) {
+        removeStudioJob(notebookId, optimisticId);
+        throw err;
+      }
+
+      removeStudioJob(notebookId, optimisticId);
 
       // Start polling for the prediction result
       if (result.prediction_id) {

@@ -13,8 +13,7 @@
  */
 
 import { createClient } from "supabase"
-
-const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
+import { sendUserPush } from "../_shared/push.ts"
 
 interface RequestBody {
   friend_streak_id: string
@@ -146,23 +145,6 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Respect friend's notification preferences
-    const friendNudgesEnabled = friendProfile.meta?.notification_settings?.friend_nudges ?? true
-    if (!friendNudgesEnabled) {
-      return new Response(
-        JSON.stringify({ success: true, skipped: 'Friend has nudges disabled' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Must have a push token
-    if (!friendProfile.expo_push_token) {
-      return new Response(
-        JSON.stringify({ success: true, skipped: 'No push token' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     // Get nudger's name
     const { data: nudgerProfile } = await supabase
       .from('profiles')
@@ -173,7 +155,6 @@ Deno.serve(async (req) => {
     const nudgerName = nudgerProfile?.first_name || nudgerProfile?.name || 'A friend'
     const friendName = friendProfile.first_name || friendProfile.name || 'there'
 
-    // Pick a random template and render it
     const template = nudgeTemplates[Math.floor(Math.random() * nudgeTemplates.length)]
     const { title, body } = renderTemplate(template, {
       nudger: nudgerName,
@@ -181,40 +162,22 @@ Deno.serve(async (req) => {
       streak: friendship.streak,
     })
 
-    // Send via Expo
-    const expoResponse = await fetch(EXPO_PUSH_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Accept-encoding': 'gzip, deflate',
+    const pushResult = await sendUserPush({
+      supabase,
+      userId: friendId,
+      title,
+      body,
+      data: {
+        type: 'friend_nudge',
+        friend_streak_id,
+        nudger_id: callerUser.id,
       },
-      body: JSON.stringify({
-        to: friendProfile.expo_push_token,
-        sound: 'default',
-        title,
-        body,
-        data: {
-          type: 'friend_nudge',
-          friend_streak_id,
-          nudger_id: callerUser.id,
-        },
-        mutableContent: true,
-      }),
+      preferenceKey: 'friend_nudges',
+      preloadedProfile: friendProfile,
     })
 
-    const expoResult = await expoResponse.json()
-
-    // Handle invalid token
-    if (expoResult?.data?.status === 'error' && expoResult?.data?.details?.error === 'DeviceNotRegistered') {
-      await supabase
-        .from('profiles')
-        .update({ expo_push_token: null })
-        .eq('id', friendId)
-    }
-
     return new Response(
-      JSON.stringify({ success: true, sent: true }),
+      JSON.stringify({ success: true, ...pushResult }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {

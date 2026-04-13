@@ -9,8 +9,7 @@
  */
 
 import { createClient } from "supabase"
-
-const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
+import { sendUserPush } from "../_shared/push.ts"
 
 // Dramatic but recoverable templates
 const deathTemplates = [
@@ -81,16 +80,6 @@ Deno.serve(async () => {
         continue
       }
 
-      const activityEnabled = userProfile.meta?.notification_settings?.friend_activity ?? true
-      if (!activityEnabled || !userProfile.expo_push_token) {
-        await supabase
-          .from('user_activity_log')
-          .update({ metadata: { ...metadata, notified: true, skipped: true } })
-          .eq('id', eventId)
-        skipped++
-        continue
-      }
-
       const { data: otherProfile } = await supabase
         .from('profiles')
         .select('first_name, name')
@@ -107,45 +96,31 @@ Deno.serve(async () => {
         streak: lostStreak,
       })
 
-      const expoResponse = await fetch(EXPO_PUSH_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Accept-encoding': 'gzip, deflate',
+      const pushResult = await sendUserPush({
+        supabase,
+        userId: user_id,
+        title,
+        body,
+        data: {
+          type: 'friend_streak_died',
+          friend_streak_id: metadata.friend_streak_id,
+          screen: '/friends',
         },
-        body: JSON.stringify({
-          to: userProfile.expo_push_token,
-          sound: 'default',
-          title,
-          body,
-          data: {
-            type: 'friend_streak_died',
-            friend_streak_id: metadata.friend_streak_id,
-            screen: '/friends',
-          },
-          mutableContent: true,
-        }),
+        preferenceKey: 'friend_activity',
+        preloadedProfile: userProfile,
       })
 
-      const expoResult = await expoResponse.json()
-
-      if (
-        expoResult?.data?.status === 'error' &&
-        expoResult?.data?.details?.error === 'DeviceNotRegistered'
-      ) {
-        await supabase
-          .from('profiles')
-          .update({ expo_push_token: null })
-          .eq('id', user_id)
-      }
+      const logMetadata = pushResult.sent
+        ? { ...metadata, notified: true }
+        : { ...metadata, notified: true, skipped: true, skip_reason: pushResult.reason }
 
       await supabase
         .from('user_activity_log')
-        .update({ metadata: { ...metadata, notified: true } })
+        .update({ metadata: logMetadata })
         .eq('id', eventId)
 
-      sent++
+      if (pushResult.sent) sent++
+      else skipped++
     }
 
     return new Response(

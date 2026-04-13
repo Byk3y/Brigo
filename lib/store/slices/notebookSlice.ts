@@ -502,6 +502,9 @@ export const createNotebookSlice: StateCreator<
             });
           } else {
             get().removeStudioJob(row.notebook_id, row.id);
+            if (newStatus === 'completed') {
+              get().addUnseenCompletion(row.notebook_id, { id: row.id, type: 'audio', completedAt: Date.now() });
+            }
           }
         }
       )
@@ -526,6 +529,63 @@ export const createNotebookSlice: StateCreator<
             });
           } else {
             get().removeStudioJob(row.notebook_id, row.id);
+            if (newStatus === 'completed') {
+              get().addUnseenCompletion(row.notebook_id, { id: row.id, type: 'prediction', completedAt: Date.now() });
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'studio_flashcard_sets',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const row = (payload.new || payload.old) as any;
+          if (!row?.notebook_id || !row?.id) return;
+          const newStatus = (payload.new as any)?.status;
+          const isActive = newStatus === 'pending' || newStatus === 'processing';
+          if (isActive) {
+            get().addStudioJob(row.notebook_id, {
+              id: row.id,
+              type: 'flashcards',
+              startedAt: Date.now(),
+            });
+          } else {
+            get().removeStudioJob(row.notebook_id, row.id);
+            if (newStatus === 'completed') {
+              get().addUnseenCompletion(row.notebook_id, { id: row.id, type: 'flashcards', completedAt: Date.now() });
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'studio_quizzes',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const row = (payload.new || payload.old) as any;
+          if (!row?.notebook_id || !row?.id) return;
+          const newStatus = (payload.new as any)?.status;
+          const isActive = newStatus === 'pending' || newStatus === 'processing';
+          if (isActive) {
+            get().addStudioJob(row.notebook_id, {
+              id: row.id,
+              type: 'quiz',
+              startedAt: Date.now(),
+            });
+          } else {
+            get().removeStudioJob(row.notebook_id, row.id);
+            if (newStatus === 'completed') {
+              get().addUnseenCompletion(row.notebook_id, { id: row.id, type: 'quiz', completedAt: Date.now() });
+            }
           }
         }
       );

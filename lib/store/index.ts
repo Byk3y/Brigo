@@ -114,6 +114,9 @@ export const useStore = create<StoreWithHydration>()(
         // Friend streaks cache
         friends: state.friends,
         friendsUserId: state.friendsUserId,
+        // Unseen studio completions — survives app restart so users keep
+        // seeing the "new material" dot until they open Studio.
+        unseenStudioCompletions: state.unseenStudioCompletions,
         // Add other persistent state here as needed
       }),
       migrate: (persistedState: any, version: number) => {

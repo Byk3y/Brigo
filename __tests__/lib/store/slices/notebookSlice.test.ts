@@ -11,10 +11,13 @@ import type { Notebook, Material, SupabaseUser } from '@/lib/store/types';
 
 const makeStudioJobsStub = (): StudioJobsSlice => ({
   activeStudioJobs: {},
+  unseenStudioCompletions: {},
   addStudioJob: jest.fn(),
   removeStudioJob: jest.fn(),
   hydrateStudioJobs: jest.fn(),
   clearStudioJobs: jest.fn(),
+  addUnseenCompletion: jest.fn(),
+  clearUnseenCompletions: jest.fn(),
   loadPendingStudioJobs: jest.fn().mockResolvedValue(undefined),
 });
 

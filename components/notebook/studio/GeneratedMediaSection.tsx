@@ -37,6 +37,8 @@ interface GeneratedMediaSectionProps {
   onDeletePodcast: (podcast: Podcast) => void;
   onDeletePrediction?: (prediction: ExamPrediction) => void;
   onGeneratePrediction?: (retryId?: string) => void;
+  onGenerateFlashcards?: (retryId?: string) => void;
+  onGenerateQuiz?: (retryId?: string) => void;
 }
 
 export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
@@ -52,6 +54,8 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
   onDeletePodcast,
   onDeletePrediction,
   onGeneratePrediction,
+  onGenerateFlashcards,
+  onGenerateQuiz,
 }) => {
   const isPad = Platform.OS === 'ios' && Platform.isPad;
   const router = useRouter();
@@ -118,14 +122,37 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
 
   const renderMediaItem = (item: MediaItem) => {
     if (item.type === 'flashcard_set') {
+      const isFailed = item.data.status === 'failed';
+      const isProcessing = item.data.status === 'pending' || item.data.status === 'processing';
       return (
         <StudioMediaItem
           key={item.data.id}
-          icon="albums-outline"
-          iconColor="#dc2626"
-          title={item.data.title}
-          subtitle={`${item.data.total_cards || 0} cards • ${getTimeAgo(item.createdAt)}`}
+          icon={isFailed ? 'alert-circle-outline' : 'albums-outline'}
+          iconColor={isFailed ? '#ef4444' : isProcessing ? '#737373' : '#dc2626'}
+          title={isProcessing ? 'Flashcards' : item.data.title}
+          subtitle={
+            isFailed
+              ? 'Generation failed • Tap to retry'
+              : isProcessing
+              ? undefined
+              : `${item.data.total_cards || 0} cards • ${getTimeAgo(item.createdAt)}`
+          }
+          isGenerating={isProcessing}
+          loadingText={LOADING_MESSAGES.flashcards}
+          loadingColor="#2563eb"
           onPress={() => {
+            if (isFailed) {
+              Alert.alert(
+                'Generation Failed',
+                `${item.data.error_message || 'An unexpected error occurred.'}\n\nWould you like to try again?`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Retry', onPress: () => onGenerateFlashcards?.(item.data.id) },
+                ]
+              );
+              return;
+            }
+            if (isProcessing) return;
             play('start');
             router.push({
               pathname: `/flashcards/${notebookId}`,
@@ -137,14 +164,37 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
     }
 
     if (item.type === 'quiz') {
+      const isFailed = item.data.status === 'failed';
+      const isProcessing = item.data.status === 'pending' || item.data.status === 'processing';
       return (
         <StudioMediaItem
           key={item.data.id}
-          icon="help-circle-outline"
-          iconColor="#0891b2"
-          title={item.data.title}
-          subtitle={`${item.data.total_questions} questions • 1 source • ${getTimeAgo(item.createdAt)}`}
+          icon={isFailed ? 'alert-circle-outline' : 'help-circle-outline'}
+          iconColor={isFailed ? '#ef4444' : isProcessing ? '#737373' : '#0891b2'}
+          title={isProcessing ? 'Quiz' : item.data.title}
+          subtitle={
+            isFailed
+              ? 'Generation failed • Tap to retry'
+              : isProcessing
+              ? undefined
+              : `${item.data.total_questions} questions • 1 source • ${getTimeAgo(item.createdAt)}`
+          }
+          isGenerating={isProcessing}
+          loadingText={LOADING_MESSAGES.quiz}
+          loadingColor="#2563eb"
           onPress={() => {
+            if (isFailed) {
+              Alert.alert(
+                'Generation Failed',
+                `${item.data.error_message || 'An unexpected error occurred.'}\n\nWould you like to try again?`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Retry', onPress: () => onGenerateQuiz?.(item.data.id) },
+                ]
+              );
+              return;
+            }
+            if (isProcessing) return;
             play('start');
             router.push(`/quiz/${item.data.id}`);
           }}
@@ -234,8 +284,13 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
             flexDirection: 'column',
             gap: isPad ? 12 : 0
           }}>
-            {/* Generating States at the TOP */}
-            {generatingType === 'flashcards' && (
+            {/* Synthetic placeholders shown during the kickoff→response
+                window (and while a DB refetch is still in flight). Once
+                the real pending row lands in flashcard_sets / quizzes
+                with status='pending'|'processing', the fetched-list
+                renderMediaItem takes over; render order means these
+                duplicate briefly at worst (both identical loading cards). */}
+            {generatingType === 'flashcards' && !flashcard_sets.some(s => s.status === 'pending' || s.status === 'processing') && (
               <View style={{ width: '100%', marginBottom: isPad ? 0 : 10 }}>
                 <StudioMediaItem
                   icon="albums-outline"
@@ -248,7 +303,7 @@ export const GeneratedMediaSection: React.FC<GeneratedMediaSectionProps> = ({
               </View>
             )}
 
-            {generatingType === 'quiz' && (
+            {generatingType === 'quiz' && !quizzes.some(q => q.status === 'pending' || q.status === 'processing') && (
               <View style={{ width: '100%', marginBottom: isPad ? 0 : 10 }}>
                 <StudioMediaItem
                   icon="help-circle-outline"

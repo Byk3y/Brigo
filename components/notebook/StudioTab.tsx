@@ -80,7 +80,11 @@ export const StudioTab: React.FC<StudioTabProps> = ({
     checkForPendingAudio,
     startAudioPolling,
     startPredictionPolling,
+    startFlashcardsPolling,
+    startQuizPolling,
     checkForPendingPrediction,
+    checkForPendingFlashcards,
+    checkForPendingQuiz,
   } = usePodcastGeneration(notebook.id, notebook.title, refreshContent);
 
   const {
@@ -107,20 +111,30 @@ export const StudioTab: React.FC<StudioTabProps> = ({
     setGeneratingAudioId,
     startAudioPolling,
     startPredictionPolling,
+    startFlashcardsPolling,
+    startQuizPolling,
     checkForPendingPrediction,
   });
 
   const { trackUpgradeModalDismissed } = useUpgrade();
 
+  const clearUnseenCompletions = useStore((s) => s.clearUnseenCompletions);
+
   useEffect(() => {
     checkForPendingAudio();
     checkForPendingPrediction();
-  }, [checkForPendingAudio, checkForPendingPrediction]);
+    checkForPendingFlashcards();
+    checkForPendingQuiz();
+    // Clear "new material" dot for this notebook since user is now viewing Studio.
+    clearUnseenCompletions(notebook.id);
+  }, [checkForPendingAudio, checkForPendingPrediction, checkForPendingFlashcards, checkForPendingQuiz, clearUnseenCompletions, notebook.id]);
 
   useAppState({
     onForeground: () => {
       checkForPendingAudio();
       checkForPendingPrediction();
+      checkForPendingFlashcards();
+      checkForPendingQuiz();
       refreshContent();
     },
   });
@@ -173,6 +187,8 @@ export const StudioTab: React.FC<StudioTabProps> = ({
               onDeletePodcast={deletePodcast}
               onDeletePrediction={deleteExamPrediction}
               onGeneratePrediction={handleGeneratePrediction}
+              onGenerateFlashcards={handleGenerateFlashcards}
+              onGenerateQuiz={handleGenerateQuiz}
             />
           </View>
         </ScrollView>

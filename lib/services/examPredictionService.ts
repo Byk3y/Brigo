@@ -21,22 +21,22 @@ export const examPredictionService = {
                 .order('created_at', { ascending: false });
 
             if (error) {
-                await handleError(error, {
+                const appError = await handleError(error, {
                     operation: 'fetch_exam_predictions',
                     component: 'exam-prediction-service',
                     metadata: { notebookId },
                 });
-                return [];
+                throw appError;
             }
 
             return data || [];
         } catch (error) {
-            await handleError(error, {
+            const appError = await handleError(error, {
                 operation: 'fetch_exam_predictions',
                 component: 'exam-prediction-service',
                 metadata: { notebookId },
             });
-            return [];
+            throw appError;
         }
     },
 

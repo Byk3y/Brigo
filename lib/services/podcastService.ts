@@ -72,12 +72,12 @@ export const podcastService = {
         .order('created_at', { ascending: false });
 
       if (error) {
-        await handleError(error, {
+        const appError = await handleError(error, {
           operation: 'fetch_podcasts',
           component: 'podcast-service',
           metadata: { notebookId },
         });
-        return [];
+        throw appError;
       }
 
       // Transform to Podcast type
@@ -91,13 +91,13 @@ export const podcastService = {
         generated_at: overview.created_at || '',
       }));
     } catch (error) {
-      // Use centralized error handling - return empty array on error for graceful degradation
-      await handleError(error, {
+      // Report then re-throw; callers preserve existing state on failure.
+      const appError = await handleError(error, {
         operation: 'fetch_podcasts',
         component: 'podcast-service',
         metadata: { notebookId },
       });
-      return [];
+      throw appError;
     }
   },
 

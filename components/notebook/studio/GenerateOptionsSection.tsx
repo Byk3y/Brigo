@@ -102,7 +102,7 @@ export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
               bgColor="bg-red-50"
               textColor="text-red-600"
               isGenerating={generatingType === 'flashcards'}
-              onPress={onGenerateFlashcards}
+              onPress={() => onGenerateFlashcards()}
               disabled={isDisabled}
             />
           </AttachStep>
@@ -120,7 +120,7 @@ export const GenerateOptionsSection: React.FC<GenerateOptionsSectionProps> = ({
               bgColor="bg-cyan-50"
               textColor="text-cyan-600"
               isGenerating={generatingType === 'quiz'}
-              onPress={onGenerateQuiz}
+              onPress={() => onGenerateQuiz()}
               disabled={isDisabled}
             />
           </AttachStep>

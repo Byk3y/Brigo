@@ -67,8 +67,10 @@ yarn-error.*
 # Allow .env.example to be committed (it's a template)
 !.env.example
 
-# Google service account key (sensitive)
+# Google service account keys (sensitive)
 google-service-account.json
+google-services.json
+firebase-adminsdk-*.json
 
 # Play Store checklist (internal tracking)
 PLAYSTORE_CHECKLIST.md

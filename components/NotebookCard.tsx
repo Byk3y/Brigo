@@ -14,7 +14,9 @@ import { useStore } from '@/lib/store';
 import { TikTokLoader } from '@/components/TikTokLoader';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { useFeedback } from '@/lib/feedback';
-import { useIsNotebookGenerating } from '@/hooks/useIsNotebookGenerating';
+import { useNotebookActivity } from '@/hooks/useIsNotebookGenerating';
+import { NotebookActivityDot } from '@/components/NotebookActivityDot';
+import { AnimatedGradientBorder } from '@/components/AnimatedGradientBorder';
 
 interface NotebookCardProps {
     notebook: Notebook;
@@ -33,7 +35,7 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
     const colors = getThemeColors(isDarkMode);
     const { play } = useFeedback();
     const isPad = Platform.OS === 'ios' && Platform.isPad;
-    const isGenerating = useIsNotebookGenerating(notebook.id);
+    const activityState = useNotebookActivity(notebook.id);
 
     // Simplified theme-aware notebook card background colors
     const getNotebookColor = () => {
@@ -159,6 +161,83 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
 
     const materialCount = notebook.materials?.length || 0;
 
+    const cardBorderRadius = isPad ? 24 : 16;
+
+    const card = (
+        <TouchableOpacity
+            onPress={() => {
+                play('start');
+                onPress();
+            }}
+            activeOpacity={0.7}
+            style={{
+                backgroundColor: getNotebookColor(),
+                borderRadius: cardBorderRadius,
+                padding: isPad ? 20 : 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                width: '100%',
+            }}
+        >
+            {/* Emoji on the left */}
+            <View style={{ marginRight: isPad ? 20 : 14 }}>
+                <Text style={{ fontSize: isPad ? 36 : 28 }}>{notebook.emoji || getTopicEmoji(notebook.title)}</Text>
+            </View>
+
+            {/* Content */}
+            <View style={{ flex: 1 }}>
+                <Text
+                    style={{ fontSize: isPad ? 18 : 16, fontFamily: 'Nunito-SemiBold', color: colors.text, marginBottom: isPad ? 4 : 2 }}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                >
+                    {notebook.title}
+                </Text>
+                <Text style={{ fontSize: isPad ? 14 : 13, color: colors.textSecondary, fontFamily: 'Nunito-Regular' }}>
+                    {materialCount} source{materialCount !== 1 ? 's' : ''} • {getTimeAgoText()}
+                </Text>
+
+                {/* Failed status with retry button */}
+                {notebook.status === 'failed' && (
+                    <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 12, color: isDarkMode ? '#f87171' : '#dc2626', fontFamily: 'Nunito-Medium' }}>Processing failed</Text>
+                        <TouchableOpacity
+                            onPress={handleRetry}
+                            disabled={isRetrying}
+                            style={{
+                                backgroundColor: isDarkMode ? 'rgba(127, 29, 29, 0.5)' : '#fee2e2',
+                                paddingHorizontal: 12,
+                                paddingVertical: 4,
+                                borderRadius: 999,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 4
+                            }}
+                            activeOpacity={0.7}
+                        >
+                            {isRetrying ? (
+                                <ActivityIndicator size="small" color="#DC2626" />
+                            ) : (
+                                <Text style={{ fontSize: 12, color: isDarkMode ? '#f87171' : '#dc2626', fontFamily: 'Nunito-SemiBold' }}>Retry</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+
+            {/* Right side — extraction loader or "unseen" dot (generating ring is rendered by AnimatedGradientBorder around the whole card) */}
+            {(notebook.status === 'extracting' || notebook.status === 'pending') ? (
+                <View style={{ marginLeft: 12 }}>
+                    <TikTokLoader size={10} color="#6366f1" containerWidth={50} />
+                </View>
+            ) : activityState === 'unseen' ? (
+                <View style={{ marginLeft: 12 }}>
+                    <NotebookActivityDot state="unseen" color={colors.primary} size={10} />
+                </View>
+            ) : null}
+        </TouchableOpacity>
+    );
+
     return (
         <MotiView
             from={animateEntry ? { opacity: 0, translateX: -20 } : { opacity: 1, translateX: 0 }}
@@ -169,85 +248,11 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
                 marginBottom: isPad ? 20 : 12,
             }}
         >
-            <TouchableOpacity
-                onPress={() => {
-                    play('start');
-                    onPress();
-                }}
-                activeOpacity={0.7}
-                style={{
-                    backgroundColor: getNotebookColor(),
-                    borderRadius: isPad ? 24 : 16,
-                    padding: isPad ? 20 : 16,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    width: '100%',
-                }}
-            >
-                {/* Emoji on the left */}
-                <View style={{ marginRight: isPad ? 20 : 14 }}>
-                    <Text style={{ fontSize: isPad ? 36 : 28 }}>{notebook.emoji || getTopicEmoji(notebook.title)}</Text>
-                </View>
-
-                {/* Content */}
-                <View style={{ flex: 1 }}>
-                    <Text
-                        style={{ fontSize: isPad ? 18 : 16, fontFamily: 'Nunito-SemiBold', color: colors.text, marginBottom: isPad ? 4 : 2 }}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                    >
-                        {notebook.title}
-                    </Text>
-                    <Text style={{ fontSize: isPad ? 14 : 13, color: colors.textSecondary, fontFamily: 'Nunito-Regular' }}>
-                        {materialCount} source{materialCount !== 1 ? 's' : ''} • {getTimeAgoText()}
-                    </Text>
-
-                    {/* Failed status with retry button */}
-                    {notebook.status === 'failed' && (
-                        <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ fontSize: 12, color: isDarkMode ? '#f87171' : '#dc2626', fontFamily: 'Nunito-Medium' }}>Processing failed</Text>
-                            <TouchableOpacity
-                                onPress={handleRetry}
-                                disabled={isRetrying}
-                                style={{
-                                    backgroundColor: isDarkMode ? 'rgba(127, 29, 29, 0.5)' : '#fee2e2',
-                                    paddingHorizontal: 12,
-                                    paddingVertical: 4,
-                                    borderRadius: 999,
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    gap: 4
-                                }}
-                                activeOpacity={0.7}
-                            >
-                                {isRetrying ? (
-                                    <ActivityIndicator size="small" color="#DC2626" />
-                                ) : (
-                                    <Text style={{ fontSize: 12, color: isDarkMode ? '#f87171' : '#dc2626', fontFamily: 'Nunito-SemiBold' }}>Retry</Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                </View>
-
-                {/* Right side - loader when extracting or pending, else generation dot */}
-                {(notebook.status === 'extracting' || notebook.status === 'pending') ? (
-                    <View style={{ marginLeft: 12 }}>
-                        <TikTokLoader size={10} color="#6366f1" containerWidth={50} />
-                    </View>
-                ) : isGenerating ? (
-                    <View
-                        style={{
-                            marginLeft: 12,
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: colors.primary,
-                        }}
-                        accessibilityLabel="Generation in progress"
-                    />
-                ) : null}
-            </TouchableOpacity>
+            {activityState === 'generating' ? (
+                <AnimatedGradientBorder borderRadius={cardBorderRadius} borderWidth={2}>
+                    {card}
+                </AnimatedGradientBorder>
+            ) : card}
         </MotiView>
     );
 };

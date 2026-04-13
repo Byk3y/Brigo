@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, View, Text, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { AttachStep } from 'react-native-spotlight-tour';
-import { useIsNotebookGenerating } from '@/hooks/useIsNotebookGenerating';
+import { useNotebookActivity } from '@/hooks/useIsNotebookGenerating';
 
 export type TabType = 'sources' | 'chat' | 'studio';
 
@@ -21,7 +21,41 @@ export const NotebookTabBar: React.FC<NotebookTabBarProps> = ({
   const isPad = Platform.OS === 'ios' && Platform.isPad;
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
-  const isStudioGenerating = useIsNotebookGenerating(notebookId);
+  const studioActivity = useNotebookActivity(notebookId);
+
+  // Pulse the Studio icon itself while a job is generating. Covers the icon
+  // less than an overlay dot and still reads as "something's happening".
+  const iconOpacity = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (studioActivity !== 'generating') {
+      iconOpacity.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(iconOpacity, {
+          toValue: 0.4,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(iconOpacity, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [studioActivity, iconOpacity]);
+
+  const studioIconColor = activeTab === 'studio'
+    ? colors.primary
+    : studioActivity === 'generating'
+      ? colors.primary
+      : colors.icon;
 
   return (
     <View style={{ borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background, alignItems: 'center' }}>
@@ -85,25 +119,27 @@ export const NotebookTabBar: React.FC<NotebookTabBarProps> = ({
           >
             <View style={{ alignItems: 'center' }} collapsable={false}>
               <View>
-                <Ionicons
-                  name={activeTab === 'studio' ? 'color-palette' : 'color-palette-outline'}
-                  size={isPad ? 26 : 22}
-                  color={activeTab === 'studio' ? colors.primary : colors.icon}
-                />
-                {isStudioGenerating && (
+                <Animated.View style={{ opacity: iconOpacity }}>
+                  <Ionicons
+                    name={activeTab === 'studio' || studioActivity === 'generating' ? 'color-palette' : 'color-palette-outline'}
+                    size={isPad ? 26 : 22}
+                    color={studioIconColor}
+                  />
+                </Animated.View>
+                {studioActivity === 'unseen' && (
                   <View
                     style={{
                       position: 'absolute',
-                      top: -2,
-                      right: -4,
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
+                      top: -1,
+                      right: -2,
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
                       backgroundColor: colors.primary,
-                      borderWidth: 1.5,
+                      borderWidth: 1,
                       borderColor: colors.background,
                     }}
-                    accessibilityLabel="Generation in progress"
+                    accessibilityLabel="New material ready"
                   />
                 )}
               </View>

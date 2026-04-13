@@ -40,7 +40,10 @@ export const useStudioContent = (notebookId: string): UseStudioContentReturn => 
             // Safety timeout so we never stay stuck loading
             timeoutId = setTimeout(() => controller.abort(), 10000);
 
-            const [studioContent, podcastsData, predictionsData] = await Promise.all([
+            // allSettled so a failure in one fetch doesn't wipe the others'
+            // state. A transient network blip on any single fetch used to
+            // clear the entire Generated media list — no more.
+            const [studioResult, podcastsResult, predictionsResult] = await Promise.allSettled([
                 studioService.fetchAll(notebookId),
                 podcastService.fetchByNotebook(notebookId),
                 examPredictionService.fetchByNotebook(notebookId),
@@ -48,10 +51,16 @@ export const useStudioContent = (notebookId: string): UseStudioContentReturn => 
 
             clearTimeout(timeoutId);
 
-            setFlashcardSets(studioContent.flashcard_sets);
-            setQuizzes(studioContent.quizzes);
-            setPodcasts(podcastsData);
-            setExamPredictions(predictionsData);
+            if (studioResult.status === 'fulfilled') {
+                setFlashcardSets(studioResult.value.flashcard_sets);
+                setQuizzes(studioResult.value.quizzes);
+            }
+            if (podcastsResult.status === 'fulfilled') {
+                setPodcasts(podcastsResult.value);
+            }
+            if (predictionsResult.status === 'fulfilled') {
+                setExamPredictions(predictionsResult.value);
+            }
         } catch (error) {
             // Ignore intentional aborts (timeout or new fetch)
             const isAbort =

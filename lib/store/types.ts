@@ -33,6 +33,7 @@ export interface ProfileMeta {
     content_updates?: boolean;
     friend_nudges?: boolean;
     friend_activity?: boolean;
+    generation_ready?: boolean;
   };
 }
 

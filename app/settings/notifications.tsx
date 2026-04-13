@@ -17,6 +17,7 @@ export default function NotificationsSettingsScreen() {
     const [studyReminders, setStudyReminders] = React.useState(true);
     const [streakAlerts, setStreakAlerts] = React.useState(true);
     const [friendNudges, setFriendNudges] = React.useState(true);
+    const [generationReady, setGenerationReady] = React.useState(true);
     const [isUpdating, setIsUpdating] = React.useState(false);
 
     React.useEffect(() => {
@@ -31,6 +32,7 @@ export default function NotificationsSettingsScreen() {
                 setStudyReminders(settings.study_reminders ?? true);
                 setStreakAlerts(settings.streak_alerts ?? true);
                 setFriendNudges(settings.friend_nudges ?? true);
+                setGenerationReady(settings.generation_ready ?? true);
             }
         };
         checkStatus();
@@ -213,6 +215,21 @@ export default function NotificationsSettingsScreen() {
                             saveSettings({ streak_alerts: val });
                         }}
                         icon="flame"
+                        disabled={!isMasterEnabled}
+                    />
+                </View>
+
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 32 }]}>STUDY CONTENT</Text>
+                <View style={styles.optionsList}>
+                    <OptionRow
+                        label="Generation Alerts"
+                        description="Ping me when a flashcard set, quiz, podcast or prediction is ready"
+                        value={generationReady}
+                        onValueChange={(val: boolean) => {
+                            setGenerationReady(val);
+                            saveSettings({ generation_ready: val });
+                        }}
+                        icon="sparkles"
                         disabled={!isMasterEnabled}
                     />
                 </View>

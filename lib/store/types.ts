@@ -100,6 +100,8 @@ export interface Material {
 }
 
 // Studio feature types (separate from legacy exam flashcards)
+export type StudioJobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
 export interface FlashcardSet {
   id: string;
   notebook_id: string;
@@ -108,6 +110,8 @@ export interface FlashcardSet {
   updated_at: string;
   cards?: StudioFlashcard[];
   total_cards?: number;
+  status?: StudioJobStatus;
+  error_message?: string | null;
 }
 
 export interface StudioFlashcard {
@@ -129,6 +133,8 @@ export interface Quiz {
   score?: number;
   total_questions: number;
   created_at: string;
+  status?: StudioJobStatus;
+  error_message?: string | null;
 }
 
 export interface QuizQuestion {

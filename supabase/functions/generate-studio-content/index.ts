@@ -27,8 +27,8 @@ interface GenerateStudioResponse {
   success: boolean;
   notebook_id: string;
   content_type: string;
-  generated_count: number;
-  content_id?: string; // quiz_id for quizzes
+  content_id: string;
+  status: 'processing';
   message: string;
 }
 
@@ -264,224 +264,276 @@ Deno.serve(async (req) => {
     // 7.5. Sanitize notebook title and material content before LLM
     const sanitizedNotebookTitle = sanitizeTitle(notebook.title, 100);
     const sanitizedMaterialContent = sanitizeForLLM(material.content, {
-      maxLength: 200000, // Keep existing window but sanitize
+      maxLength: 200000,
       preserveNewlines: true,
     });
 
-    // 8. Generate content via LLM (with content classification, summary, study goal, and source count)
-    const systemPrompt = getSystemPrompt(sanitizedContentType, quantity, educationLevel, ageBracket, contentClassification, contentSummary, studyGoal, sourceCount);
-    const userPrompt = getUserPrompt(sanitizedContentType, quantity, sanitizedNotebookTitle, sanitizedMaterialContent, sourceCount);
-
-    console.log('Calling LLM...');
-    const llmResult = await callLLMWithRetry(
-      'studio',
-      systemPrompt,
-      userPrompt,
-      { temperature: sanitizedContentType === 'flashcards' ? 0.7 : 0.5 }
-    );
-
-    console.log(`LLM response received. Tokens: ${llmResult.usage.totalTokens}, Cost: ${llmResult.costCents}¢`);
-
-    // 9. Parse and validate JSON (with markdown stripping and comprehensive validation)
-    let parsed: any;
-    try {
-      let jsonContent = llmResult.content;
-
-      // Strip markdown code blocks if present (LLMs sometimes wrap JSON in ```json ... ```)
-      const jsonMatch = jsonContent.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonContent = jsonMatch[1];
-      }
-
-      parsed = JSON.parse(jsonContent.trim());
-    } catch (parseError) {
-      console.error('Failed to parse LLM response as JSON:', parseError);
-      console.error('LLM response:', llmResult.content.substring(0, 500));
-      throw new Error('Invalid JSON response from LLM');
-    }
-
-    // 9.5. Validate LLM response structure and content
-    let validationResult;
+    // 8. Clean up prior failed rows for this notebook+type to keep the UI tidy.
     if (sanitizedContentType === 'flashcards') {
-      validationResult = validateFlashcardsResponse(parsed, quantity);
+      await supabase
+        .from('studio_flashcard_sets')
+        .delete()
+        .eq('notebook_id', notebook_id)
+        .eq('status', 'failed');
     } else {
-      validationResult = validateQuizResponse(parsed, quantity);
+      await supabase
+        .from('studio_quizzes')
+        .delete()
+        .eq('notebook_id', notebook_id)
+        .eq('status', 'failed');
     }
 
-    if (!validationResult.isValid) {
-      console.error('LLM response validation failed:', validationResult.error);
-      throw new Error(`Invalid ${sanitizedContentType} response: ${validationResult.error}`);
-    }
-
-    // Use sanitized/validated data
-    parsed = validationResult.sanitized;
-
-    // 10. Insert into database
-    let generatedCount = 0;
-    let contentId: string | undefined;
+    // 9. Insert pending parent row and return to client immediately. The
+    // client will poll / receive Realtime updates and flip the indicator
+    // when the background task below updates status to completed/failed.
+    let contentId: string;
+    let placeholderTitle: string;
 
     if (sanitizedContentType === 'flashcards') {
-
-      // Create a new flashcard set/deck
       const { count } = await supabase
         .from('studio_flashcard_sets')
         .select('id', { count: 'exact', head: true })
         .eq('notebook_id', notebook_id);
-
       const setNumber = (count || 0) + 1;
+      placeholderTitle = `${notebook.title} Flashcards ${setNumber}`;
+
       const { data: set, error: setError } = await supabase
         .from('studio_flashcard_sets')
         .insert({
           notebook_id,
-          title: parsed.title || `${notebook.title} Flashcards ${setNumber}`,
+          user_id: user.id,
+          title: placeholderTitle,
+          status: 'processing',
         })
-        .select()
+        .select('id')
         .single();
 
       if (setError || !set) {
-        console.error('Failed to create flashcard set:', setError);
-        throw new Error(`Database error: ${setError?.message || 'Failed to create set'}`);
+        console.error('Failed to create pending flashcard set:', setError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create flashcard set' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-
       contentId = set.id;
-
-      const { data: inserted, error: insertError } = await supabase
-        .from('studio_flashcards')
-        .insert(
-          parsed.flashcards.map((fc: any) => ({
-            notebook_id,
-            set_id: set.id,
-            question: fc.question,
-            answer: fc.answer,
-            explanation: fc.explanation || null,
-            tags: fc.tags || [],
-          }))
-        )
-        .select();
-
-      if (insertError) {
-        console.error('Failed to insert flashcards:', insertError);
-        // Clean up orphaned set
-        await supabase.from('studio_flashcard_sets').delete().eq('id', set.id);
-        throw new Error(`Database error: ${insertError.message}`);
-      }
-
-      generatedCount = inserted?.length || 0;
-      console.log(`Inserted ${generatedCount} flashcards into set ${set.id}`);
     } else {
-      // Quiz generation
-      if (!parsed.quiz || !parsed.quiz.questions || !Array.isArray(parsed.quiz.questions)) {
-        throw new Error('Invalid quiz response structure');
-      }
-
-      // Validate explanations structure
-      for (const q of parsed.quiz.questions) {
-        if (q.explanations) {
-          const keys = Object.keys(q.explanations);
-          if (!keys.includes('A') || !keys.includes('B') ||
-            !keys.includes('C') || !keys.includes('D')) {
-            console.warn(`Question missing explanation keys: ${q.question.substring(0, 50)}...`);
-            // Set to null if incomplete rather than failing
-            q.explanations = null;
-          }
-        }
-      }
-
-      // Rebalance options to avoid all correct answers on the same letter
-      const balancedQuestions = rebalanceQuizQuestions(parsed.quiz.questions);
-
-      // Insert quiz metadata
+      placeholderTitle = `${notebook.title} Quiz`;
       const { data: quiz, error: quizError } = await supabase
         .from('studio_quizzes')
         .insert({
           notebook_id,
-          title: parsed.quiz.title || `${notebook.title} Quiz`,
-          total_questions: balancedQuestions.length,
+          user_id: user.id,
+          title: placeholderTitle,
+          status: 'processing',
         })
-        .select()
+        .select('id')
         .single();
 
       if (quizError || !quiz) {
-        console.error('Failed to insert quiz:', quizError);
-        throw new Error(`Database error: ${quizError?.message || 'Failed to create quiz'}`);
-      }
-
-      contentId = quiz.id;
-      console.log(`Created quiz: ${contentId}`);
-
-      // Insert quiz questions
-      const { error: questionsError } = await supabase
-        .from('studio_quiz_questions')
-        .insert(
-          balancedQuestions.map((q: any, idx: number) => ({
-            quiz_id: quiz.id,
-            question: q.question,
-            options: q.options,
-            correct_answer: q.correct,
-            hint: q.hint || null,
-            explanation: null,
-            explanations: q.explanations || null,
-            display_order: idx,
-          }))
+        console.error('Failed to create pending quiz:', quizError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create quiz' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
-
-      if (questionsError) {
-        console.error('Failed to insert quiz questions:', questionsError);
-        // Clean up orphaned quiz to prevent partial failure
-        await supabase.from('studio_quizzes').delete().eq('id', quiz.id);
-        console.log(`Cleaned up orphaned quiz: ${quiz.id}`);
-        throw new Error(`Database error: ${questionsError.message}`);
       }
-
-      generatedCount = parsed.quiz.questions.length;
-      console.log(`Inserted ${generatedCount} quiz questions`);
+      contentId = quiz.id;
     }
 
-    // 11. PUSH NOTIFICATION (fire-and-forget)
-    const pushConfig = sanitizedContentType === 'flashcards'
-      ? {
-          contentType: 'flashcards' as const,
-          title: 'Flashcards ready',
-          body: `${generatedCount} flashcards ready for "${notebook.title}".`,
-          data: { notebookId: notebook_id, setId: contentId },
+    console.log(`Created pending ${sanitizedContentType} record: ${contentId}`);
+
+    // 10. ASYNCHRONOUS GENERATION (background task continues after response)
+    const backgroundTask = (async () => {
+      try {
+        const systemPrompt = getSystemPrompt(sanitizedContentType, quantity, educationLevel, ageBracket, contentClassification, contentSummary, studyGoal, sourceCount);
+        const userPrompt = getUserPrompt(sanitizedContentType, quantity, sanitizedNotebookTitle, sanitizedMaterialContent, sourceCount);
+
+        console.log('[Background] Calling LLM...');
+        const llmResult = await callLLMWithRetry(
+          'studio',
+          systemPrompt,
+          userPrompt,
+          { temperature: sanitizedContentType === 'flashcards' ? 0.7 : 0.5 }
+        );
+
+        console.log(`[Background] LLM response received. Tokens: ${llmResult.usage.totalTokens}, Cost: ${llmResult.costCents}¢`);
+
+        // Parse + validate LLM output
+        let parsed: any;
+        let jsonContent = llmResult.content;
+        const jsonMatch = jsonContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) jsonContent = jsonMatch[1];
+        parsed = JSON.parse(jsonContent.trim());
+
+        const validationResult = sanitizedContentType === 'flashcards'
+          ? validateFlashcardsResponse(parsed, quantity)
+          : validateQuizResponse(parsed, quantity);
+
+        if (!validationResult.isValid) {
+          throw new Error(`Invalid ${sanitizedContentType} response: ${validationResult.error}`);
         }
-      : {
-          contentType: 'quiz' as const,
-          title: 'Quiz ready',
-          body: `"${notebook.title}" is ready for testing.`,
-          data: { quizId: contentId, notebookId: notebook_id },
-        };
-    sendGenerationReadyPush({ supabase, userId: user.id, ...pushConfig })
-      .catch((e) => console.error('Push send failed:', e));
+        parsed = validationResult.sanitized;
 
-    // 12. INCREMENT QUOTA (atomic)
-    await incrementQuota(supabase, user.id, 'studio');
-    console.log('Quota incremented');
+        let generatedCount = 0;
 
-    // 13. LOG USAGE
-    await supabase.from('usage_logs').insert({
-      user_id: user.id,
-      notebook_id,
-      job_type: 'studio',
-      model_used: llmResult.model,
-      input_tokens: llmResult.usage.inputTokens,
-      output_tokens: llmResult.usage.outputTokens,
-      total_tokens: llmResult.usage.totalTokens,
-      estimated_cost_cents: llmResult.costCents,
-      latency_ms: llmResult.latency,
-      status: 'success',
-    });
+        if (sanitizedContentType === 'flashcards') {
+          const { error: insertError } = await supabase
+            .from('studio_flashcards')
+            .insert(
+              parsed.flashcards.map((fc: any) => ({
+                notebook_id,
+                set_id: contentId,
+                question: fc.question,
+                answer: fc.answer,
+                explanation: fc.explanation || null,
+                tags: fc.tags || [],
+              }))
+            );
 
-    console.log('Usage logged');
+          if (insertError) {
+            throw new Error(`Flashcards insert failed: ${insertError.message}`);
+          }
 
-    // 14. Return success
+          generatedCount = parsed.flashcards.length;
+
+          const { error: updateError } = await supabase
+            .from('studio_flashcard_sets')
+            .update({
+              title: parsed.title || placeholderTitle,
+              status: 'completed',
+            })
+            .eq('id', contentId);
+
+          if (updateError) throw new Error(`Set update failed: ${updateError.message}`);
+          console.log(`[Background] Inserted ${generatedCount} flashcards into set ${contentId}`);
+        } else {
+          if (!parsed.quiz || !parsed.quiz.questions || !Array.isArray(parsed.quiz.questions)) {
+            throw new Error('Invalid quiz response structure');
+          }
+
+          for (const q of parsed.quiz.questions) {
+            if (q.explanations) {
+              const keys = Object.keys(q.explanations);
+              if (!keys.includes('A') || !keys.includes('B') || !keys.includes('C') || !keys.includes('D')) {
+                q.explanations = null;
+              }
+            }
+          }
+
+          const balancedQuestions = rebalanceQuizQuestions(parsed.quiz.questions);
+
+          const { error: questionsError } = await supabase
+            .from('studio_quiz_questions')
+            .insert(
+              balancedQuestions.map((q: any, idx: number) => ({
+                quiz_id: contentId,
+                question: q.question,
+                options: q.options,
+                correct_answer: q.correct,
+                hint: q.hint || null,
+                explanation: null,
+                explanations: q.explanations || null,
+                display_order: idx,
+              }))
+            );
+
+          if (questionsError) {
+            throw new Error(`Quiz questions insert failed: ${questionsError.message}`);
+          }
+
+          generatedCount = balancedQuestions.length;
+
+          const { error: updateError } = await supabase
+            .from('studio_quizzes')
+            .update({
+              title: parsed.quiz.title || placeholderTitle,
+              total_questions: generatedCount,
+              status: 'completed',
+            })
+            .eq('id', contentId);
+
+          if (updateError) throw new Error(`Quiz update failed: ${updateError.message}`);
+          console.log(`[Background] Inserted ${generatedCount} quiz questions for ${contentId}`);
+        }
+
+        // Push notification (fire-and-forget)
+        const pushConfig = sanitizedContentType === 'flashcards'
+          ? {
+              contentType: 'flashcards' as const,
+              title: 'Flashcards ready',
+              body: `${generatedCount} flashcards ready for "${notebook.title}".`,
+              data: { notebookId: notebook_id, setId: contentId },
+            }
+          : {
+              contentType: 'quiz' as const,
+              title: 'Quiz ready',
+              body: `"${notebook.title}" is ready for testing.`,
+              data: { quizId: contentId, notebookId: notebook_id },
+            };
+        sendGenerationReadyPush({ supabase, userId: user.id, ...pushConfig })
+          .catch((e) => console.error('[Background] Push send failed:', e));
+
+        // Quota + usage log
+        await Promise.all([
+          incrementQuota(supabase, user.id, 'studio'),
+          supabase.from('usage_logs').insert({
+            user_id: user.id,
+            notebook_id,
+            job_type: 'studio',
+            model_used: llmResult.model,
+            input_tokens: llmResult.usage.inputTokens,
+            output_tokens: llmResult.usage.outputTokens,
+            total_tokens: llmResult.usage.totalTokens,
+            estimated_cost_cents: llmResult.costCents,
+            latency_ms: llmResult.latency,
+            status: 'success',
+          }),
+        ]);
+
+        console.log(`[Background] ${sanitizedContentType} generation completed: ${contentId}`);
+      } catch (bgError: any) {
+        console.error(`[Background] ${sanitizedContentType} generation failed:`, bgError);
+
+        await captureException(bgError, {
+          user_id: user?.id,
+          notebook_id,
+          content_id: contentId,
+          content_type: sanitizedContentType,
+          operation: 'generate-studio-content-background',
+        });
+
+        const table = sanitizedContentType === 'flashcards' ? 'studio_flashcard_sets' : 'studio_quizzes';
+        await supabase
+          .from(table)
+          .update({
+            status: 'failed',
+            error_message: bgError.message || 'Generation failed',
+          })
+          .eq('id', contentId);
+
+        await supabase.from('usage_logs').insert({
+          user_id: user.id,
+          notebook_id,
+          job_type: 'studio',
+          status: 'error',
+          error_message: bgError.message,
+        });
+      }
+    })();
+
+    // @ts-ignore: EdgeRuntime is available in Supabase environment
+    if (typeof EdgeRuntime !== 'undefined') {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(backgroundTask);
+    }
+
+    // 11. Return job id immediately — client polls / receives Realtime.
     const response: GenerateStudioResponse = {
       success: true,
       notebook_id,
       content_type: sanitizedContentType,
-      generated_count: generatedCount,
       content_id: contentId,
-      message: `Successfully generated ${generatedCount} ${sanitizedContentType}`,
+      status: 'processing',
+      message: `${sanitizedContentType} generation started in background`,
     };
 
     return new Response(

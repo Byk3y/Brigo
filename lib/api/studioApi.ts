@@ -15,8 +15,8 @@ export interface GenerateStudioContentResponse {
   success: boolean;
   notebook_id: string;
   content_type: string;
-  generated_count: number;
-  content_id?: string; // quiz_id for quizzes
+  content_id: string;
+  status: 'processing';
   message: string;
 }
 

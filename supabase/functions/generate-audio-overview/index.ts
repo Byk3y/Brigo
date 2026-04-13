@@ -14,6 +14,7 @@ import { getCorsHeaders, getCorsPreflightHeaders } from '../_shared/cors.ts';
 import { checkRateLimit, RATE_LIMITS } from '../_shared/ratelimit.ts';
 import { initSentry, captureException, setUser } from '../_shared/sentry.ts';
 import { createSafeContext } from '../_shared/sanitization.ts';
+import { sendGenerationReadyPush } from '../_shared/push.ts';
 
 // Initialize Sentry
 initSentry();
@@ -460,7 +461,20 @@ Deno.serve(async (req) => {
 
         console.log(`[Background] Podcast completed: ${overview.id}`);
 
-        // F. INCREMENT QUOTA & LOG USAGE
+        // F. PUSH NOTIFICATION (fire-and-forget)
+        sendGenerationReadyPush({
+          supabase,
+          userId: user.id,
+          contentType: 'audio',
+          title: 'Your podcast is ready',
+          body: `"${notebook.title}" is ready to play.`,
+          data: {
+            overviewId: overview.id,
+            notebookId: notebook_id,
+          },
+        }).catch((e) => console.error('[Background] Push send failed:', e));
+
+        // G. INCREMENT QUOTA & LOG USAGE
         await Promise.all([
           incrementQuota(supabase, user.id, 'audio'),
           supabase.from('usage_logs').insert({

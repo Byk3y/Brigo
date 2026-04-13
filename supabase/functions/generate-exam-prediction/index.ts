@@ -13,6 +13,7 @@ import { validateUUID } from '../_shared/validation.ts';
 import { sanitizeForLLM, sanitizeTitle, createSafeContext } from '../_shared/sanitization.ts';
 import { validatePredictionResponse } from '../_shared/llm-validation.ts';
 import { initSentry, captureException, setUser } from '../_shared/sentry.ts';
+import { sendGenerationReadyPush } from '../_shared/push.ts';
 
 // Initialize Sentry
 initSentry();
@@ -326,6 +327,19 @@ Deno.serve(async (req) => {
                     .eq('id', prediction_id);
 
                 if (updateError) throw updateError;
+
+                // Push notification (fire-and-forget)
+                sendGenerationReadyPush({
+                    supabase,
+                    userId: user.id,
+                    contentType: 'prediction',
+                    title: 'Exam predictions ready',
+                    body: `Your predictions for "${notebook.title}" are ready.`,
+                    data: {
+                        predictionId: prediction_id,
+                        notebookId: notebook_id,
+                    },
+                }).catch((e) => console.error('[Background] Push send failed:', e));
 
                 // Increment quota
                 await incrementQuota(supabase, user.id, 'studio');

@@ -16,6 +16,17 @@ export const usePushNotifications = () => {
             // Handle deep linking/navigation here based on notification data
             if (data?.type === 'friend_nudge') {
                 router.push('/friends');
+            } else if (data?.type === 'audio' && data?.overviewId) {
+                router.push(`/audio-player/${data.overviewId}`);
+            } else if (data?.type === 'quiz' && data?.quizId) {
+                router.push(`/quiz/${data.quizId}`);
+            } else if (data?.type === 'flashcards' && data?.notebookId) {
+                router.push({
+                    pathname: '/flashcards/[id]',
+                    params: { id: data.notebookId, setId: data.setId },
+                });
+            } else if (data?.type === 'prediction' && data?.predictionId) {
+                router.push(`/predictions/${data.predictionId}`);
             } else if (data?.notebookId) {
                 router.push(`/notebook/${data.notebookId}`);
             } else if (data?.screen) {

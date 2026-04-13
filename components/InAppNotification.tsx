@@ -100,6 +100,8 @@ export const InAppNotification: React.FC = () => {
             router.push(`/audio-player/${data.overviewId}`);
         } else if (type === 'quiz' && data?.quizId) {
             router.push(`/quiz/${data.quizId}`);
+        } else if (type === 'prediction' && data?.predictionId) {
+            router.push(`/predictions/${data.predictionId}`);
         }
     };
 
@@ -143,6 +145,8 @@ export const InAppNotification: React.FC = () => {
                 return { icon: 'headset', color: '#6366f1', label: 'Podcast Ready' };
             case 'quiz':
                 return { icon: 'help-circle', color: '#0891b2', label: 'Quiz Ready' };
+            case 'prediction':
+                return { icon: 'bulb', color: '#9333ea', label: 'Predictions Ready' };
             case 'success':
                 return { icon: 'checkmark-circle', color: '#22c55e', label: 'Success' };
             case 'warning':

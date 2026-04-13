@@ -4,7 +4,14 @@
 
 import type { StateCreator } from 'zustand';
 
-export type NotificationType = 'flashcards' | 'quiz' | 'audio' | 'prediction' | 'success' | 'info' | 'warning' | 'offline';
+export const GENERATION_NOTIFICATION_TYPES = ['flashcards', 'quiz', 'audio', 'prediction'] as const;
+export type GenerationNotificationType = typeof GENERATION_NOTIFICATION_TYPES[number];
+
+export type NotificationType = GenerationNotificationType | 'success' | 'info' | 'warning' | 'offline';
+
+const GENERATION_TYPE_SET: ReadonlySet<string> = new Set(GENERATION_NOTIFICATION_TYPES);
+export const isGenerationNotificationType = (t: unknown): t is GenerationNotificationType =>
+    typeof t === 'string' && GENERATION_TYPE_SET.has(t);
 
 export interface NotificationPayload {
     type: NotificationType;
@@ -19,9 +26,29 @@ export interface NotificationSlice {
     dismissNotification: () => void;
 }
 
-export const createNotificationSlice: StateCreator<NotificationSlice> = (set) => ({
+const CONTENT_ID_KEYS = ['overviewId', 'quizId', 'setId', 'predictionId'] as const;
+
+// Returns the first identifying content id from the data payload, for dedup.
+const getContentKey = (payload: NotificationPayload): string | null => {
+    const data = payload.data;
+    if (!data) return null;
+    for (const key of CONTENT_ID_KEYS) {
+        if (data[key]) return `${payload.type}:${key}:${data[key]}`;
+    }
+    return null;
+};
+
+export const createNotificationSlice: StateCreator<NotificationSlice> = (set, get) => ({
     notification: null,
-    notify: (payload) => set({ notification: payload }),
+    notify: (payload) => {
+        const current = get().notification;
+        if (current) {
+            const currentKey = getContentKey(current);
+            const nextKey = getContentKey(payload);
+            if (currentKey && nextKey && currentKey === nextKey) return;
+        }
+        set({ notification: payload });
+    },
     dismissNotification: () => set({ notification: null }),
 });
 

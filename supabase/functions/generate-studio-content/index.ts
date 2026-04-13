@@ -13,6 +13,7 @@ import { validateUUID, validateContentType } from '../_shared/validation.ts';
 import { sanitizeForLLM, sanitizeTitle, createSafeContext } from '../_shared/sanitization.ts';
 import { validateFlashcardsResponse, validateQuizResponse } from '../_shared/llm-validation.ts';
 import { initSentry, captureException, setUser } from '../_shared/sentry.ts';
+import { sendGenerationReadyPush } from '../_shared/push.ts';
 
 // Initialize Sentry
 initSentry();
@@ -436,11 +437,28 @@ Deno.serve(async (req) => {
       console.log(`Inserted ${generatedCount} quiz questions`);
     }
 
-    // 11. INCREMENT QUOTA (atomic)
+    // 11. PUSH NOTIFICATION (fire-and-forget)
+    const pushConfig = sanitizedContentType === 'flashcards'
+      ? {
+          contentType: 'flashcards' as const,
+          title: 'Flashcards ready',
+          body: `${generatedCount} flashcards ready for "${notebook.title}".`,
+          data: { notebookId: notebook_id, setId: contentId },
+        }
+      : {
+          contentType: 'quiz' as const,
+          title: 'Quiz ready',
+          body: `"${notebook.title}" is ready for testing.`,
+          data: { quizId: contentId, notebookId: notebook_id },
+        };
+    sendGenerationReadyPush({ supabase, userId: user.id, ...pushConfig })
+      .catch((e) => console.error('Push send failed:', e));
+
+    // 12. INCREMENT QUOTA (atomic)
     await incrementQuota(supabase, user.id, 'studio');
     console.log('Quota incremented');
 
-    // 12. LOG USAGE
+    // 13. LOG USAGE
     await supabase.from('usage_logs').insert({
       user_id: user.id,
       notebook_id,
@@ -456,7 +474,7 @@ Deno.serve(async (req) => {
 
     console.log('Usage logged');
 
-    // 13. Return success
+    // 14. Return success
     const response: GenerateStudioResponse = {
       success: true,
       notebook_id,

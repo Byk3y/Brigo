@@ -5,18 +5,37 @@ import { supabase } from '@/lib/supabase';
 import { handleError } from '@/lib/errors';
 import * as Localization from 'expo-localization';
 import Constants from 'expo-constants';
+import {
+    triggerNotification,
+    isGenerationNotificationType,
+    type GenerationNotificationType,
+} from '@/lib/store/slices/notificationSlice';
 
 /**
- * Configure how notifications are handled when the app is foregrounded
+ * Configure how notifications are handled when the app is foregrounded.
+ * For generation-ready pushes, suppress the OS banner — the in-app banner
+ * (rendered by <InAppNotification />) owns foreground display instead.
  */
 Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
+    handleNotification: async (notification) => {
+        const data = notification.request.content.data;
+        if (isGenerationNotificationType(data?.type)) {
+            return {
+                shouldShowAlert: false,
+                shouldPlaySound: false,
+                shouldSetBadge: false,
+                shouldShowBanner: false,
+                shouldShowList: false,
+            };
+        }
+        return {
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+        };
+    },
 });
 
 export const notificationService = {
@@ -134,9 +153,19 @@ export const notificationService = {
      * Initialize notification listeners
      */
     initListeners: (onNotificationOpened?: (data: any) => void) => {
-        // This listener is fired whenever a notification is received while the app is foregrounded
+        // This listener is fired whenever a notification is received while the app is foregrounded.
+        // For generation-ready types we suppress the OS banner (see setNotificationHandler above)
+        // and surface the in-app banner instead, matching polling-driven completion UX.
         const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-            console.log('Notification received:', notification);
+            const { title, body, data } = notification.request.content;
+            if (isGenerationNotificationType(data?.type)) {
+                triggerNotification({
+                    type: data.type as GenerationNotificationType,
+                    title: title || 'Ready',
+                    message: body || '',
+                    data: data as Record<string, any>,
+                });
+            }
         });
 
         // This listener is fired whenever a user taps on or interacts with a notification

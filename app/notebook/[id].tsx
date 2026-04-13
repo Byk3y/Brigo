@@ -229,7 +229,7 @@ export default function NotebookDetailScreen() {
         </View>
 
         {/* Tab Bar */}
-        <NotebookTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+        <NotebookTabBar activeTab={activeTab} onTabChange={setActiveTab} notebookId={notebook?.id} />
 
         {/* Rename Modal */}
         <RenameNotebookModal

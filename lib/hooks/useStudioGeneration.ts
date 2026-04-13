@@ -47,7 +47,7 @@ export const useStudioGeneration = ({
   checkForPendingPrediction,
 }: UseStudioGenerationParams) => {
 
-  const { checkAndAwardTask, tier, status, isExpired, studioGenerationsCount, audioGenerationsCount, subscriptionSyncedAt, user, notebooks, cachedPetState, flashcardsStudied, notify } = useStore();
+  const { checkAndAwardTask, tier, status, isExpired, studioGenerationsCount, audioGenerationsCount, subscriptionSyncedAt, user, notebooks, cachedPetState, flashcardsStudied, notify, addStudioJob } = useStore();
   const { handleError, withErrorHandling } = useErrorHandler();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeModalSource, setUpgradeModalSource] = useState<'create_attempt' | null>(null);
@@ -230,6 +230,11 @@ export const useStudioGeneration = ({
 
       const result = await generatePodcast(notebookId);
       setGeneratingAudioId(result.overview_id);
+      addStudioJob(notebookId, {
+        id: result.overview_id,
+        type: 'audio',
+        startedAt: Date.now(),
+      });
 
       // Start polling for status updates
       startAudioPolling(result.overview_id);
@@ -254,6 +259,11 @@ export const useStudioGeneration = ({
             // Generation actually started! Restore state and continue polling
             setGeneratingType('audio');
             setGeneratingAudioId(pendingAudio.id);
+            addStudioJob(notebookId, {
+              id: pendingAudio.id,
+              type: 'audio',
+              startedAt: Date.now(),
+            });
             startAudioPolling(pendingAudio.id);
             return; // Don't show error - generation is in progress
           }
@@ -278,6 +288,7 @@ export const useStudioGeneration = ({
     subscription,
     trackCreateAttemptBlocked,
     trackUpgradeModalShown,
+    addStudioJob,
   ]);
 
   /**
@@ -330,6 +341,11 @@ export const useStudioGeneration = ({
 
       // Start polling for the prediction result
       if (result.prediction_id) {
+        addStudioJob(notebookId, {
+          id: result.prediction_id,
+          type: 'prediction',
+          startedAt: Date.now(),
+        });
         startPredictionPolling(result.prediction_id);
       } else {
         // Fallback: if somehow no ID was returned, refresh immediately
@@ -340,7 +356,7 @@ export const useStudioGeneration = ({
       setGeneratingType(null);
       // Error already handled by API layer and displayed via ErrorNotificationContext
     }
-  }, [notebookId, examPredictionsCount, setGeneratingType, startPredictionPolling, refreshContent, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown, notebookTitle, notify]);
+  }, [notebookId, examPredictionsCount, setGeneratingType, startPredictionPolling, refreshContent, subscription, trackCreateAttemptBlocked, trackUpgradeModalShown, notebookTitle, notify, addStudioJob, setExamPredictions]);
 
   /**
    * Delete a podcast

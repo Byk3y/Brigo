@@ -13,7 +13,7 @@ export const usePodcastGeneration = (
     onGenerationComplete: () => void
 ) => {
     const router = useRouter();
-    const { checkAndAwardTask, notify } = useStore();
+    const { checkAndAwardTask, notify, removeStudioJob, addStudioJob } = useStore();
     const { handleError } = useErrorHandler();
     const [generatingType, setGeneratingType] = useState<'flashcards' | 'quiz' | 'audio' | 'prediction' | null>(null);
     const [generatingPodcastId, setGeneratingPodcastId] = useState<string | null>(null);
@@ -87,6 +87,7 @@ export const usePodcastGeneration = (
                     setGeneratingPodcastId(null);
                     setCompletedPodcastId(overviewId);
                     setShowPodcastNotification(true);
+                    removeStudioJob(notebookId, overviewId);
 
                     // Global notification
                     notify({
@@ -105,6 +106,7 @@ export const usePodcastGeneration = (
                 } else if (status.status === 'failed') {
                     stopPolling(jobId);
                     setGeneratingPodcastId(null);
+                    removeStudioJob(notebookId, overviewId);
 
                     // Show error via centralized system
                     const error = new Error(status.error_message || 'Failed to generate podcast');
@@ -149,7 +151,7 @@ export const usePodcastGeneration = (
         }, 2000); // Poll every 2 seconds
 
         pollIntervalsRef.current.set(jobId, interval);
-    }, [router, onGenerationComplete, stopPolling, checkAndAwardTask, notebookName, notebookId, notify, handleError]);
+    }, [router, onGenerationComplete, stopPolling, checkAndAwardTask, notebookName, notebookId, notify, handleError, removeStudioJob]);
 
     const startPredictionPolling = useCallback((predictionId: string) => {
         const jobId = `pred_${predictionId}`;
@@ -163,6 +165,7 @@ export const usePodcastGeneration = (
 
                 if (status.status === 'completed') {
                     stopPolling(jobId);
+                    removeStudioJob(notebookId, predictionId);
 
                     // Global notification with specific title if available
                     notify({
@@ -175,6 +178,7 @@ export const usePodcastGeneration = (
                     onGenerationComplete();
                 } else if (status.status === 'failed') {
                     stopPolling(jobId);
+                    removeStudioJob(notebookId, predictionId);
 
                     // Show error via centralized system
                     const error = new Error(status.error_message || 'Failed to generate exam predictions');
@@ -206,7 +210,7 @@ export const usePodcastGeneration = (
         }, 3000); // Poll every 3 seconds
 
         pollIntervalsRef.current.set(jobId, interval);
-    }, [onGenerationComplete, stopPolling, notebookName, notebookId, notify, handleError]);
+    }, [onGenerationComplete, stopPolling, notebookName, notebookId, notify, handleError, removeStudioJob]);
 
     const checkForPendingPodcast = useCallback(async () => {
         try {
@@ -215,6 +219,11 @@ export const usePodcastGeneration = (
 
             if (pendingAudio) {
                 setGeneratingPodcastId(pendingAudio.id);
+                addStudioJob(notebookId, {
+                    id: pendingAudio.id,
+                    type: 'audio',
+                    startedAt: Date.now(),
+                });
                 startPodcastPolling(pendingAudio.id);
             } else {
                 // Recovery: Check for completed podcasts that might have missed task award
@@ -230,18 +239,23 @@ export const usePodcastGeneration = (
         } catch (error) {
             // Non-critical
         }
-    }, [notebookId, startPodcastPolling, checkAndAwardTask]);
+    }, [notebookId, startPodcastPolling, checkAndAwardTask, addStudioJob]);
 
     const checkForPendingPrediction = useCallback(async () => {
         try {
             const pending = await examPredictionService.findPending(notebookId);
             if (pending) {
+                addStudioJob(notebookId, {
+                    id: pending.id,
+                    type: 'prediction',
+                    startedAt: Date.now(),
+                });
                 startPredictionPolling(pending.id);
             }
         } catch (error) {
             // Ignore
         }
-    }, [notebookId, startPredictionPolling]);
+    }, [notebookId, startPredictionPolling, addStudioJob]);
 
     // Restart polling when app comes to foreground (if we have a pending podcast or prediction)
     useEffect(() => {

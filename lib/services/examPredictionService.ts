@@ -121,6 +121,30 @@ export const examPredictionService = {
     },
 
     /**
+     * Find all pending predictions for a user across all their notebooks.
+     * Filters out stuck rows (updated_at older than 1 hour) to avoid phantom
+     * indicators from crashed edge-function jobs.
+     */
+    findAllPending: async (
+        userId: string,
+    ): Promise<Array<{ id: string; notebook_id: string; created_at: string | null }>> => {
+        try {
+            const freshSince = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+            const { data, error } = await supabase
+                .from('studio_exam_predictions')
+                .select('id, notebook_id, created_at')
+                .eq('user_id', userId)
+                .eq('status', 'processing')
+                .gt('updated_at', freshSince);
+
+            if (error) return [];
+            return data || [];
+        } catch (error) {
+            return [];
+        }
+    },
+
+    /**
      * Find any pending prediction for a notebook
      */
     findPending: async (notebookId: string): Promise<{ id: string } | null> => {

@@ -3,21 +3,25 @@ import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { AttachStep } from 'react-native-spotlight-tour';
+import { useIsNotebookGenerating } from '@/hooks/useIsNotebookGenerating';
 
 export type TabType = 'sources' | 'chat' | 'studio';
 
 interface NotebookTabBarProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
+  notebookId?: string;
 }
 
 export const NotebookTabBar: React.FC<NotebookTabBarProps> = ({
   activeTab,
   onTabChange,
+  notebookId,
 }) => {
   const isPad = Platform.OS === 'ios' && Platform.isPad;
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
+  const isStudioGenerating = useIsNotebookGenerating(notebookId);
 
   return (
     <View style={{ borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background, alignItems: 'center' }}>
@@ -80,11 +84,29 @@ export const NotebookTabBar: React.FC<NotebookTabBarProps> = ({
             style={{ alignItems: 'center', paddingVertical: isPad ? 14 : 10, width: '100%' }}
           >
             <View style={{ alignItems: 'center' }} collapsable={false}>
-              <Ionicons
-                name={activeTab === 'studio' ? 'color-palette' : 'color-palette-outline'}
-                size={isPad ? 26 : 22}
-                color={activeTab === 'studio' ? colors.primary : colors.icon}
-              />
+              <View>
+                <Ionicons
+                  name={activeTab === 'studio' ? 'color-palette' : 'color-palette-outline'}
+                  size={isPad ? 26 : 22}
+                  color={activeTab === 'studio' ? colors.primary : colors.icon}
+                />
+                {isStudioGenerating && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: -2,
+                      right: -4,
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: colors.primary,
+                      borderWidth: 1.5,
+                      borderColor: colors.background,
+                    }}
+                    accessibilityLabel="Generation in progress"
+                  />
+                )}
+              </View>
               <Text style={{
                 fontSize: isPad ? 14 : 12,
                 marginTop: 4,

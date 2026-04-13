@@ -14,6 +14,7 @@ import { useStore } from '@/lib/store';
 import { TikTokLoader } from '@/components/TikTokLoader';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { useFeedback } from '@/lib/feedback';
+import { useIsNotebookGenerating } from '@/hooks/useIsNotebookGenerating';
 
 interface NotebookCardProps {
     notebook: Notebook;
@@ -32,6 +33,7 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
     const colors = getThemeColors(isDarkMode);
     const { play } = useFeedback();
     const isPad = Platform.OS === 'ios' && Platform.isPad;
+    const isGenerating = useIsNotebookGenerating(notebook.id);
 
     // Simplified theme-aware notebook card background colors
     const getNotebookColor = () => {
@@ -228,12 +230,23 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
                     )}
                 </View>
 
-                {/* Right side - loader only when extracting or pending */}
-                {(notebook.status === 'extracting' || notebook.status === 'pending') && (
+                {/* Right side - loader when extracting or pending, else generation dot */}
+                {(notebook.status === 'extracting' || notebook.status === 'pending') ? (
                     <View style={{ marginLeft: 12 }}>
                         <TikTokLoader size={10} color="#6366f1" containerWidth={50} />
                     </View>
-                )}
+                ) : isGenerating ? (
+                    <View
+                        style={{
+                            marginLeft: 12,
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: colors.primary,
+                        }}
+                        accessibilityLabel="Generation in progress"
+                    />
+                ) : null}
             </TouchableOpacity>
         </MotiView>
     );

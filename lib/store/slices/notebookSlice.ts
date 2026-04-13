@@ -13,6 +13,7 @@ import {
   mapSupabaseNotebookToModel,
   mapSupabaseMaterialToModel,
 } from '@/lib/utils/notebookTransform';
+import type { StudioJobsSlice } from './studioJobsSlice';
 import type { Notebook, Material, SupabaseUser, ChatMessage } from '../types';
 
 export interface NotebookSlice {
@@ -46,7 +47,7 @@ export interface NotebookSlice {
 }
 
 export const createNotebookSlice: StateCreator<
-  NotebookSlice & {
+  NotebookSlice & StudioJobsSlice & {
     authUser: SupabaseUser | null;
     setAuthUser: (user: SupabaseUser | null) => void;
     setHasCreatedNotebook?: (value: boolean) => void;
@@ -474,6 +475,57 @@ export const createNotebookSlice: StateCreator<
                 ),
               })),
             }));
+          }
+        }
+      )
+      // Studio generation job tracking — feeds the global in-flight indicator.
+      // Both INSERT (another device started a job) and UPDATE (status transition)
+      // are handled so the indicator is correct regardless of entry point.
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'audio_overviews',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const row = (payload.new || payload.old) as any;
+          if (!row?.notebook_id || !row?.id) return;
+          const newStatus = (payload.new as any)?.status;
+          const isActive = newStatus === 'pending' || newStatus === 'generating_script' || newStatus === 'generating_audio';
+          if (isActive) {
+            get().addStudioJob(row.notebook_id, {
+              id: row.id,
+              type: 'audio',
+              startedAt: Date.now(),
+            });
+          } else {
+            get().removeStudioJob(row.notebook_id, row.id);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'studio_exam_predictions',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const row = (payload.new || payload.old) as any;
+          if (!row?.notebook_id || !row?.id) return;
+          const newStatus = (payload.new as any)?.status;
+          const isActive = newStatus === 'pending' || newStatus === 'processing';
+          if (isActive) {
+            get().addStudioJob(row.notebook_id, {
+              id: row.id,
+              type: 'prediction',
+              startedAt: Date.now(),
+            });
+          } else {
+            get().removeStudioJob(row.notebook_id, row.id);
           }
         }
       );

@@ -20,6 +20,8 @@ export function useAuthSetup() {
     setHasCompletedOnboarding,
     loadUserProfile,
     loadSubscription,
+    loadPendingStudioJobs,
+    clearStudioJobs,
     resetPetState,
     resetUserProfile,
     resetNotebookState,
@@ -109,6 +111,7 @@ export function useAuthSetup() {
               loadSubscription(session.user.id),
               loadNotebooks(session.user.id),
               loadPetState(),
+              loadPendingStudioJobs(session.user.id),
             ]);
 
             if (mounted) {
@@ -158,6 +161,7 @@ export function useAuthSetup() {
           resetUserProfile();
           resetNotebookState();
           resetSubscriptionState();
+          clearStudioJobs();
           clearUser();
           logoutPurchaser();
           setIsInitialized(true);
@@ -177,6 +181,8 @@ export function useAuthSetup() {
     setHasCompletedOnboarding,
     loadUserProfile,
     loadSubscription,
+    loadPendingStudioJobs,
+    clearStudioJobs,
     resetPetState,
     resetUserProfile,
     resetNotebookState,

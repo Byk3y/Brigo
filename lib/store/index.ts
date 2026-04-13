@@ -21,6 +21,7 @@ import { createNotificationSlice, type NotificationSlice } from './slices/notifi
 import { createAudioSettingsSlice, type AudioSettingsSlice } from './slices/audioSettingsSlice';
 import { createWalkthroughSlice, type WalkthroughSlice } from './slices/walkthroughSlice';
 import { createFriendSlice, type FriendSlice } from './slices/friendSlice';
+import { createStudioJobsSlice, type StudioJobsSlice } from './slices/studioJobsSlice';
 
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -42,7 +43,8 @@ type AppState = AuthSlice &
   NotificationSlice &
   AudioSettingsSlice &
   WalkthroughSlice &
-  FriendSlice;
+  FriendSlice &
+  StudioJobsSlice;
 
 // Add hydration state (not persisted)
 type StoreWithHydration = AppState & {
@@ -71,6 +73,7 @@ export const useStore = create<StoreWithHydration>()(
       ...createAudioSettingsSlice(...a),
       ...createWalkthroughSlice(...a),
       ...createFriendSlice(...a),
+      ...createStudioJobsSlice(...a),
       _hasHydrated: false,
       _setHasHydrated: (hydrated: boolean) => {
         a[0]({ _hasHydrated: hydrated });

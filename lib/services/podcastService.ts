@@ -230,6 +230,42 @@ export const podcastService = {
   },
 
   /**
+   * Find all pending/generating podcasts for a user across all their notebooks.
+   * Filters out stuck rows (updated_at older than 1 hour) so the indicator
+   * doesn't show phantom state for crashed edge-function jobs.
+   */
+  findAllPending: async (
+    userId: string,
+  ): Promise<Array<{ id: string; notebook_id: string; created_at: string | null }>> => {
+    try {
+      const freshSince = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('audio_overviews')
+        .select('id, notebook_id, created_at')
+        .eq('user_id', userId)
+        .in('status', ['pending', 'generating_script', 'generating_audio'])
+        .gt('created_at', freshSince);
+
+      if (error) {
+        await handleError(error, {
+          operation: 'find_all_pending_podcasts',
+          component: 'podcast-service',
+          metadata: { userId },
+        });
+        return [];
+      }
+      return data || [];
+    } catch (error) {
+      await handleError(error, {
+        operation: 'find_all_pending_podcasts',
+        component: 'podcast-service',
+        metadata: { userId },
+      });
+      return [];
+    }
+  },
+
+  /**
    * Find pending/generating podcasts for a notebook
    */
   findPending: async (notebookId: string): Promise<{ id: string; status: string } | null> => {

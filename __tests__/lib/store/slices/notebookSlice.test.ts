@@ -4,9 +4,19 @@
 
 import { create } from 'zustand';
 import { createNotebookSlice, type NotebookSlice } from '@/lib/store/slices/notebookSlice';
+import type { StudioJobsSlice } from '@/lib/store/slices/studioJobsSlice';
 import { supabase } from '@/lib/supabase';
 import { notebookService } from '@/lib/services/notebookService';
 import type { Notebook, Material, SupabaseUser } from '@/lib/store/types';
+
+const makeStudioJobsStub = (): StudioJobsSlice => ({
+  activeStudioJobs: {},
+  addStudioJob: jest.fn(),
+  removeStudioJob: jest.fn(),
+  hydrateStudioJobs: jest.fn(),
+  clearStudioJobs: jest.fn(),
+  loadPendingStudioJobs: jest.fn().mockResolvedValue(undefined),
+});
 
 // Mock dependencies
 jest.mock('@/lib/supabase');
@@ -60,8 +70,9 @@ describe('notebookSlice', () => {
 
   beforeEach(() => {
     // Create store with required dependencies
-    useNotebookStore = create<NotebookSlice & { authUser: SupabaseUser | null; setAuthUser: (user: SupabaseUser | null) => void }>()((...a) => ({
+    useNotebookStore = create<NotebookSlice & StudioJobsSlice & { authUser: SupabaseUser | null; setAuthUser: (user: SupabaseUser | null) => void }>()((...a) => ({
       ...createNotebookSlice(...a),
+      ...makeStudioJobsStub(),
       authUser: mockUser,
       setAuthUser: jest.fn(),
     }));
@@ -130,8 +141,9 @@ describe('notebookSlice', () => {
 
     it('should set empty array if no userId available', async () => {
       // Create store without authUser
-      const storeWithoutAuth = create<NotebookSlice & { authUser: SupabaseUser | null; setAuthUser: (user: SupabaseUser | null) => void }>()((...a) => ({
+      const storeWithoutAuth = create<NotebookSlice & StudioJobsSlice & { authUser: SupabaseUser | null; setAuthUser: (user: SupabaseUser | null) => void }>()((...a) => ({
         ...createNotebookSlice(...a),
+        ...makeStudioJobsStub(),
         authUser: null,
         setAuthUser: jest.fn(),
       }));
@@ -233,8 +245,9 @@ describe('notebookSlice', () => {
     });
 
     it('should not delete if no authUser', async () => {
-      const storeWithoutAuth = create<NotebookSlice & { authUser: SupabaseUser | null; setAuthUser: (user: SupabaseUser | null) => void }>()((...a) => ({
+      const storeWithoutAuth = create<NotebookSlice & StudioJobsSlice & { authUser: SupabaseUser | null; setAuthUser: (user: SupabaseUser | null) => void }>()((...a) => ({
         ...createNotebookSlice(...a),
+        ...makeStudioJobsStub(),
         authUser: null,
         setAuthUser: jest.fn(),
       }));
@@ -263,8 +276,9 @@ describe('notebookSlice', () => {
     });
 
     it('should not update if no authUser', async () => {
-      const storeWithoutAuth = create<NotebookSlice & { authUser: SupabaseUser | null; setAuthUser: (user: SupabaseUser | null) => void }>()((...a) => ({
+      const storeWithoutAuth = create<NotebookSlice & StudioJobsSlice & { authUser: SupabaseUser | null; setAuthUser: (user: SupabaseUser | null) => void }>()((...a) => ({
         ...createNotebookSlice(...a),
+        ...makeStudioJobsStub(),
         authUser: null,
         setAuthUser: jest.fn(),
       }));

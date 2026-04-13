@@ -96,7 +96,13 @@
       ],
       "expo-secure-store",
       "expo-web-browser",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#FF9500"
+        }
+      ],
       "expo-localization",
       "expo-audio",
       "expo-font",

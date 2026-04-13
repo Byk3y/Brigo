@@ -5,7 +5,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { handleError } from '@/lib/errors';
-import type { StudioFlashcard, Quiz, FlashcardSet } from '@/lib/store/types';
+import type { StudioFlashcard, Quiz, FlashcardSet, StudioJobStatus } from '@/lib/store/types';
 
 export const studioService = {
   /**
@@ -13,7 +13,8 @@ export const studioService = {
    */
   fetchFlashcardSets: async (notebookId: string): Promise<FlashcardSet[]> => {
     try {
-      // Get sets and card counts
+      // Includes pending/processing/failed rows so the UI can show
+      // "Analyzing..." and "Tap to retry" driven by row.status.
       const { data, error } = await supabase
         .from('studio_flashcard_sets')
         .select('*, cards:studio_flashcards(count)')
@@ -21,12 +22,12 @@ export const studioService = {
         .order('created_at', { ascending: false });
 
       if (error) {
-        await handleError(error, {
+        const appError = await handleError(error, {
           operation: 'fetch_flashcard_sets',
           component: 'studio-service',
           metadata: { notebookId },
         });
-        return [];
+        throw appError;
       }
 
       return (data || []).map(set => ({
@@ -34,12 +35,12 @@ export const studioService = {
         total_cards: (set.cards?.[0] as any)?.count || 0,
       }));
     } catch (error) {
-      await handleError(error, {
+      const appError = await handleError(error, {
         operation: 'fetch_flashcard_sets',
         component: 'studio-service',
         metadata: { notebookId },
       });
-      return [];
+      throw appError;
     }
   },
 
@@ -86,22 +87,22 @@ export const studioService = {
         .order('created_at', { ascending: false });
 
       if (error) {
-        await handleError(error, {
+        const appError = await handleError(error, {
           operation: 'fetch_quizzes',
           component: 'studio-service',
           metadata: { notebookId },
         });
-        return [];
+        throw appError;
       }
 
       return data || [];
     } catch (error) {
-      await handleError(error, {
+      const appError = await handleError(error, {
         operation: 'fetch_quizzes',
         component: 'studio-service',
         metadata: { notebookId },
       });
-      return [];
+      throw appError;
     }
   },
 
@@ -112,21 +113,15 @@ export const studioService = {
     flashcard_sets: FlashcardSet[];
     quizzes: Quiz[];
   }> => {
-    try {
-      const [flashcard_sets, quizzes] = await Promise.all([
-        studioService.fetchFlashcardSets(notebookId),
-        studioService.fetchQuizzes(notebookId),
-      ]);
+    // Let errors propagate so callers can decide whether to wipe state
+    // (they usually shouldn't — a transient network failure should leave
+    // the existing list on screen).
+    const [flashcard_sets, quizzes] = await Promise.all([
+      studioService.fetchFlashcardSets(notebookId),
+      studioService.fetchQuizzes(notebookId),
+    ]);
 
-      return { flashcard_sets, quizzes };
-    } catch (error) {
-      await handleError(error, {
-        operation: 'fetch_studio_content',
-        component: 'studio-service',
-        metadata: { notebookId },
-      });
-      return { flashcard_sets: [], quizzes: [] };
-    }
+    return { flashcard_sets, quizzes };
   },
 
   /**
@@ -247,6 +242,184 @@ export const studioService = {
         metadata: { userId },
       });
       return false;
+    }
+  },
+
+  /**
+   * Delete a flashcard set (used for retry cleanup).
+   * Children in studio_flashcards cascade via FK.
+   */
+  deleteFlashcardSet: async (setId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('studio_flashcard_sets')
+        .delete()
+        .eq('id', setId);
+      if (error) {
+        await handleError(error, {
+          operation: 'delete_flashcard_set',
+          component: 'studio-service',
+          metadata: { setId },
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      await handleError(error, {
+        operation: 'delete_flashcard_set',
+        component: 'studio-service',
+        metadata: { setId },
+      });
+      return false;
+    }
+  },
+
+  /**
+   * Delete a quiz (used for retry cleanup).
+   * Children in studio_quiz_questions cascade via FK.
+   */
+  deleteQuiz: async (quizId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('studio_quizzes')
+        .delete()
+        .eq('id', quizId);
+      if (error) {
+        await handleError(error, {
+          operation: 'delete_quiz',
+          component: 'studio-service',
+          metadata: { quizId },
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      await handleError(error, {
+        operation: 'delete_quiz',
+        component: 'studio-service',
+        metadata: { quizId },
+      });
+      return false;
+    }
+  },
+
+  /**
+   * Get status for a flashcard set (polling target).
+   */
+  getFlashcardSetStatus: async (setId: string): Promise<{ status: StudioJobStatus; error_message?: string | null; title?: string | null }> => {
+    try {
+      const { data, error } = await supabase
+        .from('studio_flashcard_sets')
+        .select('status, error_message, title')
+        .eq('id', setId)
+        .single();
+      if (error) throw error;
+      return data as any;
+    } catch (error) {
+      console.error('Error getting flashcard set status:', error);
+      return { status: 'failed', error_message: 'Failed to check status' };
+    }
+  },
+
+  /**
+   * Get status for a quiz (polling target).
+   */
+  getQuizStatus: async (quizId: string): Promise<{ status: StudioJobStatus; error_message?: string | null; title?: string | null }> => {
+    try {
+      const { data, error } = await supabase
+        .from('studio_quizzes')
+        .select('status, error_message, title')
+        .eq('id', quizId)
+        .single();
+      if (error) throw error;
+      return data as any;
+    } catch (error) {
+      console.error('Error getting quiz status:', error);
+      return { status: 'failed', error_message: 'Failed to check status' };
+    }
+  },
+
+  /**
+   * Find a pending flashcard set for this notebook (resume on remount).
+   */
+  findPendingFlashcardSet: async (notebookId: string): Promise<{ id: string } | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('studio_flashcard_sets')
+        .select('id')
+        .eq('notebook_id', notebookId)
+        .in('status', ['pending', 'processing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Find a pending quiz for this notebook (resume on remount).
+   */
+  findPendingQuiz: async (notebookId: string): Promise<{ id: string } | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('studio_quizzes')
+        .select('id')
+        .eq('notebook_id', notebookId)
+        .in('status', ['pending', 'processing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Find all pending flashcard sets for a user (hydration on app open).
+   * Filters out stuck rows (created_at > 1 hour ago) to avoid phantom
+   * indicators from crashed edge-function jobs.
+   */
+  findAllPendingFlashcardSets: async (
+    userId: string,
+  ): Promise<Array<{ id: string; notebook_id: string; created_at: string | null }>> => {
+    try {
+      const freshSince = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('studio_flashcard_sets')
+        .select('id, notebook_id, created_at')
+        .eq('user_id', userId)
+        .in('status', ['pending', 'processing'])
+        .gt('created_at', freshSince);
+      if (error) return [];
+      return data || [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Find all pending quizzes for a user (hydration on app open).
+   */
+  findAllPendingQuizzes: async (
+    userId: string,
+  ): Promise<Array<{ id: string; notebook_id: string; created_at: string | null }>> => {
+    try {
+      const freshSince = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('studio_quizzes')
+        .select('id, notebook_id, created_at')
+        .eq('user_id', userId)
+        .in('status', ['pending', 'processing'])
+        .gt('created_at', freshSince);
+      if (error) return [];
+      return data || [];
+    } catch {
+      return [];
     }
   },
 

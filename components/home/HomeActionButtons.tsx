@@ -45,6 +45,7 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
             {/* @ts-ignore - Library type mismatch for children */}
             <AttachStep index={1}>
                 <TouchableOpacity
+                    collapsable={false}
                     onPress={() => {
                         play('tap');
                         onCameraPress();
@@ -109,6 +110,7 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
             {/* @ts-ignore - Library type mismatch for children */}
             <AttachStep index={0}>
                 <TouchableOpacity
+                    collapsable={false}
                     onPress={() => {
                         play('tap');
                         onAddPress();

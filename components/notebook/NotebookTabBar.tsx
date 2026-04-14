@@ -64,6 +64,7 @@ export const NotebookTabBar: React.FC<NotebookTabBarProps> = ({
         {/* @ts-ignore - Library type mismatch for children */}
         <AttachStep index={0} fill={true} style={{ flex: 1 }}>
           <TouchableOpacity
+            collapsable={false}
             onPress={() => onTabChange('sources')}
             style={{ alignItems: 'center', paddingVertical: isPad ? 14 : 10, width: '100%' }}
           >
@@ -89,6 +90,7 @@ export const NotebookTabBar: React.FC<NotebookTabBarProps> = ({
         {/* @ts-ignore - Library type mismatch for children */}
         <AttachStep index={1} fill={true} style={{ flex: 1 }}>
           <TouchableOpacity
+            collapsable={false}
             onPress={() => onTabChange('chat')}
             style={{ alignItems: 'center', paddingVertical: isPad ? 14 : 10, width: '100%' }}
           >
@@ -114,6 +116,7 @@ export const NotebookTabBar: React.FC<NotebookTabBarProps> = ({
         {/* @ts-ignore - Library type mismatch for children */}
         <AttachStep index={2} fill={true} style={{ flex: 1 }}>
           <TouchableOpacity
+            collapsable={false}
             onPress={() => onTabChange('studio')}
             style={{ alignItems: 'center', paddingVertical: isPad ? 14 : 10, width: '100%' }}
           >

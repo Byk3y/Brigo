@@ -27,7 +27,7 @@ export const StreakCount: React.FC = () => {
         // @ts-ignore - Library type mismatch for children
         <AttachStep index={3}>
 
-            <View style={styles.container}>
+            <View collapsable={false} style={styles.container}>
                 <LottieView
                     source={require('../../assets/animations/fire.json')}
                     autoPlay

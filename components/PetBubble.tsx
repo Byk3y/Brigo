@@ -103,6 +103,7 @@ export const PetBubble: React.FC = () => {
       {/* @ts-ignore - Library type mismatch for children */}
       <AttachStep index={2}>
         <Animated.View
+          collapsable={false}
           style={{
             transform: [{ scale: animations.scaleAnim }],
             ...(isDying && {

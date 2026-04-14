@@ -48,6 +48,7 @@ export const GenerateOption = React.forwardRef<View, GenerateOptionProps>(({
     return (
         <TouchableOpacity
             ref={ref}
+            collapsable={false}
             onPress={onPress}
             disabled={disabled}
             style={{

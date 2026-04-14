@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { generateGradientFromString, getInitials, getAvatarUrl, AVATAR_STYLES, CURATED_LORELEI_SEEDS, CURATED_ADVENTURER_SEEDS } from '@/lib/utils/avatarGradient';
 import { Image } from 'expo-image';
+import { BrigoAvatar } from '@/components/BrigoAvatar';
 const isPad = Platform.OS === 'ios' && Platform.isPad;
 export default function EditProfileScreen() {
     const { isDarkMode } = useTheme();
@@ -87,11 +88,9 @@ export default function EditProfileScreen() {
                     <View style={styles.avatarSection}>
                         <View style={styles.avatarWrapper}>
                             <View style={[styles.avatarContainer, { backgroundColor: isDarkMode ? '#1c1c1e' : '#f2f2f7' }]}>
-                                <Image
-                                    source={avatarUrl}
-                                    style={{ width: '100%', height: '100%' }}
-                                    contentFit="contain"
-                                    cachePolicy="memory-disk"
+                                <BrigoAvatar
+                                    identifier={`dicebear://${avatarStyle}/${avatarSeed}`}
+                                    size={isPad ? 200 : 140}
                                 />
                             </View>
                         </View>
@@ -139,11 +138,9 @@ export default function EditProfileScreen() {
                                         }
                                     ]}
                                 >
-                                    <Image
-                                        source={getAvatarUrl(seed, avatarStyle)}
-                                        style={{ width: 60, height: 60 }}
-                                        contentFit="contain"
-                                        cachePolicy="memory-disk"
+                                    <BrigoAvatar
+                                        identifier={`dicebear://${avatarStyle}/${seed}`}
+                                        size={60}
                                     />
                                     {avatarSeed === seed && avatarUrl.includes(`/${avatarStyle}/`) && (
                                         <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]}>

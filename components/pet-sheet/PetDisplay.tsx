@@ -9,7 +9,7 @@ import { MotiViewCompat as MotiView } from '@/components/MotiViewCompat';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/lib/ThemeContext';
 import type { FriendStreak } from '@/lib/services/friendService';
-import { getAvatarUrl } from '@/lib/utils/avatarGradient';
+import { BrigoAvatar } from '@/components/BrigoAvatar';
 import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 
 // Pet full-view images by stage - require() needs static strings
@@ -125,21 +125,19 @@ export const PetDisplay = memo(({
                         {/* Avatars — user's own + study pal (or invite placeholder) */}
                         <Pressable onPress={onFriendsPress} style={styles.friendAvatarsContainer}>
                             {/* User's own avatar — always visible */}
-                            <Image
-                                source={getAvatarUrl(userAvatar || userId)}
-                                style={styles.friendAvatar}
-                                contentFit="cover"
-                                cachePolicy="memory-disk"
+                            <BrigoAvatar
+                                identifier={userAvatar || userId}
+                                size={styles.friendAvatar.width as number}
+                                containerStyle={styles.friendAvatar}
                             />
 
                             {/* Second circle: study pal or "+" invite */}
                             {friends.length > 0 ? (
                                 <>
-                                    <Image
-                                        source={getAvatarUrl(friends[0].friend.avatar_url || friends[0].friend.id)}
-                                        style={[styles.friendAvatar, { marginLeft: -18 }]}
-                                        contentFit="cover"
-                                        cachePolicy="memory-disk"
+                                    <BrigoAvatar
+                                        identifier={friends[0].friend.avatar_url || friends[0].friend.id}
+                                        size={styles.friendAvatar.width as number}
+                                        containerStyle={{ ...styles.friendAvatar, marginLeft: -18 }}
                                     />
                                     {friends.length > 1 && (
                                         <View style={[styles.friendAvatarMore, { marginLeft: -18 }]}>

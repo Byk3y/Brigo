@@ -3,8 +3,7 @@ import { View, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useStore } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
-import { getAvatarUrl } from '@/lib/utils/avatarGradient';
-import { Image } from 'expo-image';
+import { BrigoAvatar } from '../BrigoAvatar';
 import { BrigoLogo } from '../BrigoLogo';
 import { StreakCount } from './StreakCount';
 
@@ -16,10 +15,9 @@ export const HomeHeader: React.FC = () => {
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
 
-    // Use persistent avatar from store or generate one
-    const avatarUrl = useMemo(() => {
-        const identifier = user?.avatar || authUser?.id || authUser?.email || 'default';
-        return getAvatarUrl(identifier);
+    // Resolve the avatar identifier (dicebear seed/style URI, a legacy http URL, or a fallback)
+    const avatarIdentifier = useMemo(() => {
+        return user?.avatar || authUser?.id || authUser?.email || 'default';
     }, [user?.avatar, authUser?.id, authUser?.email]);
 
     const handleProfilePress = () => {
@@ -53,13 +51,7 @@ export const HomeHeader: React.FC = () => {
                         elevation: 4,
                     }}
                 >
-                    <Image
-                        source={avatarUrl}
-                        transition={200}
-                        style={{ width: '100%', height: '100%' }}
-                        contentFit="cover"
-                        cachePolicy="memory-disk"
-                    />
+                    <BrigoAvatar identifier={avatarIdentifier} size={isPad ? 72 : 48} />
                 </TouchableOpacity>
             </View>
         </View>

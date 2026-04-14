@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '@/lib/store';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
-import { getAvatarUrl } from '@/lib/utils/avatarGradient';
+import { BrigoAvatar } from '@/components/BrigoAvatar';
 import { ResponsiveContainer } from '@/lib/components/ResponsiveContainer';
 import type { FriendStreak } from '@/lib/services/friendService';
 
@@ -134,7 +134,7 @@ export default function FriendsScreen() {
             <View style={{ paddingTop: 4 }}>
               {friends.map((fs: FriendStreak) => {
                 const { friend, streak } = fs;
-                const avatarUri = getAvatarUrl(friend.avatar_url || friend.id);
+                const avatarIdentifier = friend.avatar_url || friend.id;
                 const name = friend.first_name || friend.name || 'Friend';
                 const studied = friend.studied_today;
                 const ringColor = studied ? '#22C55E' : '#F59E0B';
@@ -229,11 +229,10 @@ export default function FriendsScreen() {
                           justifyContent: 'center',
                         }}
                       >
-                        <Image
-                          source={avatarUri}
-                          style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#E5E7EB' }}
-                          contentFit="cover"
-                          cachePolicy="memory-disk"
+                        <BrigoAvatar
+                          identifier={avatarIdentifier}
+                          size={46}
+                          containerStyle={{ backgroundColor: '#E5E7EB' }}
                         />
                       </View>
 

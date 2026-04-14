@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { generateGradientFromString, getInitials, getAvatarUrl, CURATED_LORELEI_SEEDS, CURATED_ADVENTURER_SEEDS, AVATAR_STYLES } from '@/lib/utils/avatarGradient';
 import { Image } from 'expo-image';
+import { BrigoAvatar } from '@/components/BrigoAvatar';
 
 const { width } = Dimensions.get('window');
 const isPad = Platform.OS === 'ios' && Platform.isPad;
@@ -44,9 +45,8 @@ export default function ProfileScreen() {
         getInitials(user.first_name || '', user.last_name || '', authUser?.email || 'U'),
         [user.first_name, user.last_name, authUser?.email]);
 
-    const avatarUrl = useMemo(() => {
-        const identifier = user.avatar || authUser?.id || authUser?.email || 'default';
-        return getAvatarUrl(identifier);
+    const avatarIdentifier = useMemo(() => {
+        return user.avatar || authUser?.id || authUser?.email || 'default';
     }, [user.avatar, authUser?.id, authUser?.email]);
 
     const joinedDate = useMemo(() => {
@@ -121,11 +121,9 @@ export default function ProfileScreen() {
                         style={styles.avatarWrapper}
                     >
                         <View style={[styles.avatarContainerStyle, { backgroundColor: isDarkMode ? '#1c1c1e' : '#f2f2f7' }]}>
-                            <Image
-                                source={avatarUrl}
-                                style={{ width: '100%', height: '100%' }}
-                                contentFit="contain"
-                                cachePolicy="memory-disk"
+                            <BrigoAvatar
+                                identifier={avatarIdentifier}
+                                size={styles.avatarContainerStyle.width as number}
                             />
                         </View>
                         <View style={[
@@ -276,6 +274,7 @@ export default function ProfileScreen() {
                             {(modalStyle === 'lorelei' ? CURATED_LORELEI_SEEDS : CURATED_ADVENTURER_SEEDS).map((seed) => {
                                 const currentUrl = getAvatarUrl(seed, modalStyle);
                                 const isSelected = user.avatar === currentUrl;
+                                const identifier = `dicebear://${modalStyle}/${seed}`;
 
                                 return (
                                     <TouchableOpacity
@@ -290,11 +289,9 @@ export default function ProfileScreen() {
                                             }
                                         ]}
                                     >
-                                        <Image
-                                            source={currentUrl}
-                                            style={{ width: 80, height: 80 }}
-                                            contentFit="contain"
-                                            cachePolicy="memory-disk"
+                                        <BrigoAvatar
+                                            identifier={identifier}
+                                            size={80}
                                         />
                                         {isSelected && (
                                             <View style={[styles.checkBadge, { backgroundColor: colors.primary }]}>

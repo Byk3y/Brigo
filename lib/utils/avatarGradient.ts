@@ -98,46 +98,68 @@ import { createAvatar } from '@dicebear/core';
 import { adventurer, lorelei } from '@dicebear/collection';
 
 /**
- * Generate a DiceBear avatar (Local generation for speed and reliability)
- * @param identifier - Either a seed, a dicebear://style/seed string, or a legacy URL
- * @param styleOverride - Optional style override if identifier is just a seed
- * @returns Data URI for the avatar
+ * Parse a DiceBear identifier into its style + seed components.
+ */
+const parseDiceBearIdentifier = (
+  identifier: string,
+  styleOverride: string,
+): { style: string; seed: string } => {
+  if (identifier.startsWith('dicebear://')) {
+    const parts = identifier.replace('dicebear://', '').split('/');
+    if (parts.length === 2) {
+      return { style: parts[0], seed: parts[1] };
+    }
+  }
+  return { style: styleOverride, seed: identifier };
+};
+
+/**
+ * Generate a DiceBear avatar as a Data URI.
+ *
+ * On Android, expo-image fails silently when asked to render
+ * base64-encoded SVG data URIs, so new code should prefer getAvatarSvg
+ * plus react-native-svg's SvgXml. This helper is kept for legacy call
+ * sites and for non-Image consumers (e.g. logging, web).
  */
 export const getAvatarUrl = (identifier: string | null | undefined, styleOverride: string = 'adventurer'): string => {
   try {
     if (!identifier) return `https://api.dicebear.com/9.x/${styleOverride}/svg?seed=default`;
 
-    let seed = identifier;
-    let style = styleOverride;
+    if (identifier.startsWith('http')) return identifier;
 
-    // Handle internal format: dicebear://style/seed
-    if (identifier.startsWith('dicebear://')) {
-      const parts = identifier.replace('dicebear://', '').split('/');
-      if (parts.length === 2) {
-        style = parts[0];
-        seed = parts[1];
-      }
-    }
-    // Handle legacy URLs: just return them as-is
-    else if (identifier.startsWith('http')) {
-      return identifier;
-    }
+    const { style, seed } = parseDiceBearIdentifier(identifier, styleOverride);
 
-    const styleMap: Record<string, any> = {
-      adventurer,
-      lorelei
-    };
-
+    const styleMap: Record<string, any> = { adventurer, lorelei };
     const chosenStyle = styleMap[style] || adventurer;
-    const avatar = createAvatar(chosenStyle, {
-      seed: seed,
-    });
-
-    return avatar.toDataUri();
+    return createAvatar(chosenStyle, { seed }).toDataUri();
   } catch (error) {
     console.error('Error generating local avatar:', error);
-    // Ultimate fallback to API if local generation fails
     return `https://api.dicebear.com/9.x/${styleOverride}/svg?seed=${encodeURIComponent(identifier as string)}`;
+  }
+};
+
+/**
+ * Generate a DiceBear avatar as a raw SVG XML string.
+ * Use with react-native-svg's SvgXml — works on iOS + Android uniformly.
+ * Returns null for legacy http(s) URLs (fall back to <Image>) or on failure.
+ */
+export const getAvatarSvg = (
+  identifier: string | null | undefined,
+  styleOverride: string = 'adventurer',
+): string | null => {
+  try {
+    if (!identifier) {
+      return createAvatar(adventurer, { seed: 'default' }).toString();
+    }
+    if (identifier.startsWith('http')) return null;
+
+    const { style, seed } = parseDiceBearIdentifier(identifier, styleOverride);
+    const styleMap: Record<string, any> = { adventurer, lorelei };
+    const chosenStyle = styleMap[style] || adventurer;
+    return createAvatar(chosenStyle, { seed }).toString();
+  } catch (error) {
+    console.error('Error generating local avatar SVG:', error);
+    return null;
   }
 };
 

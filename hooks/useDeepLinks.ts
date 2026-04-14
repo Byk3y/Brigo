@@ -8,7 +8,6 @@ import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { validateTokens } from '@/lib/auth/tokenValidator';
-import { useStore } from '@/lib/store';
 
 export function useDeepLinks() {
   const router = useRouter();
@@ -18,17 +17,9 @@ export function useDeepLinks() {
       const { url } = event;
       const parsed = Linking.parse(url);
 
-      // 3. Handle Invite Links: brigo.app/invite/CODE or brigo://invite/CODE
-      if (parsed.path?.startsWith('invite/') || parsed.path?.startsWith('/invite/')) {
-        const code = parsed.path.replace(/^\/?invite\//, '');
-        if (code) {
-          // Set pending code — useInviteHandler will accept + celebrate + navigate
-          useStore.getState().setPendingInviteCode(code.toUpperCase());
-        }
-        return;
-      }
+      // Invite Links (brigo.app/invite/CODE) are handled by app/invite/[code].tsx.
 
-      // 4. Handle Auth Callbacks
+      // Handle Auth Callbacks
       if (parsed.path === 'auth/callback' || parsed.path === '/auth/callback') {
         // OAuth callbacks can have tokens in either:
         // 1. Query params: ?access_token=...&refresh_token=...

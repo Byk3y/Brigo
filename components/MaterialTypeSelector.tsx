@@ -301,11 +301,17 @@ export default function MaterialTypeSelector({
               backgroundColor: colors.background,
             },
           ]}
-          {...panResponder.panHandlers}
         >
           <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['bottom']}>
-            {/* Handle bar */}
-            <View style={[styles.handleContainer, { backgroundColor: colors.background }]}>
+            {/* Handle bar — PanResponder scoped here only. Previously the
+                responder covered the whole sheet, which on Android swallows
+                taps on the option buttons before TouchableOpacity can
+                register them. Scoping to just the drag handle restores
+                tap-to-pick-material behavior on Android. */}
+            <View
+              style={[styles.handleContainer, { backgroundColor: colors.background }]}
+              {...panResponder.panHandlers}
+            >
               <View style={[styles.handle, { backgroundColor: isDarkMode ? colors.border : '#D1D1D6' }]} />
             </View>
 

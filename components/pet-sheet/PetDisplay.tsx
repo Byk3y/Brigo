@@ -3,7 +3,7 @@
  */
 
 import React, { memo, useMemo } from 'react';
-import { View, Text, StyleSheet, Image as RNImage, TouchableOpacity, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { MotiViewCompat as MotiView } from '@/components/MotiViewCompat';
 import { Ionicons } from '@expo/vector-icons';
@@ -171,14 +171,14 @@ export const PetDisplay = memo(({
                 >
                     {/* Stage 1 Render - Always mounted, toggle opacity */}
                     <View style={[styles.imageWrapper, { opacity: stage === 1 ? 1 : 0 }]}>
-                        <RNImage
+                        <Image
                             source={(isDying && currentStage === 1) ? STAGE_1_DYING : STAGE_1_FULL}
                             style={{
                                 width: (isDying && currentStage === 1) ? 280 : 250,
                                 height: (isDying && currentStage === 1) ? 280 : 250
                             }}
-                            resizeMode="contain"
-                            fadeDuration={0}
+                            contentFit="contain"
+                            transition={0}
                         />
                     </View>
 
@@ -190,14 +190,14 @@ export const PetDisplay = memo(({
                             { opacity: stage === 2 ? 1 : 0 }
                         ]}
                     >
-                        <RNImage
+                        <Image
                             source={stage2Source}
                             style={{
                                 width: isUnlocked ? ((isDying && currentStage === 2) ? 260 : 340) : 280,
                                 height: isUnlocked ? ((isDying && currentStage === 2) ? 260 : 340) : 280
                             }}
-                            resizeMode="contain"
-                            fadeDuration={0}
+                            contentFit="contain"
+                            transition={0}
                         />
                     </View>
 
@@ -209,14 +209,14 @@ export const PetDisplay = memo(({
                             { opacity: stage === 3 ? 1 : 0 }
                         ]}
                     >
-                        <RNImage
+                        <Image
                             source={stage3Source}
                             style={{
                                 width: isUnlocked ? ((isDying && currentStage === 3) ? 280 : 300) : 280,
                                 height: isUnlocked ? ((isDying && currentStage === 3) ? 280 : 300) : 280
                             }}
-                            resizeMode="contain"
-                            fadeDuration={0}
+                            contentFit="contain"
+                            transition={0}
                         />
                     </View>
                 </MotiView>

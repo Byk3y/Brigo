@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Text, TextStyle, StyleSheet } from 'react-native';
+import { Platform, Text, TextStyle, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 interface TypewriterTextProps {
@@ -50,10 +50,19 @@ export function TypewriterText({
                 const nextChar = text[index.current];
                 setDisplayedText((prev) => prev + nextChar);
 
-                // Trigger haptic if enabled
-                // Only trigger on actual characters, not just whitespace to feel more "clickable"
+                // Trigger haptic if enabled, skipping whitespace. Android's
+                // haptic actuator has ~80ms latency vs iOS ~15ms, so firing
+                // on every character trails behind visually. Use the lighter
+                // selection haptic and throttle to every third character on
+                // Android so the feedback stays in sync with the animation.
                 if (hapticEnabled && nextChar !== ' ') {
-                    Haptics.impactAsync(hapticStyle);
+                    if (Platform.OS === 'android') {
+                        if (index.current % 3 === 0) {
+                            Haptics.selectionAsync();
+                        }
+                    } else {
+                        Haptics.impactAsync(hapticStyle);
+                    }
                 }
 
                 index.current += 1;

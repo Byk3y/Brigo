@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -157,36 +158,40 @@ export default function AuthScreen() {
         <View style={styles.mainContent}>
           {/* Auth Method Buttons */}
           <View style={styles.authMethodsContainer}>
-            {/* Apple - Native button on iOS, custom button elsewhere */}
-            {isAppleAvailable ? (
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-                buttonStyle={
-                  isDarkMode
-                    ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                    : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-                }
-                cornerRadius={12}
-                style={styles.appleButton}
-                onPress={() => handleSocialLogin('apple')}
-              />
-            ) : (
-              <TouchableOpacity
-                onPress={() => handleSocialLogin('apple')}
-                style={[
-                  styles.authMethodButton,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: colors.surfaceElevated,
-                  },
-                ]}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="logo-apple" size={24} color={colors.text} />
-                <Text style={[styles.authMethodText, { color: colors.text }]}>
-                  Continue with Apple
-                </Text>
-              </TouchableOpacity>
+            {/* Apple Sign-In is iOS-only. expo-apple-authentication does not
+                provide a working flow on Android/web, so we hide the button
+                entirely off iOS rather than shipping a dead button. */}
+            {Platform.OS === 'ios' && (
+              isAppleAvailable ? (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                  buttonStyle={
+                    isDarkMode
+                      ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                      : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                  }
+                  cornerRadius={12}
+                  style={styles.appleButton}
+                  onPress={() => handleSocialLogin('apple')}
+                />
+              ) : (
+                <TouchableOpacity
+                  onPress={() => handleSocialLogin('apple')}
+                  style={[
+                    styles.authMethodButton,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.surfaceElevated,
+                    },
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="logo-apple" size={24} color={colors.text} />
+                  <Text style={[styles.authMethodText, { color: colors.text }]}>
+                    Continue with Apple
+                  </Text>
+                </TouchableOpacity>
+              )
             )}
 
             {/* Google */}

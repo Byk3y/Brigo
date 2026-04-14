@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { Image, StyleSheet, View, ViewStyle } from 'react-native';
+import { Image, View, ViewStyle } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { getAvatarSvg } from '@/lib/utils/avatarGradient';
 
@@ -31,10 +31,12 @@ export const BrigoAvatar: React.FC<BrigoAvatarProps> = ({
     // Legacy http(s) URL — render as an Image so existing stored URLs still work.
     if (identifier && identifier.startsWith('http')) {
         return (
-            <Image
-                source={{ uri: identifier }}
-                style={[{ width: size, height: size, borderRadius: size / 2 }, containerStyle]}
-            />
+            <View style={[{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }, containerStyle]}>
+                <Image
+                    source={{ uri: identifier }}
+                    style={{ width: size, height: size }}
+                />
+            </View>
         );
     }
 

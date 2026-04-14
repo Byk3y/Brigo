@@ -44,8 +44,8 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
             {/* Camera Button - Walkthrough Step 1 (Index 1 in our logic, but let's align with array index) */}
             {/* @ts-ignore - Library type mismatch for children */}
             <AttachStep index={1}>
+              <View collapsable={false}>
                 <TouchableOpacity
-                    collapsable={false}
                     onPress={() => {
                         play('tap');
                         onCameraPress();
@@ -104,13 +104,14 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
                         )}
                     </AnimatedGradientBorder>
                 </TouchableOpacity>
+              </View>
             </AttachStep>
 
             {/* Add Materials Button - Walkthrough Step 0 */}
             {/* @ts-ignore - Library type mismatch for children */}
             <AttachStep index={0}>
+              <View collapsable={false}>
                 <TouchableOpacity
-                    collapsable={false}
                     onPress={() => {
                         play('tap');
                         onAddPress();
@@ -189,6 +190,7 @@ export const HomeActionButtons: React.FC<HomeActionButtonsProps> = ({
                         )}
                     </AnimatedGradientBorder>
                 </TouchableOpacity>
+              </View>
             </AttachStep>
         </View>
     );

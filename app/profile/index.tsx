@@ -123,7 +123,7 @@ export default function ProfileScreen() {
                         <View style={[styles.avatarContainerStyle, { backgroundColor: isDarkMode ? '#1c1c1e' : '#f2f2f7' }]}>
                             <BrigoAvatar
                                 identifier={avatarIdentifier}
-                                size={styles.avatarContainerStyle.width as number}
+                                size={isPad ? 200 : 120}
                             />
                         </View>
                         <View style={[

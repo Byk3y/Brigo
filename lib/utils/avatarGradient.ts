@@ -142,21 +142,32 @@ export const getAvatarUrl = (identifier: string | null | undefined, styleOverrid
  * Generate a DiceBear avatar as a raw SVG XML string.
  * Use with react-native-svg's SvgXml — works on iOS + Android uniformly.
  * Returns null for legacy http(s) URLs (fall back to <Image>) or on failure.
+ *
+ * Cached per `style:seed` — DiceBear's generator + SVG serialization is
+ * non-trivial and this is called from every BrigoAvatar render.
  */
+const svgCache = new Map<string, string>();
+
 export const getAvatarSvg = (
   identifier: string | null | undefined,
   styleOverride: string = 'adventurer',
 ): string | null => {
   try {
-    if (!identifier) {
-      return createAvatar(adventurer, { seed: 'default' }).toString();
-    }
-    if (identifier.startsWith('http')) return null;
+    if (identifier && identifier.startsWith('http')) return null;
 
-    const { style, seed } = parseDiceBearIdentifier(identifier, styleOverride);
+    const { style, seed } = identifier
+      ? parseDiceBearIdentifier(identifier, styleOverride)
+      : { style: 'adventurer', seed: 'default' };
+
+    const key = `${style}:${seed}`;
+    const cached = svgCache.get(key);
+    if (cached) return cached;
+
     const styleMap: Record<string, any> = { adventurer, lorelei };
     const chosenStyle = styleMap[style] || adventurer;
-    return createAvatar(chosenStyle, { seed }).toString();
+    const svg = createAvatar(chosenStyle, { seed }).toString();
+    svgCache.set(key, svg);
+    return svg;
   } catch (error) {
     console.error('Error generating local avatar SVG:', error);
     return null;

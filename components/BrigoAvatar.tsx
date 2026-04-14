@@ -22,7 +22,7 @@ interface BrigoAvatarProps {
     containerStyle?: ViewStyle;
 }
 
-export const BrigoAvatar: React.FC<BrigoAvatarProps> = ({
+export const BrigoAvatar: React.FC<BrigoAvatarProps> = React.memo(({
     identifier,
     size,
     styleOverride = 'adventurer',
@@ -56,4 +56,4 @@ export const BrigoAvatar: React.FC<BrigoAvatarProps> = ({
             <SvgXml xml={svg} width={size} height={size} />
         </View>
     );
-};
+});

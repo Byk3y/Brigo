@@ -7,7 +7,7 @@ import type { StateCreator } from 'zustand';
 export const GENERATION_NOTIFICATION_TYPES = ['flashcards', 'quiz', 'audio', 'prediction'] as const;
 export type GenerationNotificationType = typeof GENERATION_NOTIFICATION_TYPES[number];
 
-export type NotificationType = GenerationNotificationType | 'success' | 'info' | 'warning' | 'offline';
+export type NotificationType = GenerationNotificationType | 'success' | 'streak' | 'info' | 'warning' | 'offline';
 
 const GENERATION_TYPE_SET: ReadonlySet<string> = new Set(GENERATION_NOTIFICATION_TYPES);
 export const isGenerationNotificationType = (t: unknown): t is GenerationNotificationType =>
@@ -26,7 +26,7 @@ export interface NotificationSlice {
     dismissNotification: () => void;
 }
 
-const CONTENT_ID_KEYS = ['overviewId', 'quizId', 'setId', 'predictionId'] as const;
+const CONTENT_ID_KEYS = ['overviewId', 'quizId', 'setId', 'predictionId', 'contentKey'] as const;
 
 // Returns the first identifying content id from the data payload, for dedup.
 const getContentKey = (payload: NotificationPayload): string | null => {

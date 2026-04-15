@@ -10,7 +10,6 @@ import { completionService } from '@/lib/services/completionService';
 import { calculateScore, calculateMetrics } from '@/lib/quiz/utils';
 import { track } from '@/lib/services/analyticsService';
 import type { UseQuizStateReturn } from '@/lib/quiz/types';
-import { useCelebration } from '@/lib/contexts/CelebrationContext';
 
 interface UseQuizStateProps {
   quiz: Quiz;
@@ -39,7 +38,6 @@ export function useQuizState({
   const sessionStartRef = useRef(Date.now());
   const trackingInitRef = useRef(false);
   const { authUser, checkAndAwardTask, refreshTaskProgress, getUserTimezone } = useStore();
-  const { triggerCelebration } = useCelebration();
 
   const totalQuestions = quiz.questions.length;
   const currentQuestion = quiz.questions[currentQuestionIndex];
@@ -87,11 +85,7 @@ export function useQuizState({
             timezone,
             5,
             async () => {
-              const res = await checkAndAwardTask('quiz_5_questions');
-              if (res.success && (res.newPoints ?? 0) > 0) {
-                triggerCelebration();
-              }
-              return res;
+              return await checkAndAwardTask('quiz_5_questions');
             }
           );
           // Refresh progress for UI

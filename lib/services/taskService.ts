@@ -22,12 +22,20 @@ interface RewardResult {
   reason?: string;
 }
 
+interface PetSecurityResult extends RewardResult {
+  was_incremented?: boolean;
+  new_streak?: number;
+  previous_streak?: number;
+  auto_freeze_applied?: boolean;
+  streak_freezes?: number;
+}
+
 interface LogActivityResponse {
   success: boolean;
   activity_id?: string;
   rewards?: {
     study_rewards?: RewardResult;
-    pet_security?: RewardResult;
+    pet_security?: PetSecurityResult;
   };
   note?: string;
   error?: string;
@@ -216,7 +224,7 @@ export const taskService = {
         throw error;
       }
 
-      return data as LogActivityResponse;
+      return data as unknown as LogActivityResponse;
     } catch (error) {
       const appError = await handleError(error, {
         operation: 'log_activity',

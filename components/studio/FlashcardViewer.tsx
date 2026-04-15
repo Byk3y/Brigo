@@ -23,7 +23,6 @@ import { completionService } from '@/lib/services/completionService';
 import { taskService } from '@/lib/services/taskService';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { useFeedback } from '@/lib/feedback';
-import { useCelebration } from '@/lib/contexts/CelebrationContext';
 
 interface FlashcardViewerProps {
   flashcards: StudioFlashcard[];
@@ -51,7 +50,6 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
   const { play, haptic } = useFeedback();
-  const { triggerCelebration } = useCelebration();
 
   // Animation values
   const flipRotation = useSharedValue(0);
@@ -110,11 +108,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
         timezone,
         5,
         async () => {
-          const res = await checkAndAwardTask('study_flashcards');
-          if (res.success && (res.newPoints ?? 0) > 0) {
-            triggerCelebration();
-          }
-          return res;
+          return await checkAndAwardTask('study_flashcards');
         }
       );
     } catch (e) {

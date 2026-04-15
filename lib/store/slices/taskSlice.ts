@@ -14,6 +14,8 @@ import { chatService } from '@/lib/services/chatService';
 import { studioService } from '@/lib/services/studioService';
 import { userService } from '@/lib/services/userService';
 import { track } from '@/lib/services/analyticsService';
+import { triggerNotification } from '@/lib/store/slices/notificationSlice';
+import { TASK_COPY } from '@/lib/constants/taskCopy';
 import type { SupabaseUser, DailyTask, TaskProgress } from '../types';
 
 export interface TaskSlice {
@@ -29,6 +31,57 @@ export interface TaskSlice {
     refreshTaskProgress: (taskKey: string) => Promise<void>;
     checkAndAwardTask: (taskKey: string, suppressError?: boolean) => Promise<{ success: boolean; newPoints?: number; error?: string }>;
     getUserTimezone: () => Promise<string>;
+}
+
+interface PetSecuritySnapshot {
+    was_incremented?: boolean;
+    new_streak?: number;
+    auto_freeze_applied?: boolean;
+}
+
+function fireCompletionBanner(
+    taskKey: string,
+    totalAwarded: number,
+    completionDate: string,
+    petSecurity: PetSecuritySnapshot | undefined,
+): void {
+    if (petSecurity?.was_incremented && petSecurity.new_streak && petSecurity.new_streak > 0) {
+        const { new_streak, auto_freeze_applied } = petSecurity;
+        let title: string;
+        let message: string;
+        if (auto_freeze_applied) {
+            title = 'Streak restored!';
+            message = `Day ${new_streak} · +${totalAwarded} points`;
+        } else if (new_streak === 1) {
+            title = 'New daily streak started';
+            message = `+${totalAwarded} points earned`;
+        } else {
+            title = `Day ${new_streak} streak`;
+            message = `Kept alive · +${totalAwarded} points`;
+        }
+        triggerNotification({
+            type: 'streak',
+            title,
+            message,
+            data: { contentKey: `streak:${new_streak}:${completionDate}` },
+        });
+        return;
+    }
+
+    const copy = TASK_COPY[taskKey];
+    if (!copy) {
+        console.warn(`[taskSlice] No TASK_COPY entry for task_key="${taskKey}"; banner skipped.`);
+        return;
+    }
+    if (copy.kind === 'silent' || copy.kind === 'confetti-only') return;
+
+    const title = copy.kind === 'foundational' ? 'Milestone unlocked' : 'Task complete';
+    triggerNotification({
+        type: 'success',
+        title,
+        message: `${copy.title} · +${totalAwarded} points`,
+        data: { contentKey: `task:${taskKey}:${completionDate}` },
+    });
 }
 
 export const createTaskSlice: StateCreator<
@@ -226,6 +279,8 @@ export const createTaskSlice: StateCreator<
                     if (response.rewards?.pet_security?.success) {
                         (get() as any).dismissStreakRestore?.();
                     }
+
+                    fireCompletionBanner(taskKey, totalAwarded, completionDate, response.rewards?.pet_security);
                 } else if (response.note === 'Already processed') {
                     return { success: true, newPoints: 0 };
                 }

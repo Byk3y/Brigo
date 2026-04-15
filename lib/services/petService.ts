@@ -31,8 +31,8 @@ export const petService = {
 
       if (data) {
         return {
-          stage: (data as any).current_stage || (data as any).stage,
-          points: (data as any).current_points || (data as any).points,
+          stage: (data as any).current_stage ?? (data as any).stage ?? 1,
+          points: (data as any).current_points ?? (data as any).points ?? 0,
           name: data.name || 'Nova',
           mood: (data.mood as any) || 'happy',
         };

@@ -50,15 +50,15 @@ export function TypewriterText({
                 const nextChar = text[index.current];
                 setDisplayedText((prev) => prev + nextChar);
 
-                // Trigger haptic if enabled, skipping whitespace. Android's
-                // haptic actuator has ~80ms latency vs iOS ~15ms, so firing
-                // on every character trails behind visually. Use the lighter
-                // selection haptic and throttle to every third character on
-                // Android so the feedback stays in sync with the animation.
+                // Android: selectionAsync fires faster (~5ms) than React can
+                // commit the text update (~16ms to next frame), so the haptic
+                // landed before the character paints. Defer it to the next
+                // animation frame so both arrive together. Throttle to every
+                // third char to keep the actuator from saturating.
                 if (hapticEnabled && nextChar !== ' ') {
                     if (Platform.OS === 'android') {
                         if (index.current % 3 === 0) {
-                            Haptics.selectionAsync();
+                            requestAnimationFrame(() => Haptics.selectionAsync());
                         }
                     } else {
                         Haptics.impactAsync(hapticStyle);

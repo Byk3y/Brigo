@@ -63,20 +63,6 @@ export default function HomeScreen() {
   const { start: startWalkthrough } = useSpotlightTour();
   const { _hasHydrated } = useStore();
 
-  // Start walkthrough when user lands on home for first time
-  useEffect(() => {
-    if (!authUser || !hasCompletedOnboarding || !isInitialized || !_hasHydrated || hasSeenHomeWalkthrough) return;
-
-    // Delay to ensure components are mounted
-    const timer = setTimeout(() => {
-      startWalkthrough();
-      // Mark as seen immediately so it doesn't re-trigger if they navigate away
-      setHomeWalkthroughSeen();
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, [authUser, hasCompletedOnboarding, isInitialized, _hasHydrated, hasSeenHomeWalkthrough, startWalkthrough, setHomeWalkthroughSeen]);
-
   // Custom Hook for creation logic
   const {
     isAddingNotebook,
@@ -106,6 +92,22 @@ export default function HomeScreen() {
     totalCount,
     setShowUpgradeModal,
   } = useSubscriptionUI(notebooks);
+
+  // Start walkthrough when user lands on home for first time.
+  // Gated on modal visibility so the tour doesn't overlap the expired-sub
+  // upsell or the create-flow upsell — if a modal is up, wait until it's
+  // dismissed and the effect re-fires, then run the tour.
+  useEffect(() => {
+    if (!authUser || !hasCompletedOnboarding || !isInitialized || !_hasHydrated || hasSeenHomeWalkthrough) return;
+    if (showUpgradeModal || showCreateUpgradeModal) return;
+
+    const timer = setTimeout(() => {
+      startWalkthrough();
+      setHomeWalkthroughSeen();
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [authUser, hasCompletedOnboarding, isInitialized, _hasHydrated, hasSeenHomeWalkthrough, showUpgradeModal, showCreateUpgradeModal, startWalkthrough, setHomeWalkthroughSeen]);
 
   // Notebook list filtering and sorting
   const { accessibleNotebooks } = useNotebookList({

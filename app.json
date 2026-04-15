@@ -119,7 +119,13 @@
       "expo-localization",
       "expo-audio",
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.192701147934-m3qis098on3dqsstg8qgjq4inopjcvu4"
+        }
+      ]
     ],
     "scheme": "brigo",
     "owner": "francis.dev",

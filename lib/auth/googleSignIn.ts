@@ -2,41 +2,62 @@
  * Google Sign-In Service
  * Native flow via @react-native-google-signin/google-signin + Supabase signInWithIdToken.
  * Requires a development build or production build — will not work in Expo Go.
+ *
+ * Module-load safety: the native module imports are wrapped behind an Expo Go
+ * check so that opening the app in Expo Go doesn't crash the bundle. If
+ * signInWithGoogle is actually invoked in Expo Go it throws with a clear
+ * message; the email auth path still works.
  */
 
-import {
-  GoogleSignin,
-  statusCodes,
-  isSuccessResponse,
-  isErrorWithCode,
-} from '@react-native-google-signin/google-signin';
+import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
+
+const isExpoGo = Constants.appOwnership === 'expo';
 
 const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
-if (!webClientId) {
-  throw new Error('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not set');
-}
+// Lazy-loaded native SDK. Loading happens on first call so module import
+// doesn't crash under Expo Go, where the native binary is absent.
+let googleSignInModule: typeof import('@react-native-google-signin/google-signin') | null = null;
+let configured = false;
 
-GoogleSignin.configure({
-  webClientId,
-  iosClientId,
-  scopes: ['openid', 'email', 'profile'],
-});
+function loadGoogleSignIn() {
+  if (isExpoGo) {
+    throw new Error(
+      'Google sign-in requires a dev/production build and cannot run in Expo Go.',
+    );
+  }
+  if (!webClientId) {
+    throw new Error('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not set');
+  }
+  if (!googleSignInModule) {
+    googleSignInModule = require('@react-native-google-signin/google-signin');
+  }
+  if (!configured) {
+    googleSignInModule!.GoogleSignin.configure({
+      webClientId,
+      iosClientId,
+      scopes: ['openid', 'email', 'profile'],
+    });
+    configured = true;
+  }
+  return googleSignInModule!;
+}
 
 /**
  * Sign in with Google using the native sign-in sheet.
  * Returns the Supabase session on success; throws with a typed message on failure.
  */
 export async function signInWithGoogle(): Promise<{ session: any; user: any }> {
+  const { GoogleSignin, statusCodes, isSuccessResponse, isErrorWithCode } = loadGoogleSignIn();
+
   try {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
     const response = await GoogleSignin.signIn();
 
     if (!isSuccessResponse(response)) {
-      // v13+ surfaces cancellation as { type: 'cancelled', data: null }
       throw new Error('Sign in was cancelled');
     }
 
@@ -76,6 +97,6 @@ export async function signInWithGoogle(): Promise<{ session: any; user: any }> {
 
 /**
  * Kept for backwards compatibility with earlier OAuth-flow callers.
- * Configuration happens at module load, so this is a no-op.
+ * Configuration is deferred until signInWithGoogle is called.
  */
 export function configureGoogleSignIn() {}

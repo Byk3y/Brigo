@@ -39,7 +39,7 @@ if (typeof console !== 'undefined' && console.error) {
 import { initMixpanel } from '@/lib/services/analyticsService';
 initMixpanel();
 
-// Initialize Google Sign-In configuration (OAuth flow - works in Expo Go)
+// Load Google Sign-In module (configures native SDK at module evaluation).
 import { configureGoogleSignIn } from '@/lib/auth/googleSignIn';
 configureGoogleSignIn();
 

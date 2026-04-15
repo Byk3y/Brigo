@@ -96,7 +96,7 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
                     }
                 }
             } catch (error) {
-                // Silent fail - fallback pricing will be shown
+                console.error('[Paywall] getOfferings failed:', error);
             } finally {
                 setIsLoading(false);
             }

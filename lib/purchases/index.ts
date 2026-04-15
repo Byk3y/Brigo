@@ -30,8 +30,7 @@ export const initializePurchases = async (userId?: string) => {
     if (initializationPromise) return initializationPromise;
 
     initializationPromise = (async () => {
-        // Set log level to verbose in development
-        if (__DEV__) {
+        if (__DEV__ || Platform.OS === 'android') {
             Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
         }
 

@@ -65,6 +65,9 @@ export async function signInWithGoogle(): Promise<{ session: any; user: any }> {
           throw new Error('Sign in already in progress');
         case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
           throw new Error('Google Play Services not available on this device');
+        case 'DEVELOPER_ERROR':
+        case '10':
+          throw new Error('Google sign-in is misconfigured. Please try again or contact support.');
       }
     }
     throw error;

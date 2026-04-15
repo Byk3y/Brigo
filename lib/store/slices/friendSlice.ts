@@ -3,7 +3,7 @@
  */
 
 import type { StateCreator } from 'zustand';
-import { friendService, type FriendStreak } from '@/lib/services/friendService';
+import { friendService, type FriendInfo, type FriendStreak } from '@/lib/services/friendService';
 import type { SupabaseUser } from '../types';
 
 export interface FriendSlice {
@@ -12,12 +12,14 @@ export interface FriendSlice {
   friendsUserId: string | null;
   loadFriendStreaks: () => Promise<void>;
   createFriendInvite: () => Promise<{ success: boolean; invite_code?: string; error?: string }>;
-  acceptFriendInvite: (code: string) => Promise<{ success: boolean; error?: string }>;
+  acceptFriendInvite: (code: string) => Promise<{ success: boolean; friend_id?: string; friend_streak_id?: string; error?: string }>;
   removeFriend: (friendStreakId: string) => Promise<{ success: boolean; error?: string }>;
   nudgeFriend: (friendStreakId: string) => Promise<{ success: boolean; nudger_name?: string; friend_name?: string; streak?: number; error?: string }>;
   pendingInviteCode: string | null;
   pendingInviteSource: 'deeplink' | 'clipboard' | null;
   setPendingInviteCode: (code: string | null, source?: 'deeplink' | 'clipboard') => void;
+  justAcceptedPal: FriendInfo | null;
+  setJustAcceptedPal: (pal: FriendInfo | null) => void;
 }
 
 export const createFriendSlice: StateCreator<
@@ -94,4 +96,7 @@ export const createFriendSlice: StateCreator<
     pendingInviteCode: code,
     pendingInviteSource: code ? source : null,
   }),
+
+  justAcceptedPal: null,
+  setJustAcceptedPal: (pal) => set({ justAcceptedPal: pal }),
 });

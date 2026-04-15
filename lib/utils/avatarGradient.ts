@@ -98,6 +98,18 @@ import { createAvatar } from '@dicebear/core';
 import { adventurer, lorelei } from '@dicebear/collection';
 
 /**
+ * Matches legacy remote DiceBear URLs like
+ *   https://api.dicebear.com/9.x/lorelei/svg?seed=Luna
+ * These were stored on older profile rows before the switch to local SVG
+ * generation. React Native's <Image> can't render SVG, so we detect them
+ * here and re-route to the local generator.
+ */
+const LEGACY_DICEBEAR_URL = /^https?:\/\/api\.dicebear\.com\/[^/]+\/([^/]+)\/svg\?.*\bseed=([^&]+)/i;
+
+export const isLegacyDiceBearUrl = (identifier: string): boolean =>
+  LEGACY_DICEBEAR_URL.test(identifier);
+
+/**
  * Parse a DiceBear identifier into its style + seed components.
  */
 const parseDiceBearIdentifier = (
@@ -109,6 +121,10 @@ const parseDiceBearIdentifier = (
     if (parts.length === 2) {
       return { style: parts[0], seed: parts[1] };
     }
+  }
+  const legacyMatch = identifier.match(LEGACY_DICEBEAR_URL);
+  if (legacyMatch) {
+    return { style: legacyMatch[1], seed: decodeURIComponent(legacyMatch[2]) };
   }
   return { style: styleOverride, seed: identifier };
 };
@@ -153,7 +169,7 @@ export const getAvatarSvg = (
   styleOverride: string = 'adventurer',
 ): string | null => {
   try {
-    if (identifier && identifier.startsWith('http')) return null;
+    if (identifier && identifier.startsWith('http') && !isLegacyDiceBearUrl(identifier)) return null;
 
     const { style, seed } = identifier
       ? parseDiceBearIdentifier(identifier, styleOverride)

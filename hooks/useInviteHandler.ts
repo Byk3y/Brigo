@@ -1,18 +1,15 @@
 /**
  * Hook for handling friend invite acceptance — deep links + clipboard
- * Watches for pendingInviteCode, accepts it, triggers celebration, navigates to pet-sheet
+ * Watches for pendingInviteCode, accepts it, surfaces the confirmation modal
  */
 
 import { useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
-import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '@/lib/store';
-import { useCelebration } from '@/lib/contexts/CelebrationContext';
+import { track } from '@/lib/services/analyticsService';
 
 export function useInviteHandler() {
-  const router = useRouter();
-  const { triggerCelebration } = useCelebration();
   const hasCheckedClipboard = useRef(false);
   const isProcessing = useRef(false);
 
@@ -22,6 +19,7 @@ export function useInviteHandler() {
   const setPendingInviteCode = useStore((s) => s.setPendingInviteCode);
   const acceptFriendInvite = useStore((s) => s.acceptFriendInvite);
   const loadFriendStreaks = useStore((s) => s.loadFriendStreaks);
+  const setJustAcceptedPal = useStore((s) => s.setJustAcceptedPal);
 
   // Watch for pending invite code (set by deep link or clipboard check)
   useEffect(() => {
@@ -37,9 +35,17 @@ export function useInviteHandler() {
         const result = await acceptFriendInvite(code);
 
         if (result.success) {
-          triggerCelebration();
           await loadFriendStreaks();
-          router.push('/pet-sheet');
+
+          const pal = useStore.getState().friends.find(
+            (f) => f.friend.id === result.friend_id,
+          )?.friend;
+          if (pal) setJustAcceptedPal(pal);
+
+          track('friend_invite_accepted', {
+            friend_id: result.friend_id,
+            source,
+          });
         } else if (source === 'deeplink') {
           // Only show errors for deep links — clipboard failures are silent
           Alert.alert('Oops', result.error || 'Could not accept invite');

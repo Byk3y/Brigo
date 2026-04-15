@@ -13,7 +13,7 @@
 import React from 'react';
 import { Image, View, ViewStyle } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import { getAvatarSvg } from '@/lib/utils/avatarGradient';
+import { getAvatarSvg, isLegacyDiceBearUrl } from '@/lib/utils/avatarGradient';
 
 interface BrigoAvatarProps {
     identifier: string | null | undefined;
@@ -29,7 +29,9 @@ export const BrigoAvatar: React.FC<BrigoAvatarProps> = React.memo(({
     containerStyle,
 }) => {
     // Legacy http(s) URL — render as an Image so existing stored URLs still work.
-    if (identifier && identifier.startsWith('http')) {
+    // Exception: legacy remote DiceBear SVG URLs, which <Image> can't render — let them
+    // fall through to getAvatarSvg below, which parses style/seed and generates locally.
+    if (identifier && identifier.startsWith('http') && !isLegacyDiceBearUrl(identifier)) {
         return (
             <View style={[{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }, containerStyle]}>
                 <Image

@@ -55,6 +55,7 @@ import { NetworkProvider } from '@/lib/contexts/NetworkContext';
 import { CelebrationProvider } from '@/lib/contexts/CelebrationContext';
 import { CelebrationOverlay } from '@/components/CelebrationOverlay';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { StudyPalConfirmationModal } from '@/components/modals/StudyPalConfirmationModal';
 import '../global.css';
 
 // Custom hooks for modular functionality
@@ -226,6 +227,7 @@ function RootLayoutInner() {
       <InAppNotification />
       <OfflineBanner />
       <CelebrationOverlay />
+      <StudyPalConfirmationModal />
     </View>
   );
 }

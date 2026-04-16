@@ -170,7 +170,10 @@ export const PetDisplay = memo(({
                     style={styles.petEmojiContainer}
                 >
                     {/* Stage 1 Render - Always mounted, toggle opacity */}
-                    <View style={[styles.imageWrapper, { opacity: stage === 1 ? 1 : 0 }]}>
+                    <View
+                        style={[styles.imageWrapper, { opacity: stage === 1 ? 1 : 0 }]}
+                        pointerEvents={stage === 1 ? 'auto' : 'none'}
+                    >
                         <Image
                             source={(isDying && currentStage === 1) ? STAGE_1_DYING : STAGE_1_FULL}
                             style={{
@@ -189,6 +192,7 @@ export const PetDisplay = memo(({
                             styles.absoluteWrapper,
                             { opacity: stage === 2 ? 1 : 0 }
                         ]}
+                        pointerEvents={stage === 2 ? 'auto' : 'none'}
                     >
                         <Image
                             source={stage2Source}
@@ -208,6 +212,7 @@ export const PetDisplay = memo(({
                             styles.absoluteWrapper,
                             { opacity: stage === 3 ? 1 : 0 }
                         ]}
+                        pointerEvents={stage === 3 ? 'auto' : 'none'}
                     >
                         <Image
                             source={stage3Source}

@@ -3,7 +3,7 @@
  * Shows pet with gradient background, streak, XP, and missions
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -115,6 +115,14 @@ export default function PetSheetScreen() {
     });
   };
 
+  const isNavigatingToFriends = useRef(false);
+  const handleFriendsPress = useCallback(() => {
+    if (isNavigatingToFriends.current) return;
+    isNavigatingToFriends.current = true;
+    router.push('/friends');
+    setTimeout(() => { isNavigatingToFriends.current = false; }, 800);
+  }, [router]);
+
   // Dark mode gradient colors - slightly muted version of the golden theme
   // Lavender gradient when pet is dying (streak lost or at risk)
   const getGradientColors = (): [string, string] => {
@@ -188,7 +196,7 @@ export default function PetSheetScreen() {
               onRestore={handleRestore}
               showBalance={hasJustRestored}
               friends={friends}
-              onFriendsPress={() => router.push('/friends')}
+              onFriendsPress={handleFriendsPress}
               userAvatar={user.avatar}
               userId={user.id}
             />

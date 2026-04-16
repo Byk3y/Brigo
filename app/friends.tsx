@@ -81,7 +81,7 @@ export default function FriendsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <SafeAreaView edges={['top']}>
+      <SafeAreaView edges={['top', 'bottom']}>
         {/* Header — no back button (sheet has grabber) */}
         <ResponsiveContainer maxWidth={560}>
           <View style={styles.header}>

@@ -123,7 +123,7 @@ export const PetDisplay = memo(({
                         <StreakNumber streak={streak} isDying={Boolean(isDying)} textColor={textSecondaryOnGradient} />
 
                         {/* Avatars — user's own + study pal (or invite placeholder) */}
-                        <Pressable onPress={onFriendsPress} style={styles.friendAvatarsContainer}>
+                        <Pressable onPress={onFriendsPress} style={({ pressed }) => [styles.friendAvatarsContainer, pressed && { opacity: 0.6 }]}>
                             {/* User's own avatar — always visible */}
                             <BrigoAvatar
                                 identifier={userAvatar || userId}

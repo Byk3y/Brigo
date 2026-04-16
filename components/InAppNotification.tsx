@@ -149,8 +149,6 @@ export const InAppNotification: React.FC = () => {
                 return { icon: 'bulb', color: '#9333ea', label: 'Predictions Ready' };
             case 'success':
                 return { icon: 'checkmark-circle', color: '#22c55e', label: 'Success' };
-            case 'streak':
-                return { icon: 'flame', color: '#FF5F06', label: 'Streak' };
             case 'warning':
                 return { icon: 'alert-circle', color: '#F59E0B', label: 'Warning' };
             case 'offline':

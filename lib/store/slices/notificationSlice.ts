@@ -7,7 +7,7 @@ import type { StateCreator } from 'zustand';
 export const GENERATION_NOTIFICATION_TYPES = ['flashcards', 'quiz', 'audio', 'prediction'] as const;
 export type GenerationNotificationType = typeof GENERATION_NOTIFICATION_TYPES[number];
 
-export type NotificationType = GenerationNotificationType | 'success' | 'streak' | 'info' | 'warning' | 'offline';
+export type NotificationType = GenerationNotificationType | 'success' | 'info' | 'warning' | 'offline';
 
 const GENERATION_TYPE_SET: ReadonlySet<string> = new Set(GENERATION_NOTIFICATION_TYPES);
 export const isGenerationNotificationType = (t: unknown): t is GenerationNotificationType =>
@@ -20,10 +20,19 @@ export interface NotificationPayload {
     data?: any; // e.g., { notebookId: '...', setId: '...' }
 }
 
+export interface StreakBannerPayload {
+    newStreak: number;
+    autoFreezeApplied: boolean;
+    shownAt: number;
+}
+
 export interface NotificationSlice {
     notification: NotificationPayload | null;
     notify: (payload: NotificationPayload) => void;
     dismissNotification: () => void;
+    streakBanner: StreakBannerPayload | null;
+    notifyStreak: (payload: Omit<StreakBannerPayload, 'shownAt'>) => void;
+    dismissStreakBanner: () => void;
 }
 
 const CONTENT_ID_KEYS = ['overviewId', 'quizId', 'setId', 'predictionId', 'contentKey'] as const;
@@ -50,6 +59,10 @@ export const createNotificationSlice: StateCreator<NotificationSlice> = (set, ge
         set({ notification: payload });
     },
     dismissNotification: () => set({ notification: null }),
+
+    streakBanner: null,
+    notifyStreak: (payload) => set({ streakBanner: { ...payload, shownAt: Date.now() } }),
+    dismissStreakBanner: () => set({ streakBanner: null }),
 });
 
 /**
@@ -60,4 +73,9 @@ export function triggerNotification(payload: NotificationPayload): void {
     // Import dynamically to avoid circular dependency
     const { useStore } = require('@/lib/store');
     useStore.getState().notify(payload);
+}
+
+export function triggerStreakBanner(payload: Omit<StreakBannerPayload, 'shownAt'>): void {
+    const { useStore } = require('@/lib/store');
+    useStore.getState().notifyStreak(payload);
 }

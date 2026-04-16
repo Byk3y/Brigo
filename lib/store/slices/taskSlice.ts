@@ -14,7 +14,7 @@ import { chatService } from '@/lib/services/chatService';
 import { studioService } from '@/lib/services/studioService';
 import { userService } from '@/lib/services/userService';
 import { track } from '@/lib/services/analyticsService';
-import { triggerNotification } from '@/lib/store/slices/notificationSlice';
+import { triggerNotification, triggerStreakBanner } from '@/lib/store/slices/notificationSlice';
 import { TASK_COPY } from '@/lib/constants/taskCopy';
 import type { SupabaseUser, DailyTask, TaskProgress } from '../types';
 
@@ -46,24 +46,9 @@ function fireCompletionBanner(
     petSecurity: PetSecuritySnapshot | undefined,
 ): void {
     if (petSecurity?.was_incremented && petSecurity.new_streak && petSecurity.new_streak > 0) {
-        const { new_streak, auto_freeze_applied } = petSecurity;
-        let title: string;
-        let message: string;
-        if (auto_freeze_applied) {
-            title = 'Streak restored!';
-            message = `Day ${new_streak} · +${totalAwarded} points`;
-        } else if (new_streak === 1) {
-            title = 'New daily streak started';
-            message = `+${totalAwarded} points earned`;
-        } else {
-            title = `Day ${new_streak} streak`;
-            message = `Kept alive · +${totalAwarded} points`;
-        }
-        triggerNotification({
-            type: 'streak',
-            title,
-            message,
-            data: { contentKey: `streak:${new_streak}:${completionDate}` },
+        triggerStreakBanner({
+            newStreak: petSecurity.new_streak,
+            autoFreezeApplied: !!petSecurity.auto_freeze_applied,
         });
         return;
     }

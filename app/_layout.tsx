@@ -51,6 +51,7 @@ import { ErrorNotificationProvider } from '@/lib/contexts/ErrorNotificationConte
 import { ErrorNotificationContainer } from '@/components/ErrorNotificationContainer';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { InAppNotification } from '@/components/InAppNotification';
+import { StreakBanner } from '@/components/StreakBanner';
 import { NetworkProvider } from '@/lib/contexts/NetworkContext';
 import { CelebrationProvider } from '@/lib/contexts/CelebrationContext';
 import { CelebrationOverlay } from '@/components/CelebrationOverlay';
@@ -225,6 +226,7 @@ function RootLayoutInner() {
       />
 
       <InAppNotification />
+      <StreakBanner />
       <OfflineBanner />
       <CelebrationOverlay />
       <StudyPalConfirmationModal />

@@ -27,7 +27,6 @@ import { useSubscriptionUI } from '@/hooks/useTrialSubscriptionUI';
 import { useNotebookList } from '@/hooks/useNotebookList';
 import { useHomeAnalytics } from '@/hooks/useHomeAnalytics';
 import { PendingSyncIndicator } from '@/components/PendingSyncIndicator';
-import { BannerDebugFab } from '@/components/debug/BannerDebugFab';
 import { supabase } from '@/lib/supabase';
 
 
@@ -368,9 +367,6 @@ export default function HomeScreen() {
 
       {/* Pending Sync Indicator */}
       <PendingSyncIndicator />
-
-      {/* Dev-only banner preview — __DEV__ gated */}
-      <BannerDebugFab />
 
 
       {/* Modals */}

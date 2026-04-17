@@ -53,6 +53,8 @@ export default function HomeScreen() {
     hasSeenHomeWalkthrough,
     setHomeWalkthroughSeen,
     hasCompletedOnboarding,
+    notification,
+    dismissNotification,
   } = useStore();
 
   // Theme
@@ -100,14 +102,18 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!authUser || !hasCompletedOnboarding || !isInitialized || !_hasHydrated || hasSeenHomeWalkthrough) return;
     if (showUpgradeModal || showCreateUpgradeModal) return;
+    if (notification) return;
 
     const timer = setTimeout(() => {
+      if (useStore.getState().notification) {
+        dismissNotification();
+      }
       startWalkthrough();
       setHomeWalkthroughSeen();
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [authUser, hasCompletedOnboarding, isInitialized, _hasHydrated, hasSeenHomeWalkthrough, showUpgradeModal, showCreateUpgradeModal, startWalkthrough, setHomeWalkthroughSeen]);
+  }, [authUser, hasCompletedOnboarding, isInitialized, _hasHydrated, hasSeenHomeWalkthrough, showUpgradeModal, showCreateUpgradeModal, notification, startWalkthrough, setHomeWalkthroughSeen, dismissNotification]);
 
   // Notebook list filtering and sorting
   const { accessibleNotebooks } = useNotebookList({

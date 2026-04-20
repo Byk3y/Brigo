@@ -101,20 +101,33 @@ export function useAuthSetup() {
             hydratePetStateFromCache();
             hydrateUserProfileFromCache();
 
-            // Perform post-sign-in housekeeping (names, pet names, etc.)
-            await performAuthHousekeeping(session.user.id, session.user.user_metadata);
+            // Cache-first init: if we already have hydratable state for this user,
+            // unblock the splash immediately and reconcile with the network in the
+            // background. This prevents a long splash on flaky / offline networks.
+            const postHydrate = useStore.getState();
+            const hasUsableCache =
+              postHydrate.user.id === session.user.id &&
+              postHydrate.petStateReady &&
+              !!postHydrate.userProfileSyncedAt;
 
-            // Fetch profile and other data in background
-            const [profileResult] = await Promise.all([
-              supabase.from('profiles').select('meta').eq('id', session.user.id).single(),
-              loadUserProfile(),
-              loadSubscription(session.user.id),
-              loadNotebooks(session.user.id),
-              loadPetState(),
-              loadPendingStudioJobs(session.user.id),
-            ]);
+            if (hasUsableCache && mounted) {
+              setIsInitialized(true);
+            }
 
-            if (mounted) {
+            const syncWork = (async () => {
+              await performAuthHousekeeping(session.user.id, session.user.user_metadata);
+
+              const [profileResult] = await Promise.all([
+                supabase.from('profiles').select('meta').eq('id', session.user.id).single(),
+                loadUserProfile(),
+                loadSubscription(session.user.id),
+                loadNotebooks(session.user.id),
+                loadPetState(),
+                loadPendingStudioJobs(session.user.id),
+              ]);
+
+              if (!mounted) return;
+
               const meta = profileResult?.data?.meta as any;
               const hasCompleted = isOnboardingComplete(meta);
               setHasCompletedOnboarding(hasCompleted);
@@ -138,8 +151,57 @@ export function useAuthSetup() {
                 education_level: meta?.education_level,
                 learning_style: meta?.learning_style,
               });
+            })();
 
-              // Initialization is definitely complete now that we have the newest onboarding flag
+            if (hasUsableCache) {
+              // UI is already unblocked — let reconciliation finish on its own schedule.
+              syncWork.catch((err) => {
+                if (__DEV__) console.warn('[Auth] Background sync error:', err);
+              });
+            } else {
+              // Fresh sign-in with no usable cache. Race the sync against a 7s
+              // timeout so the splash can never stall on a slow network.
+              const timeoutGuard = new Promise<'timeout'>((resolve) =>
+                setTimeout(() => resolve('timeout'), 7000)
+              );
+              const raceResult = await Promise.race([
+                syncWork
+                  .then(() => 'sync' as const)
+                  .catch((err) => {
+                    if (__DEV__) console.warn('[Auth] Sync work error:', err);
+                    return 'sync' as const;
+                  }),
+                timeoutGuard,
+              ]);
+
+              if (!mounted) return;
+
+              // If the timeout won (network requests still pending and not rejecting),
+              // seed minimal ready state from the session so the splash can hide.
+              // The still-running sync work will reconcile real data when it resolves.
+              if (raceResult === 'timeout') {
+                const s = useStore.getState();
+                const updates: Record<string, unknown> = {};
+                if (!s.user.id) {
+                  updates.user = {
+                    ...s.user,
+                    id: session.user.id,
+                    name: session.user.email || 'User',
+                  };
+                }
+                if (!s.userProfileSyncedAt) {
+                  updates.userProfileSyncedAt = Date.now();
+                  updates.userProfileUserId = session.user.id;
+                }
+                if (!s.petStateReady) {
+                  updates.petStateReady = true;
+                  updates.petStateUserId = session.user.id;
+                }
+                if (Object.keys(updates).length > 0) {
+                  useStore.setState(updates);
+                }
+              }
+
               setIsInitialized(true);
             }
           } catch (error) {
@@ -149,10 +211,6 @@ export function useAuthSetup() {
         };
 
         fetchData();
-
-        // Note: isInitialized is intentionally NOT set here anymore.
-        // It will be set to true at the end of fetchData() (Line 136/140)
-        // This ensures the AuthScreen loading overlay stays visible until all data is ready.
       } else {
         // Logged out state - ATOMIC RESET
         if (mounted) {

@@ -193,6 +193,23 @@ export const createPetSlice: StateCreator<
       }
     } catch (error) {
       console.error('Error loading pet state:', error);
+      // Offline / transient failure: fall back to cached state (or defaults)
+      // and mark ready so the splash screen can unblock.
+      const { cachedPetState, cachedPetUserId } = get();
+      const fallback =
+        cachedPetState && cachedPetUserId === authUser.id
+          ? cachedPetState
+          : {
+              stage: 1,
+              points: 0,
+              name: 'Nova',
+              mood: 'happy' as const,
+            };
+      set({
+        petState: fallback,
+        petStateReady: true,
+        petStateUserId: authUser.id,
+      });
     }
   },
 

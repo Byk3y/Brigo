@@ -94,6 +94,32 @@ export const createUserSlice: StateCreator<
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
+      // Offline / transient failure: if we already have a cached profile for this user,
+      // keep it and ensure syncedAt is populated. Otherwise seed a minimal profile from
+      // the auth user so the splash can unblock and data reconciles when online.
+      const current = get();
+      if (current.userProfileUserId === authUser.id && current.user.id) {
+        set({
+          userProfileSyncedAt: current.userProfileSyncedAt ?? Date.now(),
+        });
+      } else {
+        set({
+          user: {
+            id: authUser.id,
+            name: authUser.email || 'User',
+            first_name: '',
+            last_name: '',
+            streak: 0,
+            streak_freezes: 3,
+            last_freeze_reset: '',
+            last_streak_date: undefined,
+            coins: 0,
+            avatar: undefined,
+          },
+          userProfileSyncedAt: Date.now(),
+          userProfileUserId: authUser.id,
+        });
+      }
     }
   },
   applyStreakFreeze: async () => {

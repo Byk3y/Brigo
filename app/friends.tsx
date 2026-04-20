@@ -10,9 +10,10 @@ import {
   Share,
   Alert,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '@/lib/store';
@@ -27,6 +28,10 @@ export default function FriendsScreen() {
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
   const [nudgingId, setNudgingId] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  // Android formSheet renders in a Dialog where SafeAreaView's bottom inset is 0,
+  // so the gesture bar overlaps the invite button. Enforce a minimum clearance.
+  const bottomPad = Platform.OS === 'android' ? Math.max(insets.bottom, 28) : 24;
 
   const {
     friends,
@@ -81,7 +86,7 @@ export default function FriendsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <SafeAreaView edges={['top', 'bottom']}>
+      <SafeAreaView edges={Platform.OS === 'android' ? ['top'] : ['top', 'bottom']}>
         {/* Header — no back button (sheet has grabber) */}
         <ResponsiveContainer maxWidth={560}>
           <View style={styles.header}>
@@ -337,7 +342,7 @@ export default function FriendsScreen() {
         {/* Inline Invite */}
         {slotsRemaining > 0 && (
           <ResponsiveContainer maxWidth={560}>
-            <View style={[styles.bottom, { borderTopColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}>
+            <View style={[styles.bottom, { borderTopColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', paddingBottom: bottomPad }]}>
               <Pressable onPress={handleInvite} style={styles.inviteWrap}>
                 <LinearGradient
                   colors={['#FF6B1A', '#FF5F06']}

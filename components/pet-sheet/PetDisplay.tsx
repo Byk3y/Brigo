@@ -243,8 +243,8 @@ export const PetDisplay = memo(({
                         <Image
                             source={stage3Source}
                             style={{
-                                width: isUnlocked ? ((isDying && currentStage === 3) ? 280 : 300) : 280,
-                                height: isUnlocked ? ((isDying && currentStage === 3) ? 280 : 300) : 280
+                                width: isUnlocked ? ((isDying && currentStage === 3) ? 260 : 270) : 280,
+                                height: isUnlocked ? ((isDying && currentStage === 3) ? 260 : 270) : 280
                             }}
                             contentFit="contain"
                             transition={0}

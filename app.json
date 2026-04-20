@@ -12,7 +12,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.brigo.ai",
-      "buildNumber": "53",
+      "buildNumber": "54",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -36,7 +36,7 @@
         "backgroundColor": "#FF9500"
       },
       "package": "com.brigo.ai",
-      "versionCode": 9,
+      "versionCode": 10,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",

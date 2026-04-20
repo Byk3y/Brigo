@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Alert, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useSegments } from 'expo-router';
 import { useSpotlightTour } from 'react-native-spotlight-tour';
@@ -13,6 +13,7 @@ import { useNotebookCreation } from '@/lib/hooks/useNotebookCreation';
 import { PetBubble } from '@/components/PetBubble';
 import MaterialTypeSelector from '@/components/MaterialTypeSelector';
 import TextInputModal from '@/components/TextInputModal';
+import UrlPromptModal from '@/components/UrlPromptModal';
 import { TikTokLoader } from '@/components/TikTokLoader';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HomeActionButtons } from '@/components/home/HomeActionButtons';
@@ -146,6 +147,7 @@ export default function HomeScreen() {
   const [showMaterialSelector, setShowMaterialSelector] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInputType, setTextInputType] = useState<'text' | 'note'>('text');
+  const [urlPrompt, setUrlPrompt] = useState<null | 'youtube' | 'website'>(null);
 
   const handleCreateNotebook = () => {
     setShowMaterialSelector(true);
@@ -171,47 +173,14 @@ export default function HomeScreen() {
         if (providedUrl) {
           newNotebookId = await handleWebsiteImport(providedUrl);
         } else {
-          Alert.prompt(
-            'Import Website',
-            'Paste the website URL below',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Import',
-                onPress: async (url: string | undefined) => {
-                  if (url) {
-                    const id = await handleWebsiteImport(url);
-                    if (id) navigateToNotebook(id, 'sources');
-                  }
-                }
-              }
-            ],
-            'plain-text'
-          );
+          setUrlPrompt('website');
         }
         break;
       case 'youtube':
         if (providedUrl) {
           newNotebookId = await handleYouTubeImport(providedUrl);
         } else {
-          // If no URL provided (clicked the icon), prompt for it
-          Alert.prompt(
-            'Import YouTube Video',
-            'Paste the YouTube video URL below',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Import',
-                onPress: async (url: string | undefined) => {
-                  if (url) {
-                    const id = await handleYouTubeImport(url);
-                    if (id) navigateToNotebook(id, 'sources');
-                  }
-                }
-              }
-            ],
-            'plain-text'
-          );
+          setUrlPrompt('youtube');
         }
         break;
       case 'copied-text':
@@ -388,6 +357,27 @@ export default function HomeScreen() {
         onClose={() => setShowTextInput(false)}
         onSave={onTextSave}
         onConvertToWebsite={handleConvertToWebsite}
+      />
+
+      <UrlPromptModal
+        visible={urlPrompt !== null}
+        title={urlPrompt === 'youtube' ? 'Import YouTube Video' : 'Import Website'}
+        message={
+          urlPrompt === 'youtube'
+            ? 'Paste the YouTube video URL below.'
+            : 'Paste the website URL below.'
+        }
+        placeholder={urlPrompt === 'youtube' ? 'https://youtube.com/watch?v=...' : 'https://...'}
+        onCancel={() => setUrlPrompt(null)}
+        onSubmit={async (url) => {
+          const kind = urlPrompt;
+          setUrlPrompt(null);
+          if (!kind) return;
+          const id = kind === 'youtube'
+            ? await handleYouTubeImport(url)
+            : await handleWebsiteImport(url);
+          if (id) navigateToNotebook(id, 'sources');
+        }}
       />
 
       {/* Upgrade Modal (subscription expired on first app open) */}

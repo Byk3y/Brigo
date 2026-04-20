@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -22,6 +21,7 @@ import { useNotebookActions } from '@/hooks/useNotebookActions';
 import { useMaterialAddition } from '@/lib/hooks/useMaterialAddition';
 import MaterialTypeSelector from '@/components/MaterialTypeSelector';
 import TextInputModal from '@/components/TextInputModal';
+import UrlPromptModal from '@/components/UrlPromptModal';
 import { TikTokLoader } from '@/components/TikTokLoader';
 import { UpgradeModal } from '@/components/upgrade/UpgradeModal';
 import { useUpgrade } from '@/lib/hooks/useUpgrade';
@@ -103,6 +103,7 @@ export default function NotebookDetailScreen() {
   const [showMaterialSelector, setShowMaterialSelector] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInputType, setTextInputType] = useState<'text' | 'note'>('text');
+  const [urlPrompt, setUrlPrompt] = useState<null | 'youtube' | 'website'>(null);
 
   const handleMaterialTypeSelected = async (
     type: 'pdf' | 'audio' | 'image' | 'website' | 'youtube' | 'copied-text',
@@ -116,19 +117,13 @@ export default function NotebookDetailScreen() {
         if (providedUrl) {
           await handleWebsiteImport(providedUrl);
         } else {
-          Alert.prompt('Import Website', 'Paste URL below', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Import', onPress: (url: string | undefined) => url && handleWebsiteImport(url) }
-          ], 'plain-text');
+          setUrlPrompt('website');
         }
         break;
       case 'youtube':
         if (providedUrl) await handleYouTubeImport(providedUrl);
         else {
-          Alert.prompt('Import YouTube', 'Paste URL below', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Import', onPress: (url: string | undefined) => url && handleYouTubeImport(url) }
-          ], 'plain-text');
+          setUrlPrompt('youtube');
         }
         break;
       case 'copied-text':
@@ -253,6 +248,25 @@ export default function NotebookDetailScreen() {
           type={textInputType}
           onClose={() => setShowTextInput(false)}
           onSave={onTextSave}
+        />
+
+        <UrlPromptModal
+          visible={urlPrompt !== null}
+          title={urlPrompt === 'youtube' ? 'Import YouTube Video' : 'Import Website'}
+          message={
+            urlPrompt === 'youtube'
+              ? 'Paste the YouTube video URL below.'
+              : 'Paste the website URL below.'
+          }
+          placeholder={urlPrompt === 'youtube' ? 'https://youtube.com/watch?v=...' : 'https://...'}
+          onCancel={() => setUrlPrompt(null)}
+          onSubmit={async (url) => {
+            const kind = urlPrompt;
+            setUrlPrompt(null);
+            if (!kind) return;
+            if (kind === 'youtube') await handleYouTubeImport(url);
+            else await handleWebsiteImport(url);
+          }}
         />
 
         <UpgradeModal

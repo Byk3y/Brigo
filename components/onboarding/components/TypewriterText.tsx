@@ -45,24 +45,28 @@ export function TypewriterText({
     useEffect(() => {
         if (!isStarted) return;
 
+        // Android short-circuit: render the full text at once and skip haptics.
+        // Two prior timing-based fixes (e408874, 7b5fd13) didn't land, and
+        // the Android vibrator service rate-limits selectionAsync at
+        // typewriter cadence anyway. iOS keeps the Taptic-synced animation.
+        if (Platform.OS === 'android') {
+            if (displayedText !== text) {
+                index.current = text.length;
+                setDisplayedText(text);
+            } else if (onComplete && !hasCalledComplete.current) {
+                hasCalledComplete.current = true;
+                onComplete();
+            }
+            return;
+        }
+
         if (index.current < text.length) {
             timer.current = setTimeout(() => {
                 const nextChar = text[index.current];
                 setDisplayedText((prev) => prev + nextChar);
 
-                // Android: selectionAsync fires faster (~5ms) than React can
-                // commit the text update (~16ms to next frame), so the haptic
-                // landed before the character paints. Defer it to the next
-                // animation frame so both arrive together. Throttle to every
-                // third char to keep the actuator from saturating.
                 if (hapticEnabled && nextChar !== ' ') {
-                    if (Platform.OS === 'android') {
-                        if (index.current % 3 === 0) {
-                            requestAnimationFrame(() => Haptics.selectionAsync());
-                        }
-                    } else {
-                        Haptics.impactAsync(hapticStyle);
-                    }
+                    Haptics.impactAsync(hapticStyle);
                 }
 
                 index.current += 1;

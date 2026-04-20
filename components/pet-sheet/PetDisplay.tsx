@@ -39,6 +39,9 @@ interface PetDisplayProps {
     onFriendsPress?: () => void;
     userAvatar?: string | null;
     userId?: string;
+    /** Color of the sheet background behind the avatars — used as the
+     *  outer ring on the overlapping avatar to create the "bite" cutout. */
+    seamColor?: string;
 }
 
 /**
@@ -75,6 +78,7 @@ export const PetDisplay = memo(({
     onFriendsPress,
     userAvatar,
     userId,
+    seamColor,
 }: PetDisplayProps) => {
     const { isDarkMode } = useTheme();
 
@@ -104,7 +108,10 @@ export const PetDisplay = memo(({
 
     return (
         <View style={styles.container}>
-            <ResponsiveContainer maxWidth={560}>
+            {/* zIndex + elevation lift the whole streak row (incl. Study Pals
+                Pressable) above petCharacterContainer so Android hit-testing
+                can't route taps into the pet views rendered below. */}
+            <ResponsiveContainer maxWidth={560} style={{ zIndex: 2, elevation: 2 }}>
                 <View
                     style={styles.streakContainer}
                     accessibilityLabel={`Your current streak is ${streak} days`}
@@ -122,37 +129,56 @@ export const PetDisplay = memo(({
                     <View style={styles.streakRow}>
                         <StreakNumber streak={streak} isDying={Boolean(isDying)} textColor={textSecondaryOnGradient} />
 
-                        {/* Avatars — user's own + study pal (or invite placeholder) */}
-                        <Pressable onPress={onFriendsPress} style={({ pressed }) => [styles.friendAvatarsContainer, pressed && { opacity: 0.6 }]}>
-                            {/* User's own avatar — always visible */}
-                            <BrigoAvatar
-                                identifier={userAvatar || userId}
-                                size={styles.friendAvatar.width as number}
-                                containerStyle={styles.friendAvatar}
-                            />
+                        {/* Avatars — user's own + study pal (or invite placeholder).
+                            Pressable handles the tap + opacity only; layout lives on the
+                            inner View so iOS doesn't misinterpret the function-style and
+                            collapse the row into a vertical stack. */}
+                        <Pressable
+                            onPress={onFriendsPress}
+                            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                        >
+                            <View style={styles.friendAvatarsContainer}>
+                                {/* User's own avatar — always visible */}
+                                <BrigoAvatar
+                                    identifier={userAvatar || userId}
+                                    size={styles.friendAvatar.width as number}
+                                    containerStyle={styles.friendAvatar}
+                                />
 
-                            {/* Second circle: study pal or "+" invite */}
-                            {friends.length > 0 ? (
-                                <>
-                                    <BrigoAvatar
-                                        identifier={friends[0].friend.avatar_url || friends[0].friend.id}
-                                        size={styles.friendAvatar.width as number}
-                                        containerStyle={{ ...styles.friendAvatar, marginLeft: -18 }}
-                                    />
-                                    {friends.length > 1 && (
-                                        <View style={[styles.friendAvatarMore, { marginLeft: -18 }]}>
-                                            <Text style={styles.friendAvatarMoreText}>+{friends.length - 1}</Text>
-                                        </View>
-                                    )}
-                                </>
-                            ) : (
-                                <View style={[
-                                    styles.addPalCircle,
-                                    { backgroundColor: isDarkMode ? '#3B3B4F' : '#E5E7EB' },
-                                ]}>
-                                    <Ionicons name="add" size={22} color={isDarkMode ? 'rgba(255,255,255,0.6)' : '#9CA3AF'} />
-                                </View>
-                            )}
+                                {/* Second circle: study pal or "+" invite.
+                                    Border color matches the sheet background (seamColor)
+                                    so the overlap "eats" a clean arc out of the first
+                                    avatar, instead of both white borders fusing. */}
+                                {friends.length > 0 ? (
+                                    <>
+                                        <BrigoAvatar
+                                            identifier={friends[0].friend.avatar_url || friends[0].friend.id}
+                                            size={styles.friendAvatar.width as number}
+                                            containerStyle={{
+                                                ...styles.friendAvatar,
+                                                borderColor: seamColor ?? styles.friendAvatar.borderColor,
+                                                marginLeft: -14,
+                                            }}
+                                        />
+                                        {friends.length > 1 && (
+                                            <View style={[styles.friendAvatarMore, { borderColor: seamColor ?? styles.friendAvatarMore.borderColor, marginLeft: -14 }]}>
+                                                <Text style={styles.friendAvatarMoreText}>+{friends.length - 1}</Text>
+                                            </View>
+                                        )}
+                                    </>
+                                ) : (
+                                    <View style={[
+                                        styles.addPalCircle,
+                                        {
+                                            backgroundColor: isDarkMode ? '#3B3B4F' : '#E5E7EB',
+                                            borderColor: seamColor ?? styles.addPalCircle.borderColor,
+                                            marginLeft: -14,
+                                        },
+                                    ]}>
+                                        <Ionicons name="add" size={22} color={isDarkMode ? 'rgba(255,255,255,0.6)' : '#9CA3AF'} />
+                                    </View>
+                                )}
+                            </View>
                         </Pressable>
                     </View>
                 </View>
@@ -171,7 +197,7 @@ export const PetDisplay = memo(({
                 >
                     {/* Stage 1 Render - Always mounted, toggle opacity */}
                     <View
-                        style={[styles.imageWrapper, { opacity: stage === 1 ? 1 : 0 }]}
+                        style={[styles.imageWrapper, styles.absoluteWrapper, { opacity: stage === 1 ? 1 : 0 }]}
                         pointerEvents={stage === 1 ? 'auto' : 'none'}
                     >
                         <Image
@@ -317,7 +343,6 @@ const styles = StyleSheet.create({
         borderRadius: 26,
         borderWidth: 3,
         borderColor: 'white',
-        marginLeft: -18,
         alignItems: 'center',
         justifyContent: 'center',
     },

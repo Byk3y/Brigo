@@ -146,9 +146,15 @@ export default function PetSheetScreen() {
     return ['#F9A8D4', '#FFFFFF']; // Soft pink for Stage 3
   };
 
+  const gradientColors = getGradientColors();
+  // Top gradient color — used as the "seam" behind the avatars so the
+  // overlapping avatar's outer ring blends with the sheet background and
+  // creates a clean cutout bite instead of fused white borders.
+  const seamColor = gradientColors[0];
+
   return (
     <LinearGradient
-      colors={getGradientColors()}
+      colors={gradientColors}
       style={styles.gradient}
     >
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -199,6 +205,7 @@ export default function PetSheetScreen() {
               onFriendsPress={handleFriendsPress}
               userAvatar={user.avatar}
               userId={user.id}
+              seamColor={seamColor}
             />
           </View>
 

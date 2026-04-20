@@ -249,15 +249,15 @@ export default function FriendsScreen() {
                             style={{
                               flexDirection: 'row',
                               alignItems: 'center',
-                              paddingHorizontal: 7,
-                              paddingVertical: 3,
-                              borderRadius: 8,
+                              paddingHorizontal: 9,
+                              paddingVertical: 4,
+                              borderRadius: 9,
                               backgroundColor: 'rgba(255,95,6,0.12)',
-                              marginRight: 7,
+                              marginRight: 8,
                             }}
                           >
-                            <Ionicons name="flame" size={11} color="#FF5F06" />
-                            <Text style={{ fontSize: 12, fontFamily: 'Nunito-Bold', color: '#FF5F06', marginLeft: 3 }}>
+                            <Ionicons name="flame" size={13} color="#FF5F06" />
+                            <Text style={{ fontSize: 15, fontFamily: 'Nunito-Bold', color: '#FF5F06', marginLeft: 4 }}>
                               {streak}
                             </Text>
                           </View>

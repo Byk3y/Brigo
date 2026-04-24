@@ -158,6 +158,14 @@ export function usePetBubbleGestures(config: UsePetBubbleGesturesConfig) {
           hasMoved.current = true;
         }
 
+        // Suppress position updates while still inside the sub-threshold dead
+        // zone. iOS's gesture system filters these micro-movements before
+        // onPanResponderMove fires, but Android forwards every raw touch
+        // sample — so capacitive noise at finger-down would shift the bubble
+        // a pixel or two on tap. Once hasMoved flips true, drag behavior is
+        // identical to before.
+        if (!hasMoved.current) return;
+
         // Use ref to get latest position (avoids stale closure)
         const currentPos = positionRef.current;
         // Use refs to get latest screen dimensions and insets (fixes closure issue)

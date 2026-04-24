@@ -32,6 +32,48 @@ export function useAuthSetup() {
     // Single source of truth for auth state and initialization
     let mounted = true;
 
+    // Safety net: Supabase's _initialize() awaits _callRefreshToken() when the
+    // stored session is within EXPIRY_MARGIN_MS of expiry, and that refresh
+    // retries for up to AUTO_REFRESH_TICK_DURATION_MS (30s). In flight mode,
+    // iOS fetch waits for connectivity rather than failing fast, so
+    // onAuthStateChange's INITIAL_SESSION event can be blocked for 30-60s.
+    // Every path that flips isInitialized lives inside that callback, so
+    // without this timer the splash appears "stuck". Force-unblock after 4s;
+    // real auth state reconciles in the background once the listener fires.
+    const splashSafetyTimer = setTimeout(() => {
+      if (!mounted) return;
+      const state = useStore.getState();
+      if (state.isInitialized) return;
+
+      // If a previous session left a persisted user.id, seed authUser so
+      // routing goes home with cached data instead of flashing /auth. When
+      // onAuthStateChange finally fires with the real session, userIdChanged
+      // will be false and no reset happens. If the session was revoked
+      // server-side, the listener will deliver null and the logged-out
+      // branch will clean up.
+      if (state._hasHydrated && state.user.id && !state.authUser) {
+        setAuthUser({ id: state.user.id } as any);
+
+        // Seed data-ready flags from cache so isDataReady in _layout can flip
+        // true even before Supabase finishes initializing.
+        const updates: Record<string, unknown> = {};
+        if (!state.petStateReady) {
+          updates.petStateReady = true;
+          updates.petStateUserId = state.user.id;
+        }
+        if (!state.userProfileSyncedAt) {
+          updates.userProfileSyncedAt = Date.now();
+          updates.userProfileUserId = state.user.id;
+        }
+        if (Object.keys(updates).length > 0) {
+          useStore.setState(updates);
+        }
+      }
+
+      if (__DEV__) console.warn('[Auth] Splash safety timeout — forcing init');
+      setIsInitialized(true);
+    }, 4000);
+
     // CRITICAL: Check initial session state BEFORE setting up listener
     const initializeAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -229,6 +271,7 @@ export function useAuthSetup() {
 
     return () => {
       mounted = false;
+      clearTimeout(splashSafetyTimer);
       authSubscription.unsubscribe();
     };
   }, [

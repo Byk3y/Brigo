@@ -170,9 +170,17 @@ export function useAuthSetup() {
 
               if (!mounted) return;
 
-              const meta = profileResult?.data?.meta as any;
-              const hasCompleted = isOnboardingComplete(meta);
-              setHasCompletedOnboarding(hasCompleted);
+              // Only update hasCompletedOnboarding when we actually got a
+              // profile row back. In airplane mode the supabase query resolves
+              // with { data: null, error } instead of throwing, so blindly
+              // calling setHasCompletedOnboarding(isOnboardingComplete(null))
+              // would clobber the persisted true value to false and bounce a
+              // returning user back into the onboarding flow.
+              if (profileResult?.data && !profileResult.error) {
+                const meta = profileResult.data.meta as any;
+                const hasCompleted = isOnboardingComplete(meta);
+                setHasCompletedOnboarding(hasCompleted);
+              }
 
               // Sync rich user properties for analytics
               const storeState = useStore.getState() as any;

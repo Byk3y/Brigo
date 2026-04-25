@@ -21,3 +21,26 @@ index 8b47644..9b60ec9 100644
        });
      }
    }, [changeSpot, current, JSON.stringify(index)]);
+diff --git a/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx b/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx
+index 127c1d6..38978f9 100644
+--- a/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx
++++ b/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx
+@@ -180,13 +180,17 @@ export const TourOverlay = forwardRef<TourOverlayRef, TourOverlayProps>((props,
+     },
+   }), [current, useNativeDriver]);
+ 
++  if (current === undefined) {
++    return null;
++  }
++
+   return (
+     <Modal
+       animationType="fade"
+       presentationStyle="overFullScreen"
+       supportedOrientations={["portrait", "landscape", "landscape-left", "landscape-right", "portrait-upside-down"]}
+       transparent={true}
+-      visible={current !== undefined}
++      visible={true}
+     >
+       <View testID="Overlay View" style={Css.overlayView}>
+         <Svg

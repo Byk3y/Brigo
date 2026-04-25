@@ -16,12 +16,15 @@ import { SpotlightTourProvider, useSpotlightTour } from 'react-native-spotlight-
 import { STUDIO_TOUR_STEPS } from '@/lib/walkthrough/steps';
 import { StudioWalkthroughTooltip } from '@/lib/walkthrough/WalkthroughTooltip';
 
-// Inner component to trigger the tour
-const StudioTourTrigger = () => {
+// Inner component to trigger the tour. Only fires when the Studio tab is the
+// active tab — otherwise the AttachStep targets are display:'none' and the
+// tour would burn its "seen" flag against invisible targets.
+const StudioTourTrigger = ({ isActive }: { isActive: boolean }) => {
   const { start } = useSpotlightTour();
   const { hasSeenStudioWalkthrough, setStudioWalkthroughSeen, _hasHydrated } = useStore();
 
   useEffect(() => {
+    if (!isActive) return;
     if (_hasHydrated && !hasSeenStudioWalkthrough) {
       const timer = setTimeout(() => {
         start();
@@ -29,19 +32,19 @@ const StudioTourTrigger = () => {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [hasSeenStudioWalkthrough, _hasHydrated]);
+  }, [isActive, hasSeenStudioWalkthrough, _hasHydrated]);
 
   return null;
 };
 
 // Wrapper provider for the studio tour
-const StudioTourController: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const StudioTourController: React.FC<{ children: React.ReactNode; isActive: boolean }> = ({ children, isActive }) => {
   return (
     <SpotlightTourProvider
       steps={STUDIO_TOUR_STEPS}
       onBackdropPress="continue"
     >
-      <StudioTourTrigger />
+      <StudioTourTrigger isActive={isActive} />
       {children}
     </SpotlightTourProvider>
   );
@@ -50,11 +53,13 @@ const StudioTourController: React.FC<{ children: React.ReactNode }> = ({ childre
 interface StudioTabProps {
   notebook: Notebook;
   onGenerateQuiz?: boolean;
+  isActive?: boolean;
 }
 
 export const StudioTab: React.FC<StudioTabProps> = ({
   notebook,
   onGenerateQuiz = false,
+  isActive = false,
 }) => {
   const { isDarkMode } = useTheme();
   const colors = getThemeColors(isDarkMode);
@@ -156,7 +161,7 @@ export const StudioTab: React.FC<StudioTabProps> = ({
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StudioTourController>
+      <StudioTourController isActive={isActive}>
         <ScrollView
           style={{ flex: 1, backgroundColor: colors.background }}
           contentContainerStyle={{

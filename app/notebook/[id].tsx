@@ -219,6 +219,7 @@ export default function NotebookDetailScreen() {
             <StudioTab
               notebook={notebook}
               onGenerateQuiz={triggerQuizGeneration ? () => { } : undefined}
+              isActive={activeTab === 'studio'}
             />
           </View>
         </View>

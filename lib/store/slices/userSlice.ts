@@ -191,6 +191,8 @@ export const createUserSlice: StateCreator<
       userProfileUserId: null,
       flashcardsStudied: 0,
       streakRestoreDismissed: false,
+      showStreakRestoreModal: false,
+      previousStreakForRestore: 0,
     });
   },
   hasCreatedNotebook: false,

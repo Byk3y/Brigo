@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { initSentry } from '@/lib/sentry';
 
@@ -132,27 +132,39 @@ function RootLayoutInner() {
   const isDataReady = !authUser || (user.id !== '' && petStateReady && !!userProfileSyncedAt);
   const isAppReady = fontsLoaded && _hasHydrated && isInitialized && isRoutingReady && isDataReady;
 
-  // Hide splash screen once app is completely ready
+  // JS splash overlay: holds the wordmark on screen so Android isn't stuck
+  // showing the tiny OS-level icon. iOS LaunchScreen already shows the same
+  // wordmark, so the handoff is visually seamless.
+  const [showJsSplash, setShowJsSplash] = useState(true);
+  const hidOsSplashRef = useRef(false);
+
+  // Dismiss the OS splash as soon as RN can render anything. The JS splash
+  // overlay below is already mounted and painted by this point, so the OS
+  // splash hand-off is invisible.
+  useEffect(() => {
+    if (hidOsSplashRef.current) return;
+    if (fontsLoaded && _hasHydrated) {
+      hidOsSplashRef.current = true;
+      SplashScreen.hideAsync().catch(() => { });
+    }
+  }, [fontsLoaded, _hasHydrated]);
+
+  // Once everything is ready, give the Stack 500ms to paint behind the
+  // overlay, then drop the splash to reveal the painted home screen.
   useEffect(() => {
     if (isAppReady) {
-      // Small delay to ensure the UI has actually painted the first frame of the target screen
-      const timer = setTimeout(async () => {
-        await SplashScreen.hideAsync().catch(() => { });
-        if (__DEV__) console.log('[UX] App ready, splash screen hidden');
+      const timer = setTimeout(() => {
+        setShowJsSplash(false);
+        if (__DEV__) console.log('[UX] App ready, JS splash dismissed');
       }, 500);
       return () => clearTimeout(timer);
     }
   }, [isAppReady]);
 
-  // Don't render Stack until everything is ready.
-  // Returning null keeps the native splash screen visible.
-  if (!isAppReady) {
-    return null;
-  }
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+      {isAppReady && (<>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -230,6 +242,30 @@ function RootLayoutInner() {
       <OfflineBanner />
       <CelebrationOverlay />
       <StudyPalConfirmationModal />
+      </>)}
+
+      {showJsSplash && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#faf9f6',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Image
+            source={require('@/assets/splash.png')}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="contain"
+            fadeDuration={0}
+          />
+        </View>
+      )}
     </View>
   );
 }

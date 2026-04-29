@@ -3,9 +3,7 @@
     "name": "Brigo",
     "slug": "brigo",
     "version": "1.2.6",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.2.6",
     "updates": {
       "url": "https://u.expo.dev/292f816a-44fc-41b8-9f3f-7c9f5dec3d02",
       "fallbackToCacheTimeout": 0
@@ -21,7 +19,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.brigo.ai",
-      "buildNumber": "60",
+      "buildNumber": "61",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,

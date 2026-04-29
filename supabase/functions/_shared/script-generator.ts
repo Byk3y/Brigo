@@ -70,7 +70,9 @@ function getPersonaGuide(educationLevel: string, ageBracket: string): string {
   const eduMap: Record<string, string> = {
     'middle_school': 'User is a young student. Simplify complex jargon into high-relatability analogies. Avoid being condescending.',
     'high_school': 'User is a teenager prepping for exams. Focus on clear concepts, memory anchors, and "why this matters" for grades/life.',
+    'middle_high': 'User is a middle or high school student prepping for exams. Focus on clear concepts, memory anchors, and "why this matters" for grades/life. Keep jargon accessible.',
     'undergrad': 'User is an academic focused on deep retention. Use rigorous logic. Connect insights to research or "exam pitfalls".',
+    'college': 'User is a college or university student. Use rigorous, course-appropriate terminology. Connect insights to coursework, research, and exam patterns. Treat them as a serious academic.',
     'grad_school': 'User is a specialist. Use sophisticated terminology. Focus on nuance, high-level synthesis, and theory-to-practice.',
     'professional': 'User is a high-performer. Focus on ROI, strategic application, and efficiency. Use workplace/growth analogies.',
     'lifelong': 'User is learning for pleasure. Focus on the beauty of the concept and historical/global context. Keep it sophisticated and conversational.'

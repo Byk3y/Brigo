@@ -21,7 +21,8 @@ interface Screen4_EducationProps {
 }
 
 const EDUCATION_OPTIONS = [
-    { id: 'middle_high', label: 'Student', description: 'Middle school, high school, or college', icon: 'school-outline' },
+    { id: 'middle_high', label: 'Middle / high school', description: 'Studying for school exams or grades', icon: 'school-outline' },
+    { id: 'college', label: 'College / university', description: 'Undergrad or grad-level coursework', icon: 'library-outline' },
     { id: 'professional', label: 'Working professional', description: 'Career-focused learning', icon: 'briefcase-outline' },
     { id: 'lifelong', label: 'Lifelong learner', description: 'Learning for curiosity & growth', icon: 'sparkles-outline' },
 ];

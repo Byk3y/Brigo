@@ -6,13 +6,14 @@
 import React from 'react';
 import { Text, StyleSheet, Platform } from 'react-native';
 import type { QuestionCardProps } from '@/lib/quiz/types';
+import { MarkdownText } from '@/components/MarkdownText';
 
 const isPad = Platform.OS === 'ios' && Platform.isPad;
 
 export function QuestionCard({ question, wasSkipped, colors }: QuestionCardProps) {
   return (
     <>
-      <Text style={[styles.questionText, { color: colors.text }]}>{question}</Text>
+      <MarkdownText style={[styles.questionText, { color: colors.text }]}>{question}</MarkdownText>
       {wasSkipped && (
         <Text style={[styles.skipMessage, { color: colors.textSecondary }]}>
           You skipped this question. Correct answer is highlighted below.
@@ -36,10 +37,3 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito-Regular',
   },
 });
-
-
-
-
-
-
-

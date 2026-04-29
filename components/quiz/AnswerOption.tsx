@@ -8,6 +8,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import type { AnswerOptionProps, AnswerOption as OptionType } from '@/lib/quiz/types';
 import { OPTION_COLORS } from '@/lib/quiz/constants';
+import { MarkdownText } from '@/components/MarkdownText';
 
 const isPad = Platform.OS === 'ios' && Platform.isPad;
 
@@ -75,7 +76,7 @@ export function AnswerOption({
         <View style={[styles.badge, { backgroundColor: badgeBg }]}>
           <Text style={[styles.badgeText, { color: badgeText }]}>{optionKey}</Text>
         </View>
-        <Text style={[styles.optionText, { color: optionTextColor }]}>{optionText}</Text>
+        <MarkdownText style={[styles.optionText, { color: optionTextColor }]}>{optionText}</MarkdownText>
         {showCorrect && <Ionicons name="checkmark-circle" size={24} color={OPTION_COLORS.correctIcon} />}
         {showIncorrect && <Ionicons name="close-circle" size={24} color={OPTION_COLORS.incorrectIcon} />}
       </View>
@@ -119,7 +120,7 @@ export function AnswerOption({
               {showCorrect ? 'Why this is correct' : 'Why this is incorrect'}
             </Text>
           </View>
-          <Text
+          <MarkdownText
             style={[
               styles.explanationText,
               {
@@ -134,7 +135,7 @@ export function AnswerOption({
             ]}
           >
             {explanation}
-          </Text>
+          </MarkdownText>
         </View>
       )}
     </TouchableOpacity>

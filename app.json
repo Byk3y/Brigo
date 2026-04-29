@@ -2,7 +2,14 @@
   "expo": {
     "name": "Brigo",
     "slug": "brigo",
-    "version": "1.2.5",
+    "version": "1.2.6",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/292f816a-44fc-41b8-9f3f-7c9f5dec3d02",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -14,7 +21,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.brigo.ai",
-      "buildNumber": "58",
+      "buildNumber": "60",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -38,7 +45,7 @@
         "backgroundColor": "#FF9500"
       },
       "package": "com.brigo.ai",
-      "versionCode": 14,
+      "versionCode": 16,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",

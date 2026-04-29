@@ -722,6 +722,14 @@ GENERATION RULES:
 ${isExamMode ? '4. Focus on high-yield content likely to appear on exams' : isLearningMode ? '4. Focus on building deep understanding and connections' : '4. Balance exam relevance with conceptual understanding'}
 ${hasMixedContent ? '5. Extract patterns from past paper, explain concepts from notes\n6. Bridge theoretical knowledge with exam-style testing' : isPastPaper && isExamMode ? '5. Extract actual exam questions and rephrase them as flashcards\n6. Include questions that test the same skills as the original exam' : ''}
 
+MATH FORMATTING:
+- When the subject involves equations, variables, vectors, matrices, or any mathematical notation, ALWAYS wrap math in LaTeX delimiters.
+- Use $...$ for inline math (e.g. "Solve for $x$ when $2x + 3 = 7$").
+- Use $$...$$ for display math on its own line (e.g. "$$A = \\begin{bmatrix} 1 & 2 \\\\ 3 & 4 \\end{bmatrix}$$").
+- NEVER use \\(, \\), \\[, \\], or \\begin{equation} delimiters.
+- NEVER write raw LaTeX commands like "\\frac{1}{2}" outside of $...$ delimiters — they will render as literal text.
+- This applies to question, answer, and explanation fields.
+
 VOICE GUIDELINES:
 - AVOID formal phrases: "according to the material", "based on the reading", "as stated in the text"
 - Ask questions directly and conversationally
@@ -771,6 +779,14 @@ ${isExamMode ? '2. Include 1 "common mistake" question testing exam pitfalls' : 
 4. The final question MUST be the hardest, tying concepts together
 5. Explanations should teach, not just justify the answer
 ${hasMixedContent ? '6. Match question style to past paper format\n7. Test concepts explained in the notes using exam patterns' : isPastPaper && isExamMode ? '6. Match the style and format of the original exam questions\n7. Include questions that test the exact same concepts as the past paper' : ''}
+
+MATH FORMATTING:
+- When the subject involves equations, variables, vectors, matrices, or any mathematical notation, ALWAYS wrap math in LaTeX delimiters.
+- Use $...$ for inline math (e.g. "What is the value of $x$ in $2x = 10$?").
+- Use $$...$$ for display math on its own line.
+- NEVER use \\(, \\), \\[, \\], or \\begin{equation} delimiters.
+- NEVER write raw LaTeX commands like "\\frac{1}{2}" outside of $...$ delimiters — they will render as literal text.
+- This applies to question, options (A/B/C/D), hint, and explanations fields.
 
 VOICE GUIDELINES:
 - AVOID formal phrases: "according to the material", "based on the reading", "as stated in the text", "the passage mentions"

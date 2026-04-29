@@ -23,6 +23,7 @@ import { completionService } from '@/lib/services/completionService';
 import { taskService } from '@/lib/services/taskService';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 import { useFeedback } from '@/lib/feedback';
+import { MarkdownText } from '@/components/MarkdownText';
 
 interface FlashcardViewerProps {
   flashcards: StudioFlashcard[];
@@ -268,9 +269,9 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
               ]}
             >
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingVertical: 64 }}>
-                <Text style={styles.questionText}>
+                <MarkdownText style={styles.questionText}>
                   {currentCard.question}
-                </Text>
+                </MarkdownText>
               </View>
               <View style={{ paddingBottom: isPad ? 40 : 32, alignItems: 'center' }}>
                 <Text style={{ fontSize: isPad ? 16 : 14, color: '#a1a1aa', fontFamily: 'Nunito-Medium' }}>
@@ -292,20 +293,20 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
                 <Text style={styles.answerTagText}>Answer</Text>
               </View>
               <View style={{ flex: 1, paddingHorizontal: isPad ? 60 : 40, paddingVertical: isPad ? 80 : 64 }}>
-                <Text style={styles.answerText}>
+                <MarkdownText style={styles.answerText}>
                   {currentCard.answer}
-                </Text>
+                </MarkdownText>
 
                 {!!currentCard.explanation && (
                   <View style={{ marginTop: isPad ? 32 : 24, paddingTop: isPad ? 32 : 24, borderTopWidth: 1, borderTopColor: '#525252' }}>
-                    <Text style={{
+                    <MarkdownText style={{
                       fontSize: isPad ? 18 : 16,
                       color: '#d4d4d8',
                       lineHeight: isPad ? 28 : 24,
                       fontFamily: 'Nunito-Regular'
                     }}>
                       {currentCard.explanation}
-                    </Text>
+                    </MarkdownText>
                   </View>
                 )}
               </View>

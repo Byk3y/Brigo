@@ -16,13 +16,15 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
 }) => {
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
-    const [dimensions, setDimensions] = useState({ width: 0, height: fontSize * 1.5 });
+    const [dimensions, setDimensions] = useState({
+        width: inline ? 0 : 0,
+        height: inline ? fontSize * 1.3 : fontSize * 1.5,
+    });
 
     const htmlContent = useMemo(() => {
         const textColor = colors.text;
         const displayMode = inline ? 'false' : 'true';
 
-        // Sanitize latex for HTML string
         const escapedLatex = latex
             .replace(/\\/g, '\\\\')
             .replace(/'/g, "\\'")
@@ -36,37 +38,55 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
                     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
                     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
                     <style>
-                        body {
+                        html, body {
                             margin: 0;
-                            padding: 2px 4px;
+                            padding: 0;
+                            background-color: transparent;
+                            overflow: hidden;
+                        }
+                        body {
+                            padding: ${inline ? '0 2px' : '2px 4px'};
                             display: flex;
                             flex-direction: column;
                             justify-content: center;
                             align-items: ${inline ? 'flex-start' : 'center'};
-                            background-color: transparent;
                             color: ${textColor} !important;
                             font-size: ${fontSize}px;
-                            overflow: hidden;
                         }
                         #math-container {
-                            white-space: nowrap;
                             display: inline-block;
+                            transform-origin: ${inline ? 'left center' : 'center center'};
+                            white-space: ${inline ? 'nowrap' : 'normal'};
                         }
                         .katex-display {
                             margin: 0;
                         }
-                        /* Ensure Katex uses the correct color */
                         .katex { color: inherit !important; }
                     </style>
                 </head>
                 <body>
                     <div id="math-container"></div>
                     <script>
-                        function sendDimensions() {
+                        function reportDimensions() {
                             const container = document.getElementById('math-container');
-                            const width = container.scrollWidth + 8;
-                            const height = container.scrollHeight + 4;
-                            window.ReactNativeWebView.postMessage(JSON.stringify({ width, height }));
+                            const naturalWidth = container.scrollWidth;
+                            const naturalHeight = container.scrollHeight;
+                            const availableWidth = document.body.clientWidth - ${inline ? 4 : 12};
+
+                            let scale = 1;
+                            if (!${inline ? 'true' : 'false'} && naturalWidth > availableWidth && naturalWidth > 0) {
+                                scale = availableWidth / naturalWidth;
+                                container.style.transform = 'scale(' + scale + ')';
+                            }
+
+                            const finalWidth = Math.ceil(naturalWidth * scale);
+                            const finalHeight = Math.ceil(naturalHeight * scale);
+
+                            window.ReactNativeWebView.postMessage(JSON.stringify({
+                                width: finalWidth + ${inline ? 4 : 8},
+                                height: finalHeight + 4,
+                                scale: scale
+                            }));
                         }
 
                         try {
@@ -75,11 +95,10 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
                                 throwOnError: false,
                                 strict: false
                             });
-                            // Wait a bit for rendering to finish
-                            setTimeout(sendDimensions, 100);
+                            setTimeout(reportDimensions, 80);
                         } catch (e) {
                             document.getElementById('math-container').textContent = '${escapedLatex}';
-                            sendDimensions();
+                            reportDimensions();
                         }
                     </script>
                 </body>
@@ -90,12 +109,13 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
     return (
         <View
             style={[
-                styles.container,
                 inline ? styles.inlineContainer : styles.displayContainer,
-                {
-                    height: inline ? fontSize * 1.7 : dimensions.height,
-                    width: inline ? (dimensions.width || 40) : '100%'
-                }
+                inline
+                    ? {
+                        height: Math.max(dimensions.height, fontSize * 1.3),
+                        width: Math.max(dimensions.width, fontSize),
+                      }
+                    : { height: dimensions.height },
             ]}
             pointerEvents="none"
         >
@@ -112,7 +132,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
                         if (data.width && data.height) {
                             setDimensions({
                                 width: Math.ceil(data.width),
-                                height: Math.ceil(data.height)
+                                height: Math.ceil(data.height),
                             });
                         }
                     } catch (e) { }
@@ -123,22 +143,21 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
 };
 
 const styles = StyleSheet.create({
-    container: {
+    inlineContainer: {
         backgroundColor: 'transparent',
         overflow: 'hidden',
-    },
-    inlineContainer: {
-        marginBottom: Platform.OS === 'ios' ? -5 : -3,
-        marginRight: 4,
+        marginHorizontal: 1,
     },
     displayContainer: {
+        backgroundColor: 'transparent',
+        overflow: 'hidden',
         width: '100%',
-        marginVertical: 8,
+        marginVertical: 6,
     },
     webview: {
         backgroundColor: 'transparent',
     },
     webviewContainer: {
         backgroundColor: 'transparent',
-    }
+    },
 });

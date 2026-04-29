@@ -158,7 +158,7 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({ children, style, hig
               key={`im-${i}-${j}-${k}`}
               latex={stripInlineDelimiters(seg)}
               inline
-              fontSize={fontSize}
+              fontSize={Math.round(fontSize * 0.92)}
             />
           );
         } else {
@@ -171,7 +171,7 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({ children, style, hig
       nodes.push(
         <View
           key={`l-${i}-${j}`}
-          style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline' }}
+          style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}
         >
           {lineChildren}
         </View>

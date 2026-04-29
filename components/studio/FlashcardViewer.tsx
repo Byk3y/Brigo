@@ -268,7 +268,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
                 frontAnimatedStyle,
               ]}
             >
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingVertical: 64 }}>
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingVertical: 64, overflow: 'hidden' }}>
                 <MarkdownText style={styles.questionText}>
                   {currentCard.question}
                 </MarkdownText>
@@ -292,7 +292,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
               <View style={styles.answerTag}>
                 <Text style={styles.answerTagText}>Answer</Text>
               </View>
-              <View style={{ flex: 1, paddingHorizontal: isPad ? 60 : 40, paddingVertical: isPad ? 80 : 64 }}>
+              <View style={{ flex: 1, paddingHorizontal: isPad ? 60 : 40, paddingVertical: isPad ? 80 : 64, overflow: 'hidden' }}>
                 <MarkdownText style={styles.answerText}>
                   {currentCard.answer}
                 </MarkdownText>

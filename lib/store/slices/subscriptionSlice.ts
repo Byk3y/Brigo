@@ -8,6 +8,7 @@ import type { StateCreator } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { setUserProperties, setSuperProperties } from '@/lib/services/analyticsService';
 import { checkProEntitlement } from '@/lib/purchases';
+import { isNetworkError } from '@/lib/utils/studio';
 
 export interface SubscriptionSlice {
   tier: 'free' | 'premium' | null;
@@ -75,7 +76,17 @@ export const createSubscriptionSlice: StateCreator<
           return;
         }
 
-        // Actual error (network, permission, etc.)
+        // Network failure (e.g. airplane mode): keep last-known state. Flipping
+        // a returning premium user to free/expired here would surface the
+        // "Keep studying with Pro" upsell on every offline launch. Server-side
+        // gates re-verify subscription on their own, so trusting cached UI
+        // state here is safe.
+        if (isNetworkError(error)) {
+          if (__DEV__) console.warn('[Subscription] Network error loading subscription, keeping cached state');
+          return;
+        }
+
+        // Actual non-network error (permission, schema, etc.)
         console.error('Error loading subscription:', error);
 
         // Set restrictive default state on error (fail-secure)
@@ -159,9 +170,16 @@ export const createSubscriptionSlice: StateCreator<
         });
       }
     } catch (error) {
+      // Network failure (e.g. airplane mode): keep last-known state instead of
+      // flipping a Pro user to free/expired and triggering the offline upsell.
+      if (isNetworkError(error)) {
+        if (__DEV__) console.warn('[Subscription] Network error loading subscription, keeping cached state');
+        return;
+      }
+
       console.error('Error loading subscription:', error);
 
-      // Set restrictive default state on error (fail-secure)
+      // Set restrictive default state on non-network error (fail-secure)
       set({
         tier: 'free',
         status: 'expired',

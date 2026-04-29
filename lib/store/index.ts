@@ -117,6 +117,15 @@ export const useStore = create<StoreWithHydration>()(
         // Unseen studio completions — survives app restart so users keep
         // seeing the "new material" dot until they open Studio.
         unseenStudioCompletions: state.unseenStudioCompletions,
+        // Subscription state — persisted so a Pro user launching offline
+        // (e.g. airplane mode) doesn't get flipped to free/expired and shown
+        // the "Keep studying with Pro" upsell. Server-side gates re-verify
+        // entitlement on their own, and the realtime channel reconciles when
+        // network returns.
+        tier: state.tier,
+        status: state.status,
+        isExpired: state.isExpired,
+        subscriptionSyncedAt: state.subscriptionSyncedAt,
         // Add other persistent state here as needed
       }),
       migrate: (persistedState: any, version: number) => {

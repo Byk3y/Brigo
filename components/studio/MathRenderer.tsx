@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useTheme, getThemeColors } from '@/lib/ThemeContext';
 
@@ -17,8 +17,8 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
     const { isDarkMode } = useTheme();
     const colors = getThemeColors(isDarkMode);
     const [dimensions, setDimensions] = useState({
-        width: inline ? 0 : 0,
-        height: inline ? fontSize * 1.3 : fontSize * 1.5,
+        width: inline ? fontSize : 0,
+        height: inline ? Math.round(fontSize * 1.3) : Math.round(fontSize * 1.5),
     });
 
     const htmlContent = useMemo(() => {
@@ -43,19 +43,18 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
                             padding: 0;
                             background-color: transparent;
                             overflow: hidden;
+                            position: relative;
                         }
                         body {
-                            padding: ${inline ? '0 2px' : '2px 4px'};
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: center;
-                            align-items: ${inline ? 'flex-start' : 'center'};
                             color: ${textColor} !important;
                             font-size: ${fontSize}px;
                         }
                         #math-container {
+                            position: absolute;
+                            top: 0;
+                            left: 0;
                             display: inline-block;
-                            transform-origin: ${inline ? 'left center' : 'center center'};
+                            transform-origin: top left;
                             white-space: ${inline ? 'nowrap' : 'normal'};
                         }
                         .katex-display {
@@ -69,22 +68,32 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
                     <script>
                         function reportDimensions() {
                             const container = document.getElementById('math-container');
-                            const naturalWidth = container.scrollWidth;
-                            const naturalHeight = container.scrollHeight;
-                            const availableWidth = document.body.clientWidth - ${inline ? 4 : 12};
+                            const naturalRect = container.getBoundingClientRect();
+                            const naturalWidth = naturalRect.width;
+                            const naturalHeight = naturalRect.height;
+                            const availableWidth = document.body.clientWidth;
+                            const isInline = ${inline ? 'true' : 'false'};
 
                             let scale = 1;
-                            if (!${inline ? 'true' : 'false'} && naturalWidth > availableWidth && naturalWidth > 0) {
-                                scale = availableWidth / naturalWidth;
-                                container.style.transform = 'scale(' + scale + ')';
+                            if (!isInline && naturalWidth > availableWidth - 8 && naturalWidth > 0) {
+                                scale = (availableWidth - 8) / naturalWidth;
                             }
 
-                            const finalWidth = Math.ceil(naturalWidth * scale);
-                            const finalHeight = Math.ceil(naturalHeight * scale);
+                            const scaledWidth = naturalWidth * scale;
+                            const scaledHeight = naturalHeight * scale;
+
+                            container.style.transform = 'scale(' + scale + ')';
+                            if (!isInline) {
+                                const xOffset = Math.max(0, (availableWidth - scaledWidth) / 2);
+                                container.style.left = xOffset + 'px';
+                            }
+
+                            const reportedWidth = isInline ? Math.ceil(scaledWidth + 4) : availableWidth;
+                            const reportedHeight = Math.ceil(scaledHeight + 4);
 
                             window.ReactNativeWebView.postMessage(JSON.stringify({
-                                width: finalWidth + ${inline ? 4 : 8},
-                                height: finalHeight + 4,
+                                width: reportedWidth,
+                                height: reportedHeight,
                                 scale: scale
                             }));
                         }
@@ -98,7 +107,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
                             setTimeout(reportDimensions, 80);
                         } catch (e) {
                             document.getElementById('math-container').textContent = '${escapedLatex}';
-                            reportDimensions();
+                            setTimeout(reportDimensions, 40);
                         }
                     </script>
                 </body>
@@ -112,7 +121,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
                 inline ? styles.inlineContainer : styles.displayContainer,
                 inline
                     ? {
-                        height: Math.max(dimensions.height, fontSize * 1.3),
+                        height: Math.max(dimensions.height, Math.round(fontSize * 1.3)),
                         width: Math.max(dimensions.width, fontSize),
                       }
                     : { height: dimensions.height },

@@ -1,6 +1,6 @@
 /**
  * Generate Studio Content Edge Function
- * Generates flashcards or quiz questions from material content using Grok 4.1 Fast
+ * Generates flashcards or quiz questions from material content using OpenRouter
  */
 
 import { createClient } from 'supabase';

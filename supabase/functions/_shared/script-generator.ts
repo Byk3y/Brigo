@@ -1,8 +1,8 @@
 /**
- * Podcast Script Generator using Grok 4.1 Fast via OpenRouter
+ * Podcast Script Generator using Gemini 2.5 Flash via OpenRouter
  * Two-stage process:
- *   1. Extract key insights from material (Grok 4.1 Fast)
- *   2. Generate Dialogue script (Brigo & Pet) (Grok 4.1 Fast)
+ *   1. Extract key insights from material (Gemini 2.5 Flash)
+ *   2. Generate Dialogue script (Brigo & Pet) (Gemini 2.5 Flash)
  */
 
 import { callLLMWithRetry } from './openrouter.ts';
@@ -93,14 +93,14 @@ function getPersonaGuide(educationLevel: string, ageBracket: string): string {
 }
 
 /**
- * Stage 1: Extract key insights from material using Grok 4.1 Fast
+ * Stage 1: Extract key insights from material using Gemini 2.5 Flash
  */
 async function extractKeyInsights(
   materialContent: string,
   notebookTitle: string,
   educationLevel: string = 'lifelong'
 ): Promise<{ insights: string[]; tokens: number }> {
-  console.log('[Script Generator] Stage 1: Extracting key insights via Grok...');
+  console.log('[Script Generator] Stage 1: Extracting key insights via OpenRouter...');
 
   const systemPrompt = `You are an expert educational content analyst. Your task is to extract the most important insights from study material for an engaging podcast.
 
@@ -117,7 +117,7 @@ Focus on:
 
 Extract 5-7 key insights that cover the full scope of the material.`;
 
-  // Truncate material to avoid token limits (Grok has 128k context but we keep it efficient)
+  // Truncate material to keep script generation efficient.
   const truncatedMaterial = materialContent.substring(0, 50000);
 
   const userPrompt = `Material Title: ${notebookTitle}
@@ -309,7 +309,7 @@ Generate a natural, engaging podcast script. Return ONLY the script with "${brig
     const cleanedScript = script.replace(/```.*?\n/g, '').replace(/```/g, '').trim();
     const wordCount = cleanedScript.split(/\s+/).length;
 
-    console.log(`[Script Generator] Generated ${wordCount} word script via Grok (${tokens} tokens)`);
+    console.log(`[Script Generator] Generated ${wordCount} word script via OpenRouter (${tokens} tokens)`);
 
     return { script: cleanedScript, tokens, speakerMap };
   } catch (error: any) {

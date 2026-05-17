@@ -58,16 +58,16 @@ const MODELS: Record<string, ModelConfig> = {
     costPer1kOutput: 0.0004,
   },
   audio_script: {
-    name: 'x-ai/grok-4.1-fast', // Ultra-fast creative dialogue
+    name: 'google/gemini-2.5-flash', // Long-context script generation
     maxTokens: 1500,
-    costPer1kInput: 0.0005, // Pricing estimate for Grok Fast
-    costPer1kOutput: 0.0015,
+    costPer1kInput: 0.0003,
+    costPer1kOutput: 0.0025,
   },
   notebook_chat: {
-    name: 'x-ai/grok-4.1-fast', // Omniscient chat with 2M context
+    name: 'google/gemini-2.5-flash', // Long-context study chat
     maxTokens: 2000,
-    costPer1kInput: 0.0005,
-    costPer1kOutput: 0.0015,
+    costPer1kInput: 0.0003,
+    costPer1kOutput: 0.0025,
   },
   // Phase B: extraction paths migrated from direct Gemini API to get
   // retry + fallback for free via callLLMWithRetry.
@@ -104,9 +104,9 @@ const FALLBACK_MODELS: Record<string, string[]> = {
   // would need to accept PDF file inputs. If Gemini 2.5 Flash is down via
   // OpenRouter, we fail fast and surface a clean error.
   pdf_extract_preview: [],
-  studio: ['x-ai/grok-4.1-fast', 'openai/gpt-4o'],
-  audio_script: ['openai/gpt-4o-mini'],
-  notebook_chat: ['x-ai/grok-4.1-fast', 'meta-llama/llama-3.3-70b-instruct:free', 'openai/gpt-4o'],
+  studio: ['openai/gpt-4.1-mini', 'openai/gpt-4o'],
+  audio_script: ['openai/gpt-4.1-mini', 'openai/gpt-4o-mini'],
+  notebook_chat: ['openai/gpt-4.1-mini', 'x-ai/grok-4.20', 'openai/gpt-4o'],
   audio_transcription: ['google/gemini-2.0-flash'],
   image_ocr: ['google/gemini-2.0-flash'],
   website_cleanup: ['google/gemini-2.0-flash', 'deepseek/deepseek-chat'],

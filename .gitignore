@@ -100,3 +100,4 @@ CLAUDE.md
 .gemini/
 .antigravity/
 antigravity.md
+.codex/config.toml

@@ -12,6 +12,8 @@ interface ModelConfig {
   costPer1kOutput: number; // USD
 }
 
+type ModelPricing = Pick<ModelConfig, 'costPer1kInput' | 'costPer1kOutput'>;
+
 interface LLMResponse {
   content: string;
   usage: {
@@ -23,6 +25,52 @@ interface LLMResponse {
   latency: number;
   model: string;
 }
+
+// OpenRouter pricing is model-specific. Keep this map in USD per 1k tokens
+// so fallback calls are logged against the model that actually answered,
+// not the job type's primary model.
+const MODEL_PRICING: Record<string, ModelPricing> = {
+  'google/gemini-2.5-flash': {
+    costPer1kInput: 0.0003,
+    costPer1kOutput: 0.0025,
+  },
+  'google/gemini-2.5-pro': {
+    costPer1kInput: 0.00125,
+    costPer1kOutput: 0.01,
+  },
+  'google/gemini-2.0-flash': {
+    costPer1kInput: 0.0001,
+    costPer1kOutput: 0.0004,
+  },
+  'deepseek/deepseek-chat': {
+    costPer1kInput: 0.00032,
+    costPer1kOutput: 0.00089,
+  },
+  'mistralai/mistral-small': {
+    costPer1kInput: 0.00015,
+    costPer1kOutput: 0.0006,
+  },
+  'meta-llama/llama-3.3-70b-instruct:free': {
+    costPer1kInput: 0,
+    costPer1kOutput: 0,
+  },
+  'openai/gpt-4.1-mini': {
+    costPer1kInput: 0.0004,
+    costPer1kOutput: 0.0016,
+  },
+  'openai/gpt-4o-mini': {
+    costPer1kInput: 0.00015,
+    costPer1kOutput: 0.0006,
+  },
+  'openai/gpt-4o': {
+    costPer1kInput: 0.0025,
+    costPer1kOutput: 0.01,
+  },
+  'x-ai/grok-4.20': {
+    costPer1kInput: 0.00125,
+    costPer1kOutput: 0.0025,
+  },
+};
 
 // Model configurations for different job types
 const MODELS: Record<string, ModelConfig> = {
@@ -100,10 +148,9 @@ const MODELS: Record<string, ModelConfig> = {
 // Fallback models if primary fails
 const FALLBACK_MODELS: Record<string, string[]> = {
   preview: ['deepseek/deepseek-chat', 'meta-llama/llama-3.3-70b-instruct:free', 'mistralai/mistral-small'],
-  // pdf_extract_preview has no text-only fallbacks because all fallbacks
-  // would need to accept PDF file inputs. If Gemini 2.5 Flash is down via
-  // OpenRouter, we fail fast and surface a clean error.
-  pdf_extract_preview: [],
+  // PDF fallbacks must support file input and structured outputs because
+  // PdfProcessor sends the raw PDF plus a JSON schema in one request.
+  pdf_extract_preview: ['google/gemini-2.5-pro', 'openai/gpt-4.1-mini'],
   studio: ['openai/gpt-4.1-mini', 'openai/gpt-4o'],
   audio_script: ['openai/gpt-4.1-mini', 'openai/gpt-4o-mini'],
   notebook_chat: ['openai/gpt-4.1-mini', 'x-ai/grok-4.20', 'openai/gpt-4o'],
@@ -188,7 +235,6 @@ export async function callLLM(
   } = {}
 ): Promise<LLMResponse> {
   const config = MODELS[jobType];
-  const modelName = options.model || config.name;
   const startTime = Date.now();
 
   const apiKey = getRequiredEnv('OPENROUTER_API_KEY');
@@ -258,87 +304,104 @@ export async function callLLM(
     }
   }
 
-  // Build request body. response_format is only included when a schema is set.
-  // deno-lint-ignore no-explicit-any
-  const requestBody: any = {
-    model: modelName,
-    messages: finalMessages,
-    max_tokens: config.maxTokens,
-    temperature: options.temperature ?? 0.7,
-    stream: options.stream ?? false,
-  };
-  if (options.responseSchema) {
-    requestBody.response_format = {
-      type: 'json_schema',
-      json_schema: {
-        name: options.responseSchema.name,
-        strict: options.responseSchema.strict ?? true,
-        schema: options.responseSchema.schema,
-      },
-    };
-  }
+  const modelCandidates = options.model
+    ? [options.model]
+    : [config.name, ...(FALLBACK_MODELS[jobType] || [])];
 
-  try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://brigo.app',
-        'X-Title': 'Brigo Study App',
-      },
-      body: JSON.stringify(requestBody),
-    });
+  let lastError: Error | null = null;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenRouter error: ${response.status} ${errorText}`);
-    }
+  for (const [idx, modelName] of modelCandidates.entries()) {
+    const attemptStart = Date.now();
 
-    const data = await response.json();
-    const latency = Date.now() - startTime;
-
-    // Extract usage stats
-    const inputTokens = data.usage?.prompt_tokens || 0;
-    const outputTokens = data.usage?.completion_tokens || 0;
-    const totalTokens = inputTokens + outputTokens;
-
-    // Calculate cost in cents
-    const costCents = Math.ceil(
-      (inputTokens / 1000) * config.costPer1kInput * 100 +
-      (outputTokens / 1000) * config.costPer1kOutput * 100
-    );
-
-    // Extract content
-    const content = data.choices?.[0]?.message?.content || '';
-
-    if (!content) {
-      throw new Error('Empty response from LLM');
-    }
-
-    return {
-      content,
-      usage: { inputTokens, outputTokens, totalTokens },
-      costCents,
-      latency,
+    // Build request body. response_format is only included when a schema is set.
+    // deno-lint-ignore no-explicit-any
+    const requestBody: any = {
       model: modelName,
+      messages: finalMessages,
+      max_tokens: config.maxTokens,
+      temperature: options.temperature ?? 0.7,
+      stream: options.stream ?? false,
     };
-  } catch (error: unknown) {
-    const latency = Date.now() - startTime;
-
-    // Try fallback models if available
-    const fallbacks = FALLBACK_MODELS[jobType];
-    if (fallbacks && fallbacks.length > 0 && !options.model) {
-      console.warn(`Primary model failed, trying fallback: ${fallbacks[0]}`);
-      return callLLM(jobType, systemPrompt, messages, {
-        ...options,
-        model: fallbacks[0],
-      });
+    if (options.responseSchema) {
+      requestBody.response_format = {
+        type: 'json_schema',
+        json_schema: {
+          name: options.responseSchema.name,
+          strict: options.responseSchema.strict ?? true,
+          schema: options.responseSchema.schema,
+        },
+      };
     }
 
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`LLM call failed: ${message} (latency: ${latency}ms)`);
+    try {
+      if (idx > 0) {
+        console.warn(`Trying fallback model for ${jobType}: ${modelName}`);
+      }
+
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://brigo.app',
+          'X-Title': 'Brigo Study App',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenRouter error: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+      const latency = Date.now() - startTime;
+
+      // Extract usage stats
+      const inputTokens = data.usage?.prompt_tokens || 0;
+      const outputTokens = data.usage?.completion_tokens || 0;
+      const totalTokens = inputTokens + outputTokens;
+
+      const pricing = MODEL_PRICING[modelName] || {
+        costPer1kInput: config.costPer1kInput,
+        costPer1kOutput: config.costPer1kOutput,
+      };
+
+      // Calculate cost in cents using the model that actually answered.
+      const costCents = Math.ceil(
+        (inputTokens / 1000) * pricing.costPer1kInput * 100 +
+        (outputTokens / 1000) * pricing.costPer1kOutput * 100
+      );
+
+      // Extract content
+      const content = data.choices?.[0]?.message?.content || '';
+
+      if (!content) {
+        throw new Error('Empty response from LLM');
+      }
+
+      return {
+        content,
+        usage: { inputTokens, outputTokens, totalTokens },
+        costCents,
+        latency,
+        model: modelName,
+      };
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      lastError = err;
+      const attemptLatency = Date.now() - attemptStart;
+      console.error(
+        `LLM model ${modelName} failed for ${jobType} after ${attemptLatency}ms:`,
+        err.message
+      );
+    }
   }
+
+  const latency = Date.now() - startTime;
+  throw new Error(
+    `LLM call failed: ${lastError?.message || 'all model attempts failed'} (latency: ${latency}ms)`
+  );
 }
 
 /**
